@@ -74,7 +74,7 @@ describe('API Gateway identity auth proxy', () => {
       });
 
     const [, init] = fetchMock.mock.calls[0];
-    const headers = init.headers as Headers;
+    const headers = init.headers as Record<string, string>;
 
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledWith('http://identity-service.test:8080/auth/login', expect.objectContaining({
@@ -84,9 +84,41 @@ describe('API Gateway identity auth proxy', () => {
         password: 'Password@123'
       })
     }));
-    expect(headers.get('authorization')).toBe('Bearer existing-token');
-    expect(headers.get('content-type')).toMatch(/^application\/json/);
-    expect(headers.get('x-correlation-id')).toBe('test-correlation-id');
+    expect(headers.authorization).toBe('Bearer existing-token');
+    expect(headers['content-type']).toMatch(/^application\/json/);
+    expect(headers['x-correlation-id']).toBe('test-correlation-id');
+  });
+
+  it('returns 502 when identity-service returns invalid JSON', async () => {
+    fetchMock.mockResolvedValue(textResponse(200, '{not-json', 'application/json'));
+
+    const response = await request(createApp())
+      .get('/api/auth/health')
+      .set('x-correlation-id', 'test-correlation-id');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({
+      error: {
+        code: 'INVALID_UPSTREAM_RESPONSE',
+        message: 'Identity service returned an invalid JSON response.'
+      }
+    });
+  });
+
+  it('returns 502 when identity-service returns unsupported content type', async () => {
+    fetchMock.mockResolvedValue(textResponse(200, '<html>not json</html>', 'text/html'));
+
+    const response = await request(createApp())
+      .get('/api/auth/health')
+      .set('x-correlation-id', 'test-correlation-id');
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({
+      error: {
+        code: 'UNSUPPORTED_UPSTREAM_RESPONSE',
+        message: 'Identity service returned an unsupported response type.'
+      }
+    });
   });
 });
 
@@ -95,6 +127,15 @@ function jsonResponse(status: number, body: unknown): Response {
     status,
     headers: {
       'content-type': 'application/json'
+    }
+  });
+}
+
+function textResponse(status: number, body: string, contentType: string): Response {
+  return new Response(body, {
+    status,
+    headers: {
+      'content-type': contentType
     }
   });
 }

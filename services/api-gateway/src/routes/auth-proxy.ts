@@ -2,17 +2,6 @@ import { Router, Request, Response, NextFunction } from 'express';
 
 const DEFAULT_IDENTITY_SERVICE_URL = 'http://identity-service:8080';
 
-const HOP_BY_HOP_HEADERS = new Set([
-  'connection',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade'
-]);
-
 type RouteKey = `${string} ${string}`;
 
 const IDENTITY_ROUTE_MAP: Record<RouteKey, string> = {
@@ -89,16 +78,40 @@ async function forwardToIdentityService(
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined
   });
 
-  res.status(upstream.status);
+  const upstreamCorrelationId = upstream.headers.get('x-correlation-id');
+  if (upstreamCorrelationId) {
+    res.setHeader('x-correlation-id', upstreamCorrelationId);
+  }
 
-  upstream.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      res.setHeader(key, value);
-    }
-  });
+  const responseText = await upstream.text();
 
-  const responseBody = await upstream.text();
-  res.send(responseBody);
+  if (!responseText) {
+    res.status(upstream.status).end();
+    return;
+  }
+
+  const contentType = upstream.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    res.status(502).json({
+      error: {
+        code: 'UNSUPPORTED_UPSTREAM_RESPONSE',
+        message: 'Identity service returned an unsupported response type.'
+      }
+    });
+    return;
+  }
+
+  try {
+    const jsonBody = JSON.parse(responseText) as unknown;
+    res.status(upstream.status).type('application/json').json(jsonBody);
+  } catch {
+    res.status(502).json({
+      error: {
+        code: 'INVALID_UPSTREAM_RESPONSE',
+        message: 'Identity service returned an invalid JSON response.'
+      }
+    });
+  }
 }
 
 export function authProxyRouter(
