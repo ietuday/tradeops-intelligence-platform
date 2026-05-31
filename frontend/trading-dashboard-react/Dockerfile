@@ -1,5 +1,5 @@
-FROM nginx:1.25.4-alpine
+FROM nginxinc/nginx-unprivileged:1.25.4-alpine
 
 COPY index.html /usr/share/nginx/html/index.html
 
-EXPOSE 80
+EXPOSE 8080
