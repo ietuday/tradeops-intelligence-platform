@@ -36,3 +36,6 @@ bin/
 
 # Kubernetes
 .kube/
+
+# Local Docker environment secrets
+infrastructure/docker/.env

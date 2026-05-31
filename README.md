@@ -61,6 +61,13 @@ This release creates the platform foundation.
 | Mosquitto MQTT | localhost:1883 |
 | Redpanda Kafka | localhost:9092 |
 
+### Local Docker environment
+
+Create a local Docker environment file before starting the stack:
+
+```bash
+cp infrastructure/docker/.env.example infrastructure/docker/.env
+
 ## Commands
 
 ```bash
