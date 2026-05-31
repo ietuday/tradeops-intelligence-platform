@@ -20,6 +20,8 @@ check_contains() {
 check_contains "API Gateway /health" "${API_URL}/health" "api-gateway"
 check_contains "API Gateway /ready" "${API_URL}/ready" "api-gateway"
 check_contains "API Gateway /metrics" "${API_URL}/metrics" "process_cpu"
+check_contains "API Gateway /api/auth/health" "${API_URL}/api/auth/health" "identity-service"
+check_contains "API Gateway /api/auth/ready" "${API_URL}/api/auth/ready" "identity-service"
 check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
 check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
 

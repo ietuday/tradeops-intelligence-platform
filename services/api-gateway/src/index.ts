@@ -6,6 +6,7 @@ import pinoHttp from 'pino-http';
 import { correlationIdMiddleware, CORRELATION_ID_HEADER } from './middleware/correlation-id';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { metricsHandler, metricsMiddleware } from './observability/metrics';
+import { authProxyRouter } from './routes/auth-proxy';
 import { healthRouter } from './routes/health';
 
 const logger = pino({
@@ -34,6 +35,7 @@ export function createApp() {
 
   app.use(healthRouter);
   app.get('/metrics', metricsHandler);
+  app.use('/api/auth', authProxyRouter());
 
   app.get('/', (_req, res) => {
     res.status(200).json({
