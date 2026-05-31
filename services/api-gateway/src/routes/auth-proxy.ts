@@ -1,12 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { CORRELATION_ID_HEADER } from '../middleware/correlation-id';
 
 const DEFAULT_IDENTITY_SERVICE_URL = 'http://identity-service:8080';
-const DIRECT_IDENTITY_PATHS = new Set(['/health', '/ready', '/metrics']);
+
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
-  'content-length',
-  'host',
   'keep-alive',
   'proxy-authenticate',
   'proxy-authorization',
@@ -16,57 +13,119 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade'
 ]);
 
-export function authProxyRouter(identityServiceUrl = process.env.IDENTITY_SERVICE_URL || DEFAULT_IDENTITY_SERVICE_URL) {
+type RouteKey = `${string} ${string}`;
+
+const IDENTITY_ROUTE_MAP: Record<RouteKey, string> = {
+  'GET /health': '/health',
+  'GET /ready': '/ready',
+  'GET /metrics': '/metrics',
+
+  'POST /register': '/auth/register',
+  'POST /login': '/auth/login',
+  'POST /refresh': '/auth/refresh',
+  'POST /logout': '/auth/logout',
+  'GET /me': '/auth/me'
+};
+
+function normalizeBaseUrl(identityServiceUrl: string): URL {
+  const parsedUrl = new URL(identityServiceUrl);
+
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    throw new Error('IDENTITY_SERVICE_URL must use http or https');
+  }
+
+  return parsedUrl;
+}
+
+function resolveIdentityPath(method: string, requestPath: string): string | undefined {
+  const routeKey = `${method.toUpperCase()} ${requestPath}` as RouteKey;
+  return IDENTITY_ROUTE_MAP[routeKey];
+}
+
+function buildTargetUrl(baseUrl: URL, fixedIdentityPath: string): string {
+  const targetUrl = new URL(fixedIdentityPath, baseUrl);
+  return targetUrl.toString();
+}
+
+function shouldForwardBody(method: string): boolean {
+  return !['GET', 'HEAD'].includes(method.toUpperCase());
+}
+
+function buildProxyHeaders(req: Request): HeadersInit {
+  const headers: Record<string, string> = {
+    accept: 'application/json'
+  };
+
+  const contentType = req.header('content-type');
+  const authorization = req.header('authorization');
+  const correlationId = req.header('x-correlation-id');
+
+  if (contentType) {
+    headers['content-type'] = contentType;
+  }
+
+  if (authorization) {
+    headers.authorization = authorization;
+  }
+
+  if (correlationId) {
+    headers['x-correlation-id'] = correlationId;
+  }
+
+  return headers;
+}
+
+async function forwardToIdentityService(
+  req: Request,
+  res: Response,
+  baseUrl: URL,
+  identityPath: string
+): Promise<void> {
+  const targetUrl = buildTargetUrl(baseUrl, identityPath);
+
+  const upstream = await fetch(targetUrl, {
+    method: req.method,
+    headers: buildProxyHeaders(req),
+    body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined
+  });
+
+  res.status(upstream.status);
+
+  upstream.headers.forEach((value, key) => {
+    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
+      res.setHeader(key, value);
+    }
+  });
+
+  const responseBody = await upstream.text();
+  res.send(responseBody);
+}
+
+export function authProxyRouter(
+  identityServiceUrl = process.env.IDENTITY_SERVICE_URL || DEFAULT_IDENTITY_SERVICE_URL
+) {
   const router = Router();
-  const baseUrl = identityServiceUrl.replace(/\/$/, '');
+  const baseUrl = normalizeBaseUrl(identityServiceUrl);
 
   router.use(async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const targetUrl = mapIdentityTargetUrl(baseUrl, req.url);
-      const upstream = await fetch(targetUrl, {
-        method: req.method,
-        headers: buildProxyHeaders(req),
-        body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined
-      });
+      const identityPath = resolveIdentityPath(req.method, req.path);
 
-      res.status(upstream.status);
-      upstream.headers.forEach((value, key) => {
-        if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-          res.setHeader(key, value);
-        }
-      });
-      res.setHeader(CORRELATION_ID_HEADER, req.headers[CORRELATION_ID_HEADER] as string);
-      res.send(Buffer.from(await upstream.arrayBuffer()));
+      if (!identityPath) {
+        res.status(404).json({
+          error: {
+            code: 'AUTH_ROUTE_NOT_FOUND',
+            message: `Auth route ${req.method} ${req.path} is not supported.`
+          }
+        });
+        return;
+      }
+
+      await forwardToIdentityService(req, res, baseUrl, identityPath);
     } catch (error) {
       next(error);
     }
   });
 
   return router;
-}
-
-function mapIdentityTargetUrl(baseUrl: string, mountedUrl: string): string {
-  const incoming = new URL(mountedUrl, baseUrl);
-  const targetPath = DIRECT_IDENTITY_PATHS.has(incoming.pathname)
-    ? incoming.pathname
-    : `/auth${incoming.pathname}`;
-  const target = new URL(targetPath, baseUrl);
-  target.search = incoming.search;
-  return target.toString();
-}
-
-function buildProxyHeaders(req: Request): Headers {
-  const headers = new Headers();
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined || HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      continue;
-    }
-    headers.set(key, Array.isArray(value) ? value.join(',') : value);
-  }
-  headers.set(CORRELATION_ID_HEADER, req.headers[CORRELATION_ID_HEADER] as string);
-  return headers;
-}
-
-function shouldForwardBody(method: string): boolean {
-  return !['GET', 'HEAD'].includes(method);
 }
