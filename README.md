@@ -61,12 +61,22 @@ This release creates the platform foundation.
 | Mosquitto MQTT | localhost:1883 |
 | Redpanda Kafka | localhost:9092 |
 
-### Local Docker environment
+## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:
 
 ```bash
 cp infrastructure/docker/.env.example infrastructure/docker/.env
+```
+
+Edit `infrastructure/docker/.env` and set local-only values for:
+
+```bash
+POSTGRES_PASSWORD=
+GRAFANA_ADMIN_PASSWORD=
+```
+
+Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.
 
 ## Commands
 
@@ -76,3 +86,4 @@ make ps
 make smoke
 make logs
 make dev-down
+```

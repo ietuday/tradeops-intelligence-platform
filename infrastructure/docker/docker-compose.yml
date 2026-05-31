@@ -24,15 +24,15 @@ services:
     image: postgres:16.2-alpine3.19
     container_name: tradeops-postgres
     environment:
-      POSTGRES_DB: tradeops
-      POSTGRES_USER: tradeops
-      POSTGRES_PASSWORD: tradeops_dev
+      POSTGRES_DB: ${POSTGRES_DB:-tradeops}
+      POSTGRES_USER: ${POSTGRES_USER:-tradeops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required. Create infrastructure/docker/.env from .env.example}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tradeops -d tradeops"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-tradeops} -d $${POSTGRES_DB:-tradeops}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -121,8 +121,8 @@ services:
     image: grafana/grafana:10.4.1
     container_name: tradeops-grafana
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required. Create infrastructure/docker/.env from .env.example}
       GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
       - "3000:3000"
