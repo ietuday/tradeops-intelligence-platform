@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 API_URL="${API_URL:-http://localhost:8080}"
+SHELL_URL="${SHELL_URL:-http://localhost:4200}"
+DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:4300}"
 
 echo "Running smoke tests against ${API_URL}"
 
-echo "Checking /health..."
-curl -fsS "${API_URL}/health" | grep "api-gateway"
+check_contains() {
+  local name="$1"
+  local url="$2"
+  local expected="$3"
 
-echo "Checking /ready..."
-curl -fsS "${API_URL}/ready" | grep "api-gateway"
+  echo "Checking ${name}..."
+  curl -fsS "${url}" | grep -q "${expected}"
+  echo "OK: ${name}"
+}
 
-echo "Checking /metrics..."
-curl -fsS "${API_URL}/metrics" | grep "process_cpu"
+check_contains "API Gateway /health" "${API_URL}/health" "api-gateway"
+check_contains "API Gateway /ready" "${API_URL}/ready" "api-gateway"
+check_contains "API Gateway /metrics" "${API_URL}/metrics" "process_cpu"
+check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
+check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
 
 echo "Smoke tests passed."

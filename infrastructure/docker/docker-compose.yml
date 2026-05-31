@@ -1,0 +1,167 @@
+services:
+  api-gateway:
+    build:
+      context: ../../services/api-gateway
+      dockerfile: Dockerfile
+    image: tradeops/api-gateway:0.1.0
+    container_name: tradeops-api-gateway
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tradeops-net
+
+  postgres:
+    image: postgres:16.2-alpine3.19
+    container_name: tradeops-postgres
+    environment:
+      POSTGRES_DB: tradeops
+      POSTGRES_USER: tradeops
+      POSTGRES_PASSWORD: tradeops_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tradeops -d tradeops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - tradeops-net
+
+  redis:
+    image: redis:7.2.4-alpine3.19
+    container_name: tradeops-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - tradeops-net
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: tradeops-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - tradeops-net
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.6
+    container_name: tradeops-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda:29092,external://localhost:9092
+      - --pandaproxy-addr=internal://0.0.0.0:28082,external://0.0.0.0:8082
+      - --advertise-pandaproxy-addr=internal://redpanda:28082,external://localhost:8082
+      - --schema-registry-addr=internal://0.0.0.0:28081,external://0.0.0.0:8083
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+      - "8083:8083"
+    networks:
+      - tradeops-net
+
+  redpanda-console:
+    image: redpandadata/console:v2.4.5
+    container_name: tradeops-redpanda-console
+    depends_on:
+      - redpanda
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports:
+      - "8081:8080"
+    networks:
+      - tradeops-net
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: tradeops-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - tradeops-net
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: tradeops-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - tradeops-net
+
+  shell-angular:
+    build:
+      context: ../../frontend/shell-angular
+      dockerfile: Dockerfile
+    image: tradeops/shell-angular:0.1.0
+    container_name: tradeops-shell-angular
+    ports:
+      - "4200:80"
+    networks:
+      - tradeops-net
+
+  trading-dashboard-react:
+    build:
+      context: ../../frontend/trading-dashboard-react
+      dockerfile: Dockerfile
+    image: tradeops/trading-dashboard-react:0.1.0
+    container_name: tradeops-trading-dashboard-react
+    ports:
+      - "4300:80"
+    networks:
+      - tradeops-net
+
+networks:
+  tradeops-net:
+    name: tradeops-net
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  grafana-data:
