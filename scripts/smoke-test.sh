@@ -4,6 +4,7 @@ set -euo pipefail
 API_URL="${API_URL:-http://localhost:8080}"
 MARKET_DATA_URL="${MARKET_DATA_URL:-http://localhost:8085}"
 ORDER_URL="${ORDER_URL:-http://localhost:8086}"
+PORTFOLIO_URL="${PORTFOLIO_URL:-http://localhost:8087}"
 SHELL_URL="${SHELL_URL:-http://localhost:4200}"
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:4300}"
 
@@ -30,6 +31,9 @@ check_contains "API Gateway /api/market/ready" "${API_URL}/api/market/ready" "ma
 check_contains "Order Service /health" "${ORDER_URL}/health" "order-service"
 check_contains "API Gateway /api/orders/health" "${API_URL}/api/orders/health" "order-service"
 check_contains "API Gateway /api/orders/ready" "${API_URL}/api/orders/ready" "order-service"
+check_contains "Portfolio Service /health" "${PORTFOLIO_URL}/health" "portfolio-service"
+check_contains "API Gateway /api/portfolio/health" "${API_URL}/api/portfolio/health" "portfolio-service"
+check_contains "API Gateway /api/portfolio/ready" "${API_URL}/api/portfolio/ready" "portfolio-service"
 check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
 check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
 
@@ -55,6 +59,19 @@ DUPLICATE_RESPONSE="$(curl -fsS -X POST "${API_URL}/api/orders" \
   -H "Idempotency-Key: ${IDEMPOTENCY_KEY}" \
   --data-raw "${ORDER_PAYLOAD}")"
 node -e 'const first = JSON.parse(process.argv[1]); const second = JSON.parse(process.argv[2]); if (!first.id || first.id !== second.id || first.status !== "filled") process.exit(1);' "${ORDER_RESPONSE}" "${DUPLICATE_RESPONSE}"
+echo "Checking portfolio holdings update..."
+for attempt in $(seq 1 20); do
+  HOLDINGS_RESPONSE="$(curl -fsS "${API_URL}/api/portfolio/holdings" -H "Authorization: Bearer ${ACCESS_TOKEN}")"
+  if node -e 'const data = JSON.parse(process.argv[1]); const found = (data.holdings || []).some((h) => h.symbol === "AAPL" && h.quantity >= 10); process.exit(found ? 0 : 1);' "${HOLDINGS_RESPONSE}"; then
+    echo "OK: portfolio holdings"
+    break
+  fi
+  if [ "${attempt}" = "20" ]; then
+    echo "Portfolio holding for AAPL was not updated in time"
+    exit 1
+  fi
+  sleep 1
+done
 
 INVALID_RESPONSE="$(curl -fsS -X POST "${API_URL}/api/orders" \
   -H "Authorization: Bearer ${ACCESS_TOKEN}" \
