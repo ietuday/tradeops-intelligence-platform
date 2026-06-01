@@ -4,14 +4,16 @@ TradeOps Intelligence Platform is an enterprise-grade local trading, risk, AI an
 
 The platform is designed to run completely on a local machine without any cloud account.
 
-## v0.1.0 Scope
+## Current Scope
 
-This release creates the platform foundation.
+The repository currently includes the platform foundation, identity/RBAC, and market data streaming.
 
 ### Included
 
 - Monorepo structure
 - Node.js TypeScript API Gateway
+- Go identity service with JWT, refresh tokens, RBAC, audit logs, PostgreSQL, Redis, and Prometheus metrics
+- Go market data service with MQTT ingestion, tick validation, PostgreSQL persistence, Redpanda publishing, simulator, and Prometheus metrics
 - Angular shell placeholder
 - React trading dashboard placeholder
 - PostgreSQL
@@ -27,8 +29,6 @@ This release creates the platform foundation.
 
 ### Not Included Yet
 
-- Authentication
-- Market data service
 - Order service
 - Portfolio service
 - Strategy service
@@ -52,6 +52,8 @@ This release creates the platform foundation.
 | API Gateway Health | http://localhost:8080/health |
 | API Gateway Ready | http://localhost:8080/ready |
 | API Gateway Metrics | http://localhost:8080/metrics |
+| Identity Service | http://localhost:8084 |
+| Market Data Service | http://localhost:8085 |
 | Angular Shell | http://localhost:4200 |
 | React Trading Dashboard | http://localhost:4300 |
 | Prometheus | http://localhost:9090 |
@@ -60,6 +62,34 @@ This release creates the platform foundation.
 | Redis | localhost:6379 |
 | Mosquitto MQTT | localhost:1883 |
 | Redpanda Kafka | localhost:9092 |
+
+## Market Data Streaming
+
+The market data service subscribes to MQTT topic `market/+/tick`, validates incoming ticks, stores accepted ticks in PostgreSQL, and publishes normalized events to Redpanda topic `market.ticks`.
+
+Expected MQTT tick payload:
+
+```json
+{
+  "symbol": "AAPL",
+  "price": 184.52,
+  "volume": 1200,
+  "source": "local-simulator",
+  "eventTime": "2026-05-30T12:00:00Z"
+}
+```
+
+When `MARKET_SIMULATOR_ENABLED=true`, the service publishes local simulated ticks every `MARKET_SIMULATOR_INTERVAL_MS` milliseconds for `AAPL`, `TSLA`, `MSFT`, `BTC-USD`, `ETH-USD`, `NIFTY50`, and `BANKNIFTY`.
+
+Gateway routes:
+
+```text
+GET /api/market/health
+GET /api/market/ready
+GET /api/market/metrics
+GET /api/market/ticks/latest
+GET /api/market/symbols
+```
 
 ## Local Docker Environment
 
@@ -74,6 +104,17 @@ Edit `infrastructure/docker/.env` and set local-only values for:
 ```bash
 POSTGRES_PASSWORD=
 GRAFANA_ADMIN_PASSWORD=
+IDENTITY_DATABASE_URL=
+IDENTITY_JWT_SECRET=
+IDENTITY_REFRESH_TOKEN_SECRET=
+MARKET_DATA_DATABASE_URL=
+```
+
+For local Compose, both database URLs can point at the local Postgres service, for example:
+
+```bash
+IDENTITY_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
+MARKET_DATA_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
 ```
 
 Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.

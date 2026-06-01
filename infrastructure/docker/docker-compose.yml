@@ -10,10 +10,13 @@ services:
       PORT: 8080
       LOG_LEVEL: info
       IDENTITY_SERVICE_URL: ${IDENTITY_SERVICE_URL:-http://identity-service:8080}
+      MARKET_DATA_SERVICE_URL: ${MARKET_DATA_SERVICE_URL:-http://market-data-service:8080}
     ports:
       - "8080:8080"
     depends_on:
       identity-service:
+        condition: service_healthy
+      market-data-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -45,6 +48,39 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tradeops-net
+
+  market-data-service:
+    build:
+      context: ../../services/market-data-service
+      dockerfile: Dockerfile
+    image: tradeops/market-data-service:0.3.0
+    container_name: tradeops-market-data-service
+    environment:
+      MARKET_DATA_SERVICE_PORT: ${MARKET_DATA_SERVICE_PORT:-8080}
+      MARKET_DATA_DATABASE_URL: ${MARKET_DATA_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
+      MARKET_DATA_MQTT_BROKER: ${MARKET_DATA_MQTT_BROKER:-tcp://mosquitto:1883}
+      MARKET_DATA_MQTT_TOPIC: ${MARKET_DATA_MQTT_TOPIC:-market/+/tick}
+      MARKET_DATA_KAFKA_BROKERS: ${MARKET_DATA_KAFKA_BROKERS:-redpanda:29092}
+      MARKET_DATA_KAFKA_TOPIC: ${MARKET_DATA_KAFKA_TOPIC:-market.ticks}
+      MARKET_SIMULATOR_ENABLED: ${MARKET_SIMULATOR_ENABLED:-true}
+      MARKET_SIMULATOR_INTERVAL_MS: ${MARKET_SIMULATOR_INTERVAL_MS:-1000}
+    ports:
+      - "8085:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+      redpanda:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
       interval: 10s

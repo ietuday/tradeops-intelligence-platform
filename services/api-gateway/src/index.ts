@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { metricsHandler, metricsMiddleware } from './observability/metrics';
 import { authProxyRouter } from './routes/auth-proxy';
 import { healthRouter } from './routes/health';
+import { marketProxyRouter } from './routes/market-proxy';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -36,6 +37,7 @@ export function createApp() {
   app.use(healthRouter);
   app.get('/metrics', metricsHandler);
   app.use('/api/auth', authProxyRouter());
+  app.use('/api/market', marketProxyRouter());
 
   app.get('/', (_req, res) => {
     res.status(200).json({
