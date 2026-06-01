@@ -6,7 +6,7 @@ The platform is designed to run completely on a local machine without any cloud 
 
 ## Current Scope
 
-The repository currently includes the platform foundation, identity/RBAC, market data streaming, and order management.
+The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, and portfolio management.
 
 ### Included
 
@@ -15,6 +15,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 - Go identity service with JWT, refresh tokens, RBAC, audit logs, PostgreSQL, Redis, and Prometheus metrics
 - Go market data service with MQTT ingestion, tick validation, PostgreSQL persistence, Redpanda publishing, simulator, and Prometheus metrics
 - Go order service with simulated order lifecycle, JWT validation, RBAC, idempotency keys, PostgreSQL persistence, Redpanda events, and Prometheus metrics
+- Go portfolio service with filled-order consumption, holdings and cash updates, snapshots, realized P&L, JWT validation, Redpanda events, and Prometheus metrics
 - Angular shell placeholder
 - React trading dashboard placeholder
 - PostgreSQL
@@ -30,7 +31,6 @@ The repository currently includes the platform foundation, identity/RBAC, market
 
 ### Not Included Yet
 
-- Portfolio service
 - Strategy service
 - Risk engine
 - Notification service
@@ -55,6 +55,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 | Identity Service | http://localhost:8084 |
 | Market Data Service | http://localhost:8085 |
 | Order Service | http://localhost:8086 |
+| Portfolio Service | http://localhost:8087 |
 | Angular Shell | http://localhost:4200 |
 | React Trading Dashboard | http://localhost:4300 |
 | Prometheus | http://localhost:9090 |
@@ -129,6 +130,38 @@ POST /api/orders/{id}/cancel
 
 Order events are published to Redpanda topics `order.created`, `order.validated`, `order.accepted`, `order.filled`, `order.rejected`, and `order.cancelled`.
 
+## Portfolio Management
+
+The portfolio service consumes `order.filled` events from Redpanda, updates user cash and holdings transactionally in PostgreSQL, stores snapshots, and publishes `portfolio.updated` and `portfolio.snapshot.created` events.
+
+Portfolio API routes:
+
+```text
+GET /api/portfolio/health
+GET /api/portfolio/ready
+GET /api/portfolio/metrics
+GET /api/portfolio
+GET /api/portfolio/holdings
+GET /api/portfolio/snapshots
+GET /api/portfolio/exposure
+GET /api/portfolio/pnl
+```
+
+Example:
+
+```bash
+TOKEN="<access token from /api/auth/login>"
+
+curl http://localhost:8080/api/portfolio/holdings \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+The local flow is:
+
+```text
+POST /api/orders -> order.filled -> portfolio-service -> portfolio.updated
+```
+
 ## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:
@@ -148,6 +181,8 @@ IDENTITY_REFRESH_TOKEN_SECRET=
 MARKET_DATA_DATABASE_URL=
 ORDER_DATABASE_URL=
 ORDER_JWT_SECRET=
+PORTFOLIO_DATABASE_URL=
+PORTFOLIO_JWT_SECRET=
 ```
 
 For local Compose, both database URLs can point at the local Postgres service, for example:
@@ -157,6 +192,8 @@ IDENTITY_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslm
 MARKET_DATA_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
 ORDER_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
 ORDER_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
+PORTFOLIO_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
+PORTFOLIO_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 ```
 
 Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.
