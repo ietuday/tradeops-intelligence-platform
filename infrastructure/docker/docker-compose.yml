@@ -11,12 +11,15 @@ services:
       LOG_LEVEL: info
       IDENTITY_SERVICE_URL: ${IDENTITY_SERVICE_URL:-http://identity-service:8080}
       MARKET_DATA_SERVICE_URL: ${MARKET_DATA_SERVICE_URL:-http://market-data-service:8080}
+      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL:-http://order-service:8080}
     ports:
       - "8080:8080"
     depends_on:
       identity-service:
         condition: service_healthy
       market-data-service:
+        condition: service_healthy
+      order-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -79,6 +82,33 @@ services:
         condition: service_healthy
       mosquitto:
         condition: service_started
+      redpanda:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tradeops-net
+
+  order-service:
+    build:
+      context: ../../services/order-service
+      dockerfile: Dockerfile
+    image: tradeops/order-service:0.4.0
+    container_name: tradeops-order-service
+    environment:
+      ORDER_SERVICE_PORT: ${ORDER_SERVICE_PORT:-8080}
+      ORDER_DATABASE_URL: ${ORDER_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
+      ORDER_KAFKA_BROKERS: ${ORDER_KAFKA_BROKERS:-redpanda:29092}
+      ORDER_JWT_SECRET: ${ORDER_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+    ports:
+      - "8086:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
       redpanda:
         condition: service_started
     healthcheck:
