@@ -5,6 +5,7 @@ API_URL="${API_URL:-http://localhost:8080}"
 MARKET_DATA_URL="${MARKET_DATA_URL:-http://localhost:8085}"
 ORDER_URL="${ORDER_URL:-http://localhost:8086}"
 PORTFOLIO_URL="${PORTFOLIO_URL:-http://localhost:8087}"
+STRATEGY_URL="${STRATEGY_URL:-http://localhost:8088}"
 SHELL_URL="${SHELL_URL:-http://localhost:4200}"
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:4300}"
 
@@ -34,6 +35,9 @@ check_contains "API Gateway /api/orders/ready" "${API_URL}/api/orders/ready" "or
 check_contains "Portfolio Service /health" "${PORTFOLIO_URL}/health" "portfolio-service"
 check_contains "API Gateway /api/portfolio/health" "${API_URL}/api/portfolio/health" "portfolio-service"
 check_contains "API Gateway /api/portfolio/ready" "${API_URL}/api/portfolio/ready" "portfolio-service"
+check_contains "Strategy Service /health" "${STRATEGY_URL}/health" "strategy-service"
+check_contains "API Gateway /api/strategies/health" "${API_URL}/api/strategies/health" "strategy-service"
+check_contains "API Gateway /api/strategies/ready" "${API_URL}/api/strategies/ready" "strategy-service"
 check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
 check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
 
@@ -90,5 +94,41 @@ CANCEL_RESPONSE="$(curl -fsS -X POST "${API_URL}/api/orders/${LIMIT_ORDER_ID}/ca
   -H "Authorization: Bearer ${ACCESS_TOKEN}")"
 node -e 'const data = JSON.parse(process.argv[1]); if (data.status !== "cancelled") process.exit(1);' "${CANCEL_RESPONSE}"
 echo "OK: order workflow"
+
+echo "Checking strategy workflow through API Gateway..."
+STRATEGY_RESPONSE="$(curl -fsS -X POST "${API_URL}/api/strategies" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data-raw '{"name":"Smoke MA Cross","symbol":"AAPL","strategyType":"MOVING_AVERAGE_CROSSOVER","parameters":{"shortWindow":1,"longWindow":2}}')"
+STRATEGY_ID="$(node -e 'const data = JSON.parse(process.argv[1]); if (!data.id) process.exit(1); process.stdout.write(data.id);' "${STRATEGY_RESPONSE}")"
+
+for attempt in $(seq 1 60); do
+  BACKTEST_PAYLOAD="$(node -e 'const now = new Date(); const start = new Date(now.getTime() - 60 * 60 * 1000); process.stdout.write(JSON.stringify({startTime: start.toISOString(), endTime: now.toISOString(), initialCapital: 100000}));')"
+  set +e
+  BACKTEST_RESPONSE="$(curl -sS -X POST "${API_URL}/api/strategies/${STRATEGY_ID}/backtest" \
+    -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -H "x-correlation-id: smoke-strategy-${attempt}" \
+    --data-raw "${BACKTEST_PAYLOAD}")"
+  BACKTEST_EXIT=$?
+  set -e
+  if [ "${BACKTEST_EXIT}" -eq 0 ] && node -e 'const data = JSON.parse(process.argv[1]); process.exit(data.id && data.performance ? 0 : 1);' "${BACKTEST_RESPONSE}"; then
+    break
+  fi
+  if [ "${attempt}" = "60" ]; then
+    echo "Strategy backtest did not have enough market data in time"
+    echo "${BACKTEST_RESPONSE}"
+    exit 1
+  fi
+  sleep 1
+done
+
+PERFORMANCE_RESPONSE="$(curl -fsS "${API_URL}/api/strategies/${STRATEGY_ID}/performance" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}")"
+node -e 'const data = JSON.parse(process.argv[1]); if (typeof data.totalReturn !== "number" || typeof data.totalTrades !== "number") process.exit(1);' "${PERFORMANCE_RESPONSE}"
+SIGNALS_RESPONSE="$(curl -fsS "${API_URL}/api/strategies/${STRATEGY_ID}/signals" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}")"
+node -e 'const data = JSON.parse(process.argv[1]); if (!Array.isArray(data) || data.length < 1) process.exit(1);' "${SIGNALS_RESPONSE}"
+echo "OK: strategy workflow"
 
 echo "Smoke tests passed."
