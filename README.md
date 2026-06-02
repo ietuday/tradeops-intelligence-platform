@@ -6,7 +6,7 @@ The platform is designed to run completely on a local machine without any cloud 
 
 ## Current Scope
 
-The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, and portfolio management.
+The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, and strategy backtesting.
 
 ### Included
 
@@ -16,6 +16,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 - Go market data service with MQTT ingestion, tick validation, PostgreSQL persistence, Redpanda publishing, simulator, and Prometheus metrics
 - Go order service with simulated order lifecycle, JWT validation, RBAC, idempotency keys, PostgreSQL persistence, Redpanda events, and Prometheus metrics
 - Go portfolio service with filled-order consumption, holdings and cash updates, snapshots, realized P&L, JWT validation, Redpanda events, and Prometheus metrics
+- Python FastAPI strategy service with strategy CRUD, backtesting, signal generation, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
 - Angular shell placeholder
 - React trading dashboard placeholder
 - PostgreSQL
@@ -31,7 +32,6 @@ The repository currently includes the platform foundation, identity/RBAC, market
 
 ### Not Included Yet
 
-- Strategy service
 - Risk engine
 - Notification service
 - AI assistant bot
@@ -56,6 +56,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 | Market Data Service | http://localhost:8085 |
 | Order Service | http://localhost:8086 |
 | Portfolio Service | http://localhost:8087 |
+| Strategy Service | http://localhost:8088 |
 | Angular Shell | http://localhost:4200 |
 | React Trading Dashboard | http://localhost:4300 |
 | Prometheus | http://localhost:9090 |
@@ -162,6 +163,66 @@ The local flow is:
 POST /api/orders -> order.filled -> portfolio-service -> portfolio.updated
 ```
 
+## Strategy Studio And Backtesting
+
+The strategy service reads market ticks from PostgreSQL, runs backtests for supported strategies, stores performance and generated signals, and publishes strategy events to Redpanda.
+
+Supported strategy types:
+
+```text
+MOVING_AVERAGE_CROSSOVER
+RSI
+VOLATILITY_BREAKOUT
+```
+
+Strategy API routes:
+
+```text
+GET  /api/strategies/health
+GET  /api/strategies/ready
+GET  /api/strategies/metrics
+POST /api/strategies
+GET  /api/strategies
+GET  /api/strategies/{id}
+POST /api/strategies/{id}/backtest
+GET  /api/strategies/{id}/performance
+GET  /api/strategies/{id}/signals
+```
+
+Example:
+
+```bash
+TOKEN="<access token from /api/auth/login>"
+
+curl -X POST http://localhost:8080/api/strategies \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "AAPL MA Cross",
+    "symbol": "AAPL",
+    "strategyType": "MOVING_AVERAGE_CROSSOVER",
+    "parameters": {
+      "shortWindow": 5,
+      "longWindow": 20
+    }
+  }'
+
+curl -X POST http://localhost:8080/api/strategies/<strategy-id>/backtest \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "startTime": "2026-06-02T00:00:00Z",
+    "endTime": "2026-06-02T01:00:00Z",
+    "initialCapital": 100000
+  }'
+```
+
+The local flow is:
+
+```text
+market-data-service -> market_ticks -> strategy-service backtest -> strategy.signal.generated
+```
+
 ## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:
@@ -183,6 +244,8 @@ ORDER_DATABASE_URL=
 ORDER_JWT_SECRET=
 PORTFOLIO_DATABASE_URL=
 PORTFOLIO_JWT_SECRET=
+STRATEGY_DATABASE_URL=
+STRATEGY_JWT_SECRET=
 ```
 
 For local Compose, both database URLs can point at the local Postgres service, for example:
@@ -194,6 +257,8 @@ ORDER_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode
 ORDER_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 PORTFOLIO_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
 PORTFOLIO_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
+STRATEGY_DATABASE_URL=postgresql+psycopg://tradeops:<password>@postgres:5432/tradeops
+STRATEGY_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 ```
 
 Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.
