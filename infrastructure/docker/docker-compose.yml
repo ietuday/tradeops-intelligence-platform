@@ -14,6 +14,7 @@ services:
       ORDER_SERVICE_URL: ${ORDER_SERVICE_URL:-http://order-service:8080}
       PORTFOLIO_SERVICE_URL: ${PORTFOLIO_SERVICE_URL:-http://portfolio-service:8080}
       STRATEGY_SERVICE_URL: ${STRATEGY_SERVICE_URL:-http://strategy-service:8080}
+      RISK_SERVICE_URL: ${RISK_SERVICE_URL:-http://risk-engine-service:8080}
     ports:
       - "8080:8080"
     depends_on:
@@ -26,6 +27,8 @@ services:
       portfolio-service:
         condition: service_healthy
       strategy-service:
+        condition: service_healthy
+      risk-engine-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -172,6 +175,37 @@ services:
       STRATEGY_JWT_SECRET: ${STRATEGY_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
     ports:
       - "8088:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\" >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tradeops-net
+
+  risk-engine-service:
+    build:
+      context: ../../services/risk-engine-service
+      dockerfile: Dockerfile
+    image: tradeops/risk-engine-service:0.7.0
+    container_name: tradeops-risk-engine-service
+    environment:
+      RISK_SERVICE_PORT: ${RISK_SERVICE_PORT:-8080}
+      RISK_DATABASE_URL: ${RISK_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}}
+      RISK_KAFKA_BROKERS: ${RISK_KAFKA_BROKERS:-redpanda:29092}
+      RISK_JWT_SECRET: ${RISK_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+      RISK_SCORE_UPDATED_TOPIC: ${RISK_SCORE_UPDATED_TOPIC:-risk.score.updated}
+      RISK_BREACHED_TOPIC: ${RISK_BREACHED_TOPIC:-risk.breached}
+      RISK_ANOMALY_TOPIC: ${RISK_ANOMALY_TOPIC:-risk.anomaly.detected}
+      RISK_RECOMMENDATION_TOPIC: ${RISK_RECOMMENDATION_TOPIC:-risk.recommendation.created}
+    ports:
+      - "8089:8080"
     depends_on:
       postgres:
         condition: service_healthy

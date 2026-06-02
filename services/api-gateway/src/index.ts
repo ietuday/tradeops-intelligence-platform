@@ -11,6 +11,7 @@ import { healthRouter } from './routes/health';
 import { marketProxyRouter } from './routes/market-proxy';
 import { orderProxyRouter } from './routes/order-proxy';
 import { portfolioProxyRouter } from './routes/portfolio-proxy';
+import { riskProxyRouter } from './routes/risk-proxy';
 import { strategyProxyRouter } from './routes/strategy-proxy';
 
 const logger = pino({
@@ -44,6 +45,7 @@ export function createApp() {
   app.use('/api/orders', orderProxyRouter());
   app.use('/api/portfolio', portfolioProxyRouter());
   app.use('/api/strategies', strategyProxyRouter());
+  app.use('/api/risk', riskProxyRouter());
 
   app.get('/', (_req, res) => {
     res.status(200).json({

@@ -42,3 +42,9 @@ scrape_configs:
     static_configs:
       - targets:
           - strategy-service:8080
+
+  - job_name: risk-engine-service
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - risk-engine-service:8080

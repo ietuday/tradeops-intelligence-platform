@@ -6,7 +6,7 @@ The platform is designed to run completely on a local machine without any cloud 
 
 ## Current Scope
 
-The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, and strategy backtesting.
+The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, strategy backtesting, and portfolio risk analytics.
 
 ### Included
 
@@ -17,6 +17,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 - Go order service with simulated order lifecycle, JWT validation, RBAC, idempotency keys, PostgreSQL persistence, Redpanda events, and Prometheus metrics
 - Go portfolio service with filled-order consumption, holdings and cash updates, snapshots, realized P&L, JWT validation, Redpanda events, and Prometheus metrics
 - Python FastAPI strategy service with strategy CRUD, backtesting, signal generation, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
+- Python FastAPI risk engine service with portfolio risk score, volatility, drawdown, VaR, anomalies, recommendations, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
 - Angular shell placeholder
 - React trading dashboard placeholder
 - PostgreSQL
@@ -32,7 +33,6 @@ The repository currently includes the platform foundation, identity/RBAC, market
 
 ### Not Included Yet
 
-- Risk engine
 - Notification service
 - AI assistant bot
 - Local Kubernetes deployment
@@ -57,6 +57,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 | Order Service | http://localhost:8086 |
 | Portfolio Service | http://localhost:8087 |
 | Strategy Service | http://localhost:8088 |
+| Risk Engine Service | http://localhost:8089 |
 | Angular Shell | http://localhost:4200 |
 | React Trading Dashboard | http://localhost:4300 |
 | Prometheus | http://localhost:9090 |
@@ -223,6 +224,44 @@ The local flow is:
 market-data-service -> market_ticks -> strategy-service backtest -> strategy.signal.generated
 ```
 
+## Risk Engine AI/ML
+
+The risk engine service reads portfolio, snapshot, holdings, market tick, order, and strategy-derived data from PostgreSQL, calculates portfolio risk analytics, persists outputs, and publishes risk events to Redpanda.
+
+Risk API routes:
+
+```text
+GET /api/risk/health
+GET /api/risk/ready
+GET /api/risk/metrics
+GET /api/risk/portfolio/score
+GET /api/risk/portfolio/volatility
+GET /api/risk/portfolio/drawdown
+GET /api/risk/portfolio/var
+GET /api/risk/recommendations
+GET /api/risk/anomalies
+```
+
+Example:
+
+```bash
+TOKEN="<access token from /api/auth/login>"
+
+curl http://localhost:8080/api/risk/portfolio/score \
+  -H "Authorization: Bearer ${TOKEN}"
+
+curl http://localhost:8080/api/risk/recommendations \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Risk events are published to Redpanda topics `risk.score.updated`, `risk.breached`, `risk.anomaly.detected`, and `risk.recommendation.created`.
+
+The local flow is:
+
+```text
+portfolio.updated + portfolio.snapshot.created + market.ticks -> risk-engine-service -> risk.score.updated
+```
+
 ## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:
@@ -246,6 +285,8 @@ PORTFOLIO_DATABASE_URL=
 PORTFOLIO_JWT_SECRET=
 STRATEGY_DATABASE_URL=
 STRATEGY_JWT_SECRET=
+RISK_DATABASE_URL=
+RISK_JWT_SECRET=
 ```
 
 For local Compose, both database URLs can point at the local Postgres service, for example:
@@ -259,6 +300,8 @@ PORTFOLIO_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?ssl
 PORTFOLIO_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 STRATEGY_DATABASE_URL=postgresql+psycopg://tradeops:<password>@postgres:5432/tradeops
 STRATEGY_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
+RISK_DATABASE_URL=postgresql+psycopg://tradeops:<password>@postgres:5432/tradeops
+RISK_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 ```
 
 Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.

@@ -6,6 +6,7 @@ MARKET_DATA_URL="${MARKET_DATA_URL:-http://localhost:8085}"
 ORDER_URL="${ORDER_URL:-http://localhost:8086}"
 PORTFOLIO_URL="${PORTFOLIO_URL:-http://localhost:8087}"
 STRATEGY_URL="${STRATEGY_URL:-http://localhost:8088}"
+RISK_URL="${RISK_URL:-http://localhost:8089}"
 SHELL_URL="${SHELL_URL:-http://localhost:4200}"
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:4300}"
 
@@ -38,6 +39,9 @@ check_contains "API Gateway /api/portfolio/ready" "${API_URL}/api/portfolio/read
 check_contains "Strategy Service /health" "${STRATEGY_URL}/health" "strategy-service"
 check_contains "API Gateway /api/strategies/health" "${API_URL}/api/strategies/health" "strategy-service"
 check_contains "API Gateway /api/strategies/ready" "${API_URL}/api/strategies/ready" "strategy-service"
+check_contains "Risk Engine Service /health" "${RISK_URL}/health" "risk-engine-service"
+check_contains "API Gateway /api/risk/health" "${API_URL}/api/risk/health" "risk-engine-service"
+check_contains "API Gateway /api/risk/ready" "${API_URL}/api/risk/ready" "risk-engine-service"
 check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
 check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
 
@@ -130,5 +134,17 @@ SIGNALS_RESPONSE="$(curl -fsS "${API_URL}/api/strategies/${STRATEGY_ID}/signals"
   -H "Authorization: Bearer ${ACCESS_TOKEN}")"
 node -e 'const data = JSON.parse(process.argv[1]); if (!Array.isArray(data) || data.length < 1) process.exit(1);' "${SIGNALS_RESPONSE}"
 echo "OK: strategy workflow"
+
+echo "Checking risk workflow through API Gateway..."
+RISK_SCORE_RESPONSE="$(curl -fsS "${API_URL}/api/risk/portfolio/score" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}")"
+node -e 'const data = JSON.parse(process.argv[1]); if (typeof data.score !== "number" || !data.level || !data.factors) process.exit(1);' "${RISK_SCORE_RESPONSE}"
+RISK_VAR_RESPONSE="$(curl -fsS "${API_URL}/api/risk/portfolio/var" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}")"
+node -e 'const data = JSON.parse(process.argv[1]); if (typeof data.valueAtRisk !== "number" || data.confidenceLevel !== 95) process.exit(1);' "${RISK_VAR_RESPONSE}"
+RISK_RECOMMENDATIONS_RESPONSE="$(curl -fsS "${API_URL}/api/risk/recommendations" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}")"
+node -e 'const data = JSON.parse(process.argv[1]); if (!Array.isArray(data) || data.length < 1) process.exit(1);' "${RISK_RECOMMENDATIONS_RESPONSE}"
+echo "OK: risk workflow"
 
 echo "Smoke tests passed."
