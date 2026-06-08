@@ -13,6 +13,7 @@ import { orderProxyRouter } from './routes/order-proxy';
 import { portfolioProxyRouter } from './routes/portfolio-proxy';
 import { riskProxyRouter } from './routes/risk-proxy';
 import { strategyProxyRouter } from './routes/strategy-proxy';
+import { surveillanceProxyRouter } from './routes/surveillance-proxy';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -46,6 +47,7 @@ export function createApp() {
   app.use('/api/portfolio', portfolioProxyRouter());
   app.use('/api/strategies', strategyProxyRouter());
   app.use('/api/risk', riskProxyRouter());
+  app.use('/api/surveillance', surveillanceProxyRouter());
 
   app.get('/', (_req, res) => {
     res.status(200).json({

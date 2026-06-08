@@ -6,7 +6,7 @@ The platform is designed to run completely on a local machine without any cloud 
 
 ## Current Scope
 
-The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, strategy backtesting, and portfolio risk analytics.
+The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, strategy backtesting, portfolio risk analytics, and trade surveillance alerting.
 
 ### Included
 
@@ -18,6 +18,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 - Go portfolio service with filled-order consumption, holdings and cash updates, snapshots, realized P&L, JWT validation, Redpanda events, and Prometheus metrics
 - Python FastAPI strategy service with strategy CRUD, backtesting, signal generation, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
 - Python FastAPI risk engine service with portfolio risk score, volatility, drawdown, VaR, anomalies, recommendations, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
+- Go surveillance service with rule-based alerting, PostgreSQL persistence, Redpanda consumption/publishing, JWT/RBAC, and Prometheus metrics
 - Angular shell placeholder
 - React trading dashboard placeholder
 - PostgreSQL
@@ -58,6 +59,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 | Portfolio Service | http://localhost:8087 |
 | Strategy Service | http://localhost:8088 |
 | Risk Engine Service | http://localhost:8089 |
+| Surveillance Service | http://localhost:8090 |
 | Angular Shell | http://localhost:4200 |
 | React Trading Dashboard | http://localhost:4300 |
 | Prometheus | http://localhost:9090 |
@@ -262,6 +264,50 @@ The local flow is:
 portfolio.updated + portfolio.snapshot.created + market.ticks -> risk-engine-service -> risk.score.updated
 ```
 
+## Trade Surveillance And Alerting
+
+The surveillance service consumes trading, portfolio, risk, market, and strategy events from Redpanda, evaluates simple in-code surveillance rules, stores alerts in PostgreSQL, and publishes alert lifecycle events.
+
+Initial rules:
+
+```text
+LargeOrderRule
+RapidOrderSubmissionRule
+HighCancelRateRule
+RiskScoreBreachRule
+AbnormalPriceMovementRule
+```
+
+Surveillance API routes:
+
+```text
+GET  /api/surveillance/health
+GET  /api/surveillance/ready
+GET  /api/surveillance/metrics
+GET  /api/surveillance/alerts
+GET  /api/surveillance/alerts/summary
+GET  /api/surveillance/alerts/{id}
+POST /api/surveillance/alerts/{id}/acknowledge
+POST /api/surveillance/alerts/{id}/resolve
+POST /api/surveillance/alerts/{id}/dismiss
+```
+
+Example:
+
+```bash
+TOKEN="<access token from /api/auth/login>"
+
+curl "http://localhost:8080/api/surveillance/alerts?status=OPEN&limit=50" \
+  -H "Authorization: Bearer ${TOKEN}"
+
+curl -X POST http://localhost:8080/api/surveillance/alerts/<alert-id>/acknowledge \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Surveillance consumes Redpanda topics `order.created`, `order.filled`, `order.cancelled`, `portfolio.updated`, `risk.score.updated`, `market.ticks`, and `strategy.signal.generated`.
+
+Surveillance events are published to Redpanda topics `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, and `surveillance.alert.dismissed`.
+
 ## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:
@@ -287,6 +333,8 @@ STRATEGY_DATABASE_URL=
 STRATEGY_JWT_SECRET=
 RISK_DATABASE_URL=
 RISK_JWT_SECRET=
+SURVEILLANCE_DATABASE_URL=
+SURVEILLANCE_JWT_SECRET=
 ```
 
 For local Compose, both database URLs can point at the local Postgres service, for example:
@@ -302,6 +350,8 @@ STRATEGY_DATABASE_URL=postgresql+psycopg://tradeops:<password>@postgres:5432/tra
 STRATEGY_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 RISK_DATABASE_URL=postgresql+psycopg://tradeops:<password>@postgres:5432/tradeops
 RISK_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
+SURVEILLANCE_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
+SURVEILLANCE_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 ```
 
 Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.

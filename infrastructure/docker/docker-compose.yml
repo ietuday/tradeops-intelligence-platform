@@ -15,6 +15,7 @@ services:
       PORTFOLIO_SERVICE_URL: ${PORTFOLIO_SERVICE_URL:-http://portfolio-service:8080}
       STRATEGY_SERVICE_URL: ${STRATEGY_SERVICE_URL:-http://strategy-service:8080}
       RISK_SERVICE_URL: ${RISK_SERVICE_URL:-http://risk-engine-service:8080}
+      SURVEILLANCE_SERVICE_URL: ${SURVEILLANCE_SERVICE_URL:-http://surveillance-service:8090}
     ports:
       - "8080:8080"
     depends_on:
@@ -29,6 +30,8 @@ services:
       strategy-service:
         condition: service_healthy
       risk-engine-service:
+        condition: service_healthy
+      surveillance-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -213,6 +216,41 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\" >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tradeops-net
+
+  surveillance-service:
+    build:
+      context: ../../services/surveillance-service
+      dockerfile: Dockerfile
+    image: tradeops/surveillance-service:0.8.0
+    container_name: tradeops-surveillance-service
+    environment:
+      SURVEILLANCE_SERVICE_PORT: ${SURVEILLANCE_SERVICE_PORT:-8090}
+      SURVEILLANCE_DATABASE_URL: ${SURVEILLANCE_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
+      SURVEILLANCE_KAFKA_BROKERS: ${SURVEILLANCE_KAFKA_BROKERS:-redpanda:29092}
+      SURVEILLANCE_KAFKA_TOPICS: ${SURVEILLANCE_KAFKA_TOPICS:-order.created,order.filled,order.cancelled,portfolio.updated,risk.score.updated,market.ticks,strategy.signal.generated}
+      SURVEILLANCE_JWT_SECRET: ${SURVEILLANCE_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+      SURVEILLANCE_LARGE_ORDER_THRESHOLD: ${SURVEILLANCE_LARGE_ORDER_THRESHOLD:-100000}
+      SURVEILLANCE_RAPID_ORDER_LIMIT: ${SURVEILLANCE_RAPID_ORDER_LIMIT:-5}
+      SURVEILLANCE_RAPID_ORDER_WINDOW_SECONDS: ${SURVEILLANCE_RAPID_ORDER_WINDOW_SECONDS:-60}
+      SURVEILLANCE_HIGH_CANCEL_LIMIT: ${SURVEILLANCE_HIGH_CANCEL_LIMIT:-3}
+      SURVEILLANCE_HIGH_CANCEL_WINDOW_SECONDS: ${SURVEILLANCE_HIGH_CANCEL_WINDOW_SECONDS:-300}
+      SURVEILLANCE_RISK_SCORE_THRESHOLD: ${SURVEILLANCE_RISK_SCORE_THRESHOLD:-80}
+      SURVEILLANCE_ABNORMAL_PRICE_MOVEMENT_PERCENT: ${SURVEILLANCE_ABNORMAL_PRICE_MOVEMENT_PERCENT:-10}
+    ports:
+      - "8090:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
