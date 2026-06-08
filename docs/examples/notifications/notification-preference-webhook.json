@@ -1,0 +1,8 @@
+{
+  "inAppEnabled": true,
+  "webhookEnabled": true,
+  "emailEnabled": false,
+  "webhookUrl": "https://example.com/tradeops-webhook",
+  "emailAddress": null,
+  "minPriority": "HIGH"
+}

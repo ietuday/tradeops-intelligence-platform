@@ -6,7 +6,7 @@ The platform is designed to run completely on a local machine without any cloud 
 
 ## Current Scope
 
-The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, strategy backtesting, portfolio risk analytics, and trade surveillance alerting.
+The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, strategy backtesting, portfolio risk analytics, trade surveillance alerting, and notification processing.
 
 ### Included
 
@@ -19,6 +19,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 - Python FastAPI strategy service with strategy CRUD, backtesting, signal generation, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
 - Python FastAPI risk engine service with portfolio risk score, volatility, drawdown, VaR, anomalies, recommendations, PostgreSQL persistence, Redpanda events, JWT/RBAC, and Prometheus metrics
 - Go surveillance service with rule-based alerting, PostgreSQL persistence, Redpanda consumption/publishing, JWT/RBAC, and Prometheus metrics
+- Go notification service with notification persistence, preferences, surveillance alert event consumption, mock email, webhook delivery, Redpanda publishing, JWT/RBAC, and Prometheus metrics
 - Angular shell placeholder
 - React trading dashboard placeholder
 - PostgreSQL
@@ -34,7 +35,6 @@ The repository currently includes the platform foundation, identity/RBAC, market
 
 ### Not Included Yet
 
-- Notification service
 - AI assistant bot
 - Local Kubernetes deployment
 
@@ -60,6 +60,7 @@ The repository currently includes the platform foundation, identity/RBAC, market
 | Strategy Service | http://localhost:8088 |
 | Risk Engine Service | http://localhost:8089 |
 | Surveillance Service | http://localhost:8090 |
+| Notification Service | http://localhost:8091 |
 | Angular Shell | http://localhost:4200 |
 | React Trading Dashboard | http://localhost:4300 |
 | Prometheus | http://localhost:9090 |
@@ -372,6 +373,86 @@ surveillance_kafka_publish_errors_total
 surveillance_rule_duration_seconds
 ```
 
+## Notification Service
+
+The notification service consumes surveillance alert lifecycle events from Redpanda, creates user notifications, records delivery attempts, supports notification preferences, and publishes notification lifecycle events.
+
+Notification API routes:
+
+```text
+GET  /api/notifications/health
+GET  /api/notifications/ready
+GET  /api/notifications/metrics
+GET  /api/notifications
+GET  /api/notifications/summary
+GET  /api/notifications/preferences
+PUT  /api/notifications/preferences
+GET  /api/notifications/{id}
+POST /api/notifications/{id}/mark-read
+POST /api/notifications/{id}/retry
+```
+
+Example:
+
+```bash
+TOKEN="<access token from /api/auth/login>"
+
+curl "http://localhost:8080/api/notifications?limit=50" \
+  -H "Authorization: Bearer ${TOKEN}"
+
+curl -X POST "http://localhost:8080/api/notifications/<notification-id>/mark-read" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Notification consumes Redpanda topics `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, and `surveillance.alert.dismissed`.
+
+Notification events are published to Redpanda topics `notification.created`, `notification.sent`, `notification.failed`, `notification.read`, and `notification.retry_requested`.
+
+Prometheus metrics to check:
+
+```text
+notification_events_processed_total
+notification_events_failed_total
+notifications_created_total
+notifications_marked_read_total
+notification_retries_total
+notification_preferences_updated_total
+notification_delivery_attempts_total
+notification_delivery_failures_total
+notification_status_updates_total
+notification_delivery_duration_seconds
+```
+
+## Demo: Notification Service
+
+Start the local Docker Compose stack:
+
+```bash
+make dev-up
+```
+
+Verify the notification service directly and through the API Gateway:
+
+```bash
+curl http://localhost:8091/health
+curl http://localhost:8080/api/notifications/health
+```
+
+Run the guided demo:
+
+```bash
+./scripts/demo-notifications.sh
+```
+
+The script checks service health, publishes a sample `surveillance.alert.created` event when Redpanda is available through Docker Compose, lists notifications through the API Gateway, and marks one notification as `READ`.
+
+To publish the sample event manually:
+
+```bash
+node -e 'const fs = require("fs"); process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync("docs/examples/notifications/surveillance-alert-created-high.json", "utf8"))) + "\n");' | \
+  docker compose -f infrastructure/docker/docker-compose.yml exec -T redpanda rpk topic produce surveillance.alert.created
+```
+
 ## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:
@@ -399,6 +480,8 @@ RISK_DATABASE_URL=
 RISK_JWT_SECRET=
 SURVEILLANCE_DATABASE_URL=
 SURVEILLANCE_JWT_SECRET=
+NOTIFICATION_DATABASE_URL=
+NOTIFICATION_JWT_SECRET=
 ```
 
 For local Compose, both database URLs can point at the local Postgres service, for example:
@@ -416,6 +499,8 @@ RISK_DATABASE_URL=postgresql+psycopg://tradeops:<password>@postgres:5432/tradeop
 RISK_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 SURVEILLANCE_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
 SURVEILLANCE_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
+NOTIFICATION_DATABASE_URL=postgres://tradeops:<password>@postgres:5432/tradeops?sslmode=disable
+NOTIFICATION_JWT_SECRET=<same value as IDENTITY_JWT_SECRET>
 ```
 
 Do not commit `infrastructure/docker/.env`; it is intentionally ignored because it contains local secrets.

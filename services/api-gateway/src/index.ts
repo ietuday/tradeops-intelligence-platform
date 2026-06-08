@@ -9,6 +9,7 @@ import { metricsHandler, metricsMiddleware } from './observability/metrics';
 import { authProxyRouter } from './routes/auth-proxy';
 import { healthRouter } from './routes/health';
 import { marketProxyRouter } from './routes/market-proxy';
+import { notificationsProxyRouter } from './routes/notifications-proxy';
 import { orderProxyRouter } from './routes/order-proxy';
 import { portfolioProxyRouter } from './routes/portfolio-proxy';
 import { riskProxyRouter } from './routes/risk-proxy';
@@ -43,6 +44,7 @@ export function createApp() {
   app.get('/metrics', metricsHandler);
   app.use('/api/auth', authProxyRouter());
   app.use('/api/market', marketProxyRouter());
+  app.use('/api/notifications', notificationsProxyRouter());
   app.use('/api/orders', orderProxyRouter());
   app.use('/api/portfolio', portfolioProxyRouter());
   app.use('/api/strategies', strategyProxyRouter());

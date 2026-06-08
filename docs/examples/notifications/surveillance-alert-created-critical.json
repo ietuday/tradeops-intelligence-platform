@@ -1,0 +1,18 @@
+{
+  "eventId": "66666666-6666-4666-8666-666666666662",
+  "eventType": "surveillance.alert.created",
+  "alertId": "77777777-7777-4777-8777-777777777772",
+  "alertType": "RiskScoreBreachRule",
+  "severity": "CRITICAL",
+  "entityType": "RISK_SCORE",
+  "entityId": "88888888-8888-4888-8888-888888888882",
+  "userId": "33333333-3333-4333-8333-333333333333",
+  "symbol": "AAPL",
+  "status": "OPEN",
+  "metadata": {
+    "score": 92,
+    "threshold": 80
+  },
+  "occurredAt": "2026-06-08T11:01:00Z",
+  "correlationId": "demo-notification-critical-alert"
+}
