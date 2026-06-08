@@ -11,10 +11,11 @@
 | `risk-engine-service` | Python / FastAPI | `8089` externally, `8080` in Compose | PostgreSQL | None | Redpanda | None | `risk.score.updated`, `risk.breached`, `risk.anomaly.detected`, `risk.recommendation.created` | PostgreSQL, Redpanda | `/health`, `/ready`, `/api/risk/health`, `/api/risk/ready` | `/metrics`, `/api/risk/metrics` |
 | `surveillance-service` | Go | `8090` | PostgreSQL | None | Redpanda | `order.created`, `order.filled`, `order.cancelled`, `portfolio.updated`, `risk.score.updated`, `market.ticks`, `strategy.signal.generated` | `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, `surveillance.alert.dismissed` | PostgreSQL, Redpanda | `/health`, `/ready`, `/api/surveillance/health`, `/api/surveillance/ready` | `/metrics`, `/api/surveillance/metrics` |
 | `notification-service` | Go | `8091` | PostgreSQL | None | Redpanda | `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, `surveillance.alert.dismissed` | `notification.created`, `notification.sent`, `notification.failed`, `notification.read`, `notification.retry_requested` | PostgreSQL, Redpanda, optional webhook endpoints | `/health`, `/ready`, `/api/notifications/health`, `/api/notifications/ready` | `/metrics`, `/api/notifications/metrics` |
+| `audit-service` | Go | `8092` | PostgreSQL | None | Redpanda | User, order, portfolio, risk, surveillance, and notification audit topics | `audit.log.created` | PostgreSQL, Redpanda | `/health`, `/ready`, `/api/audit/health`, `/api/audit/ready` | `/metrics`, `/api/audit/metrics` |
 
 ## Notes
 
 - External ports are the host ports exposed by `infrastructure/docker/docker-compose.yml`.
-- Most services listen on `8080` inside Docker; surveillance and notification intentionally use `8090` and `8091`.
+- Most services listen on `8080` inside Docker; surveillance, notification, and audit intentionally use `8090`, `8091`, and `8092`.
 - The API Gateway is the preferred entry point for client traffic.
 - Direct service ports are useful for smoke tests and troubleshooting.

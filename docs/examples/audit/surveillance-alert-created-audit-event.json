@@ -1,0 +1,13 @@
+{
+  "eventId": "audit-demo-surveillance-alert-created-001",
+  "eventType": "surveillance.alert.created",
+  "alertId": "22222222-2222-4222-8222-222222222222",
+  "alertType": "LargeOrderRule",
+  "severity": "HIGH",
+  "entityType": "ORDER",
+  "entityId": "11111111-1111-4111-8111-111111111111",
+  "userId": "33333333-3333-4333-8333-333333333333",
+  "status": "OPEN",
+  "correlationId": "audit-demo-alert-created",
+  "occurredAt": "2026-06-08T10:01:00Z"
+}

@@ -7,6 +7,7 @@ import { correlationIdMiddleware, CORRELATION_ID_HEADER } from './middleware/cor
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { metricsHandler, metricsMiddleware } from './observability/metrics';
 import { authProxyRouter } from './routes/auth-proxy';
+import { auditProxyRouter } from './routes/audit-proxy';
 import { healthRouter } from './routes/health';
 import { marketProxyRouter } from './routes/market-proxy';
 import { notificationsProxyRouter } from './routes/notifications-proxy';
@@ -42,6 +43,7 @@ export function createApp() {
 
   app.use(healthRouter);
   app.get('/metrics', metricsHandler);
+  app.use('/api/audit', auditProxyRouter());
   app.use('/api/auth', authProxyRouter());
   app.use('/api/market', marketProxyRouter());
   app.use('/api/notifications', notificationsProxyRouter());

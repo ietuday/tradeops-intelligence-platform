@@ -17,6 +17,7 @@ services:
       RISK_SERVICE_URL: ${RISK_SERVICE_URL:-http://risk-engine-service:8080}
       SURVEILLANCE_SERVICE_URL: ${SURVEILLANCE_SERVICE_URL:-http://surveillance-service:8090}
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:8091}
+      AUDIT_SERVICE_URL: ${AUDIT_SERVICE_URL:-http://audit-service:8092}
       PROXY_TIMEOUT_MS: ${PROXY_TIMEOUT_MS:-10000}
     ports:
       - "8080:8080"
@@ -36,6 +37,8 @@ services:
       surveillance-service:
         condition: service_healthy
       notification-service:
+        condition: service_healthy
+      audit-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -294,6 +297,39 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8091/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tradeops-net
+
+  audit-service:
+    build:
+      context: ../../services/audit-service
+      dockerfile: Dockerfile
+    image: tradeops/audit-service:1.3.0
+    container_name: tradeops-audit-service
+    environment:
+      SERVICE_NAME: audit-service
+      PORT: ${AUDIT_SERVICE_PORT:-8092}
+      DATABASE_URL: ${AUDIT_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
+      JWT_SECRET: ${AUDIT_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+      KAFKA_BROKERS: ${AUDIT_KAFKA_BROKERS:-redpanda:29092}
+      KAFKA_GROUP_ID: ${AUDIT_KAFKA_GROUP_ID:-audit-service}
+      AUDIT_KAFKA_TOPICS: ${AUDIT_KAFKA_TOPICS:-user.registered,user.login,user.logout,order.created,order.cancelled,order.filled,portfolio.updated,risk.score.updated,risk.breached,surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed,notification.read,notification.failed,notification.sent,notification.retry_requested}
+      EVENT_PROCESSING_MAX_RETRIES: ${EVENT_PROCESSING_MAX_RETRIES:-3}
+      EVENT_PROCESSING_RETRY_BACKOFF_MS: ${EVENT_PROCESSING_RETRY_BACKOFF_MS:-500}
+      EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER: ${EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER:-2}
+    ports:
+      - "8092:8092"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8092/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

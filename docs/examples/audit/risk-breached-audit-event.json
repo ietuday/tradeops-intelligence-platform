@@ -1,0 +1,10 @@
+{
+  "eventId": "audit-demo-risk-breached-001",
+  "eventType": "risk.breached",
+  "portfolioId": "55555555-5555-4555-8555-555555555555",
+  "userId": "33333333-3333-4333-8333-333333333333",
+  "score": 92,
+  "threshold": 80,
+  "correlationId": "audit-demo-risk-breached",
+  "occurredAt": "2026-06-08T10:03:00Z"
+}

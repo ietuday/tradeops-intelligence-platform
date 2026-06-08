@@ -1,0 +1,9 @@
+{
+  "eventId": "audit-demo-notification-read-001",
+  "eventType": "notification.read",
+  "notificationId": "44444444-4444-4444-8444-444444444444",
+  "userId": "33333333-3333-4333-8333-333333333333",
+  "channel": "IN_APP",
+  "correlationId": "audit-demo-notification-read",
+  "occurredAt": "2026-06-08T10:02:00Z"
+}

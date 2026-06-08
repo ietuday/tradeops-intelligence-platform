@@ -1,14 +1,14 @@
 # TradeOps Intelligence Platform
 
-Enterprise-style local trading intelligence platform with microservices, event-driven workflows, JWT/RBAC, observability, demo scripts, and production-readiness documentation.
+Enterprise-style local trading intelligence platform with microservices, event-driven workflows, JWT/RBAC, audit trails, observability, demo scripts, and production-readiness documentation.
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.2.0` Reliability, Resilience & Failure Handling.
+Latest release: `v1.3.0` Audit Trail & Compliance Reporting.
 
 ## Architecture Summary
 
-The platform exposes a single API Gateway for client traffic and uses service-owned backend domains for identity, market data, orders, portfolio, strategy, risk, surveillance, and notifications. Synchronous HTTP APIs handle commands and queries. Redpanda/Kafka connects asynchronous workflows such as order lifecycle events, portfolio updates, surveillance alerts, and notification delivery.
+The platform exposes a single API Gateway for client traffic and uses service-owned backend domains for identity, market data, orders, portfolio, strategy, risk, surveillance, notifications, and audit. Synchronous HTTP APIs handle commands and queries. Redpanda/Kafka connects asynchronous workflows such as order lifecycle events, portfolio updates, surveillance alerts, notification delivery, and audit logging.
 
 Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus, Grafana, and Docker Compose.
 
@@ -37,6 +37,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Risk Engine Service | Risk score, VaR, volatility, drawdown, recommendations | `8089` |
 | Surveillance Service | Rule-based alerts from order/market/risk events | `8090` |
 | Notification Service | Alert notifications, preferences, webhook/mock email delivery | `8091` |
+| Audit Service | Searchable audit logs, summaries, exports, compliance event trail | `8092` |
 
 ## Quick Start
 
@@ -78,6 +79,7 @@ Run focused demos:
 ```bash
 ./scripts/demo-surveillance.sh
 ./scripts/demo-notifications.sh
+./scripts/demo-audit.sh
 ./scripts/demo-reliability.sh
 ```
 
@@ -87,6 +89,7 @@ Validate scripts without running the platform:
 bash -n scripts/smoke-test.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-notifications.sh
+bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 ```
@@ -108,6 +111,7 @@ bash -n scripts/demo-reliability.sh
 - [Event-flow reference](docs/architecture/event-flow.md)
 - [Service dependency matrix](docs/architecture/service-dependency-matrix.md)
 - [API summary](docs/api/api-summary.md)
+- [Audit trail](docs/audit/audit-trail.md)
 - [CI/CD quality gates](docs/ci-cd/quality-gates.md)
 - [Reliability patterns](docs/reliability/resilience-patterns.md)
 - [Dead-letter topics](docs/reliability/dead-letter-topics.md)
@@ -122,6 +126,7 @@ bash -n scripts/demo-reliability.sh
 
 ## Release Notes
 
+- [v1.3.0 Audit Trail & Compliance Reporting](docs/release-notes/v1.3.0.md)
 - [v1.2.0 Reliability, Resilience & Failure Handling](docs/release-notes/v1.2.0.md)
 - [v1.1.0 CI/CD, Security Scanning & Quality Gates](docs/release-notes/v1.1.0.md)
 - [v1.0.1 GitHub Release & Portfolio Polish](docs/release-notes/v1.0.1.md)
@@ -155,7 +160,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, health/readiness checks, metrics, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -163,6 +168,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 
 - Docker Compose is used for local orchestration only.
 - Event schemas are documented by examples, not enforced by a schema registry.
+- Audit export is API-returned JSON/CSV, not durable file generation.
 - Notification email delivery is mock/log-only.
 - Frontend apps are placeholders/foundations, not complete trading UIs.
 - No Kubernetes, Helm, cloud deployment, TLS ingress, or managed secret store is included yet.
@@ -183,11 +189,13 @@ Recommended release validation:
 ```bash
 (cd services/surveillance-service && go test ./...)
 (cd services/notification-service && go test ./...)
+(cd services/audit-service && go test ./...)
 (cd services/api-gateway && npm test -- --runInBand)
 docker compose -f infrastructure/docker/docker-compose.yml config
 bash -n scripts/smoke-test.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-notifications.sh
+bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 ```

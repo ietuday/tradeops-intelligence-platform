@@ -201,6 +201,37 @@ docker compose -f infrastructure/docker/docker-compose.yml logs notification-ser
 
 Fix: Publish `docs/examples/notifications/surveillance-alert-created-high.json` to `surveillance.alert.created` and list notifications with a token for the target user.
 
+## Audit Log Not Created
+
+Symptom: A source event was published, but `/api/audit/logs` does not show a matching audit record.
+
+Possible cause: `audit-service` is not consuming the topic, the payload is malformed, Redpanda is unavailable, or the event was skipped as a duplicate.
+
+Useful command:
+
+```bash
+./scripts/demo-audit.sh
+docker compose -f infrastructure/docker/docker-compose.yml logs audit-service
+curl http://localhost:8092/metrics | grep audit_events
+```
+
+Fix: Publish a known-good sample from `docs/examples/audit/` to the exact topic, then check `audit.dlq` and duplicate-skip metrics.
+
+## Audit Export Or RBAC Failure
+
+Symptom: `/api/audit/export` returns `403` or does not return the expected format.
+
+Possible cause: The JWT role is not allowed for export, or `format` is not `json` or `csv`.
+
+Useful command:
+
+```bash
+curl "http://localhost:8080/api/audit/export?format=csv&limit=10" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Fix: Use a `trading_admin` or `risk_manager` token for export. Use `trading_admin`, `risk_manager`, or `analyst` for read-only audit APIs.
+
 ## Webhook Delivery Failed
 
 Symptom: Notification status is `FAILED` or delivery attempts show non-2xx responses.

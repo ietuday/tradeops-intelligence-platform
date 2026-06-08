@@ -9,6 +9,7 @@ Dead-letter topics capture source events that could not be processed after retry
 | `portfolio-service` | `portfolio.dlq` | `order.filled` |
 | `surveillance-service` | `surveillance.dlq` | `order.created`, `order.cancelled`, `risk.score.updated`, `market.ticks` |
 | `notification-service` | `notification.dlq` | `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, `surveillance.alert.dismissed` |
+| `audit-service` | `audit.dlq` | User, order, portfolio, risk, surveillance, and notification audit source events |
 
 ## Payload Shape
 
@@ -30,6 +31,7 @@ Dead-letter topics capture source events that could not be processed after retry
 docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume portfolio.dlq -n 1
 docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume surveillance.dlq -n 1
 docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume notification.dlq -n 1
+docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume audit.dlq -n 1
 ```
 
 ## Manual Replay

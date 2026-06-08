@@ -9,6 +9,7 @@ STRATEGY_URL="${STRATEGY_URL:-http://localhost:8088}"
 RISK_URL="${RISK_URL:-http://localhost:8089}"
 SURVEILLANCE_URL="${SURVEILLANCE_URL:-http://localhost:8090}"
 NOTIFICATION_URL="${NOTIFICATION_URL:-http://localhost:8091}"
+AUDIT_URL="${AUDIT_URL:-http://localhost:8092}"
 SHELL_URL="${SHELL_URL:-http://localhost:4200}"
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:4300}"
 
@@ -79,6 +80,9 @@ check_contains_optional "API Gateway /api/surveillance/ready" "${API_URL}/api/su
 check_contains "Notification Service /health" "${NOTIFICATION_URL}/health" "notification-service"
 check_contains_optional "API Gateway /api/notifications/health" "${API_URL}/api/notifications/health" "notification-service"
 check_contains_optional "API Gateway /api/notifications/ready" "${API_URL}/api/notifications/ready" "ready"
+check_contains "Audit Service /health" "${AUDIT_URL}/health" "audit-service"
+check_contains_optional "API Gateway /api/audit/health" "${API_URL}/api/audit/health" "audit-service"
+check_contains_optional "API Gateway /api/audit/ready" "${API_URL}/api/audit/ready" "ready"
 check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
 check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
 

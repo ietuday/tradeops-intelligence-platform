@@ -1,6 +1,6 @@
 # TradeOps Architecture Overview
 
-TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, observability, and Docker Compose operations.
+TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, observability, and Docker Compose operations.
 
 The platform is designed for portfolio and interview demonstration. It is not yet a real production deployment, but the service boundaries, messaging patterns, health checks, metrics, and runbooks mirror production concerns.
 
@@ -17,6 +17,7 @@ The platform is designed for portfolio and interview demonstration. It is not ye
 | `risk-engine-service` | Portfolio risk score, VaR, volatility, drawdown, recommendations, and risk events. |
 | `surveillance-service` | Consumes trading/risk/market events and creates alert lifecycle events. |
 | `notification-service` | Consumes surveillance alert events, creates notifications, and records delivery attempts. |
+| `audit-service` | Consumes platform events, stores searchable audit logs, and exposes summary/export APIs. |
 
 ## Technology Stack
 
@@ -44,6 +45,7 @@ flowchart LR
   gateway --> risk[Risk Engine Service<br/>:8089]
   gateway --> surveillance[Surveillance Service<br/>:8090]
   gateway --> notification[Notification Service<br/>:8091]
+  gateway --> audit[Audit Service<br/>:8092]
 
   identity --> postgres[(PostgreSQL)]
   identity --> redis[(Redis)]
@@ -54,6 +56,7 @@ flowchart LR
   risk --> postgres
   surveillance --> postgres
   notification --> postgres
+  audit --> postgres
 
   mosquitto[(Mosquitto / MQTT)] --> market
   market --> redpanda[(Redpanda / Kafka)]
@@ -63,10 +66,12 @@ flowchart LR
   risk --> redpanda
   surveillance --> redpanda
   notification --> redpanda
+  audit --> redpanda
 
   redpanda --> portfolio
   redpanda --> surveillance
   redpanda --> notification
+  redpanda --> audit
 
   prometheus[Prometheus] --> gateway
   prometheus --> identity
@@ -77,6 +82,7 @@ flowchart LR
   prometheus --> risk
   prometheus --> surveillance
   prometheus --> notification
+  prometheus --> audit
   grafana[Grafana] --> prometheus
 ```
 
@@ -157,6 +163,7 @@ flowchart LR
 ## Database Usage
 
 - PostgreSQL is the primary store for identity, market, order, portfolio, strategy, risk, surveillance, and notification data.
+- `audit-service` stores normalized audit logs and export request records in PostgreSQL.
 - Services own their tables and run their own startup migrations.
 - Redis is used by identity for refresh-token/session-oriented state.
 - The current local Compose deployment uses one PostgreSQL database for convenience; stronger isolation would be expected in a production deployment.

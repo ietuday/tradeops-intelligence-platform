@@ -1,0 +1,69 @@
+package kafka
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/ietuday/tradeops-intelligence-platform/services/audit-service/internal/domain"
+	"github.com/segmentio/kafka-go"
+)
+
+type Producer struct {
+	brokers []string
+	writers map[string]*kafka.Writer
+}
+
+func NewProducer(brokers []string) *Producer {
+	return &Producer{brokers: brokers, writers: map[string]*kafka.Writer{}}
+}
+
+func (p *Producer) Publish(ctx context.Context, event domain.AuditLogEvent) error {
+	writer := p.writer(event.EventType)
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	return writer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(event.AuditLogID),
+		Value: payload,
+		Time:  time.Now().UTC(),
+		Headers: []kafka.Header{
+			{Key: "eventType", Value: []byte(event.EventType)},
+			{Key: "correlationId", Value: []byte(ptrValue(event.CorrelationID))},
+		},
+	})
+}
+
+func (p *Producer) Close() error {
+	var first error
+	for _, writer := range p.writers {
+		if err := writer.Close(); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
+}
+
+func (p *Producer) writer(topic string) *kafka.Writer {
+	if writer, ok := p.writers[topic]; ok {
+		return writer
+	}
+	writer := &kafka.Writer{
+		Addr:                   kafka.TCP(p.brokers...),
+		Topic:                  topic,
+		Balancer:               &kafka.Hash{},
+		AllowAutoTopicCreation: true,
+		RequiredAcks:           kafka.RequireOne,
+		BatchTimeout:           10 * time.Millisecond,
+	}
+	p.writers[topic] = writer
+	return writer
+}
+
+func ptrValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}

@@ -220,3 +220,31 @@ Example:
 curl "http://localhost:8080/api/notifications?limit=20" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
+
+## Audit APIs
+
+Base gateway path: `/api/audit`
+
+Auth required: Yes for audit log, summary, and export APIs.
+
+Roles: read access allows `trading_admin`, `risk_manager`, and `analyst`; export allows `trading_admin` and `risk_manager`.
+
+Common endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/audit/health` | Audit service health. |
+| `GET` | `/api/audit/ready` | Audit readiness. |
+| `GET` | `/api/audit/metrics` | Audit metrics. |
+| `GET` | `/api/audit/logs` | List audit logs with filters. |
+| `GET` | `/api/audit/logs/{id}` | Get audit log detail. |
+| `GET` | `/api/audit/summary` | Audit counts by service, event type, severity, and action. |
+| `GET` | `/api/audit/export?format=json` | Export filtered audit logs as JSON. |
+| `GET` | `/api/audit/export?format=csv` | Export filtered audit logs as CSV. |
+
+Example:
+
+```bash
+curl "http://localhost:8080/api/audit/logs?serviceName=order-service&limit=20" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
