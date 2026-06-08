@@ -2,13 +2,15 @@
 
 ## 60-Second Explanation
 
-TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, Prometheus metrics, Grafana dashboards, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, and audit-service records a compliance-style event trail.
+TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, Prometheus metrics, Grafana dashboards, data lifecycle scripts, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, and audit-service records a compliance-style event trail.
 
 ## 2-Minute Explanation
 
 The platform is organized around independent services. The API Gateway is the client entry point. Identity issues JWTs. The order service handles order creation with idempotency. A filled order emits an event that portfolio consumes to update holdings and publish portfolio updates. Risk and strategy services generate analytics and events. Surveillance consumes market, order, portfolio, risk, and strategy events, runs rules such as large order and abnormal price movement detection, and creates alert lifecycle events. Notification consumes surveillance alert events, creates user notifications, supports preferences, and records delivery attempts. Audit consumes important user, business, and system events and stores searchable audit logs.
 
 Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports for platform health, gateway traffic, event processing, surveillance/notifications, and audit/compliance, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, and Redpanda.
+
+The repository also includes data lifecycle support: retention policy docs, local PostgreSQL backup/restore scripts, old-data archival exports, sample event replay, and conservative DLQ replay guidance.
 
 ## Architecture Explanation
 
@@ -40,6 +42,12 @@ Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all
 
 Redpanda is the local Kafka-compatible broker. Services publish domain events after important state changes. Consumers process events asynchronously and defensively handle malformed payloads. The platform currently uses example payloads and documented topics instead of a full schema registry.
 
+Sample event replay scripts publish known-good payloads for surveillance, notification, and audit demos. DLQ replay is documented as a manual, root-cause-first operation instead of an automatic bulk replay.
+
+## How Data Lifecycle Is Handled
+
+The project documents retention periods for market ticks, order events, portfolio snapshots, risk scores, surveillance alerts, notifications, audit logs, strategy/backtest data, and DLQ messages. Local scripts can create PostgreSQL backups, restore backups with `--confirm`, export old rows to `archives/YYYY-MM-DD/`, and replay sample events. Deletion is disabled by default and requires explicit confirmation.
+
 ## How Surveillance Works
 
 The surveillance service consumes order, market, portfolio, risk, and strategy events. It evaluates rules such as large orders, rapid orders, high cancellations, abnormal price movement, and risk-score breaches. Matching rules create alerts in PostgreSQL and publish `surveillance.alert.created`. Alert APIs support lifecycle transitions from `OPEN` to `ACKNOWLEDGED`, `RESOLVED`, or `DISMISSED`.
@@ -61,7 +69,8 @@ The audit service consumes important platform events, maps them to normalized ac
 5. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
 6. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
 7. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
-8. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+8. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
+9. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
@@ -69,6 +78,7 @@ The audit service consumes important platform events, maps them to normalized ac
 - Idempotency is handled at order creation, where duplicate side effects matter most.
 - Services own their persistence and expose health/readiness/metrics consistently.
 - Observability is treated as a first-class platform capability with dashboards, alert rules, SLO docs, and runbooks.
+- Data lifecycle is treated operationally with retention docs, backups, archival exports, replay guidance, and explicit confirmation for destructive actions.
 - Event consumers are defensive so bad demo payloads do not crash the process.
 - The gateway keeps external routing stable while services retain internal base paths.
 - Audit logging demonstrates compliance-style traceability without coupling business services to synchronous audit writes.
@@ -80,5 +90,6 @@ The audit service consumes important platform events, maps them to normalized ac
 - Kafka schemas are documented by examples but not enforced by a schema registry.
 - There is no distributed tracing yet.
 - Consumer lag metrics are not implemented yet; current event-health views use retry, failure, duplicate, and DLQ metrics.
+- Retention and archival scripts are local portfolio helpers, not regulated production archival automation.
 - Email delivery is mock-only.
 - Kubernetes/Helm, CI/CD, managed secrets, TLS ingress, and production database isolation are future work.

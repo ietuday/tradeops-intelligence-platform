@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.4.0` Advanced Observability & SLO Dashboards.
+Latest release: `v1.5.0` Data Retention, Archival & Event Replay.
 
 ## Architecture Summary
 
@@ -94,6 +94,11 @@ bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
+bash -n scripts/db-backup.sh
+bash -n scripts/db-restore.sh
+bash -n scripts/archive-old-data.sh
+bash -n scripts/replay-sample-events.sh
+bash -n scripts/replay-dlq-events.sh
 ```
 
 ## Local URLs
@@ -127,6 +132,22 @@ Run the read-only observability demo:
 ./scripts/demo-observability.sh
 ```
 
+## Data Retention, Backup & Replay
+
+TradeOps includes local data lifecycle guidance and safe helper scripts for backups, archival exports, sample replay, and DLQ replay. Destructive operations are not automatic.
+
+| Task | Command Or Guide |
+| --- | --- |
+| Retention policy | [docs/data-lifecycle/retention-policy.md](docs/data-lifecycle/retention-policy.md) |
+| Backup PostgreSQL | `./scripts/db-backup.sh` |
+| Restore PostgreSQL | `./scripts/db-restore.sh backups/file.sql --confirm` |
+| Archive old data dry-run/export | `./scripts/archive-old-data.sh` |
+| Replay sample events | `./scripts/replay-sample-events.sh --all` |
+| DLQ replay guidance | [docs/data-lifecycle/dlq-replay.md](docs/data-lifecycle/dlq-replay.md) |
+| Data lifecycle runbook | [docs/data-lifecycle/runbook.md](docs/data-lifecycle/runbook.md) |
+
+Safety note: restore requires `--confirm`, archive deletion requires `--delete-confirm`, and DLQ replay remains manual/conservative by design.
+
 ## Documentation
 
 - [Architecture overview](docs/architecture/overview.md)
@@ -140,6 +161,12 @@ Run the read-only observability demo:
 - [Prometheus alert guide](docs/observability/prometheus-alerts.md)
 - [SLO guide](docs/observability/slo-guide.md)
 - [Observability runbook](docs/observability/runbook.md)
+- [Data retention policy](docs/data-lifecycle/retention-policy.md)
+- [Archival strategy](docs/data-lifecycle/archival-strategy.md)
+- [Backup and restore guide](docs/data-lifecycle/backup-restore.md)
+- [Event replay guide](docs/data-lifecycle/event-replay.md)
+- [DLQ replay guide](docs/data-lifecycle/dlq-replay.md)
+- [Data lifecycle runbook](docs/data-lifecycle/runbook.md)
 - [Reliability patterns](docs/reliability/resilience-patterns.md)
 - [Dead-letter topics](docs/reliability/dead-letter-topics.md)
 - [Graceful shutdown](docs/reliability/graceful-shutdown.md)
@@ -153,6 +180,7 @@ Run the read-only observability demo:
 
 ## Release Notes
 
+- [v1.5.0 Data Retention, Archival & Event Replay](docs/release-notes/v1.5.0.md)
 - [v1.4.0 Advanced Observability & SLO Dashboards](docs/release-notes/v1.4.0.md)
 - [v1.3.0 Audit Trail & Compliance Reporting](docs/release-notes/v1.3.0.md)
 - [v1.2.0 Reliability, Resilience & Failure Handling](docs/release-notes/v1.2.0.md)
@@ -188,7 +216,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -197,6 +225,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Docker Compose is used for local orchestration only.
 - Event schemas are documented by examples, not enforced by a schema registry.
 - Audit export is API-returned JSON/CSV, not durable file generation.
+- Data lifecycle scripts are local operational helpers, not regulated production retention automation.
 - Notification email delivery is mock/log-only.
 - Frontend apps are placeholders/foundations, not complete trading UIs.
 - No Kubernetes, Helm, cloud deployment, TLS ingress, or managed secret store is included yet.
@@ -227,4 +256,9 @@ bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
+bash -n scripts/db-backup.sh
+bash -n scripts/db-restore.sh
+bash -n scripts/archive-old-data.sh
+bash -n scripts/replay-sample-events.sh
+bash -n scripts/replay-dlq-events.sh
 ```

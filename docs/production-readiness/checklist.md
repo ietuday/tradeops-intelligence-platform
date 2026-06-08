@@ -49,9 +49,20 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Redpanda/Kafka topics connect order, portfolio, risk, surveillance, and notification flows.
 - [x] Consumers handle malformed payloads defensively in key services.
 - [x] Demo payloads exist for surveillance and notification events.
+- [x] Sample replay and DLQ replay guidance are documented.
 - [ ] Add schema validation or schema registry contracts.
-- [ ] Define dead-letter topics and replay procedures.
+- [x] Define dead-letter topics and conservative replay procedures.
 - [ ] Add consumer lag monitoring.
+
+## Data Lifecycle
+
+- [x] Local retention policy is documented for market, order, portfolio, risk, surveillance, notification, audit, strategy/backtest, and DLQ data.
+- [x] PostgreSQL backup and restore scripts are included.
+- [x] Old-data archival export script is dry-run/export by default.
+- [x] Destructive restore/delete actions require explicit confirmation flags.
+- [x] Sample event replay and DLQ replay helpers are included.
+- [ ] Add production-approved retention schedules and legal/compliance review.
+- [ ] Add managed archive storage or warehouse integration for real deployments.
 
 ## Observability
 
@@ -116,6 +127,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Compose includes infrastructure dependencies.
 - [x] Compose config validation passes.
 - [x] Compose mounts Prometheus alert rules and Grafana dashboard provisioning for local observability demos.
+- [x] Backup, restore, archive, and replay scripts operate through Docker Compose.
 - [ ] Compose is not a production orchestrator.
 - [ ] Add backup/restore runbooks for stateful services.
 - [ ] Add persistent production alert routing and dashboard ownership.

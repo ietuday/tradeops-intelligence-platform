@@ -12,6 +12,7 @@ NOTIFICATION_URL="${NOTIFICATION_URL:-http://localhost:8091}"
 AUDIT_URL="${AUDIT_URL:-http://localhost:8092}"
 SHELL_URL="${SHELL_URL:-http://localhost:4200}"
 DASHBOARD_URL="${DASHBOARD_URL:-http://localhost:4300}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "Running smoke tests against ${API_URL}"
 
@@ -85,6 +86,20 @@ check_contains_optional "API Gateway /api/audit/health" "${API_URL}/api/audit/he
 check_contains_optional "API Gateway /api/audit/ready" "${API_URL}/api/audit/ready" "ready"
 check_contains "Angular shell placeholder" "${SHELL_URL}" "TradeOps Intelligence Platform - Shell"
 check_contains "React trading dashboard placeholder" "${DASHBOARD_URL}" "Trading Dashboard - Foundation Ready"
+
+echo "Checking data lifecycle helper scripts..."
+for script in \
+  "${ROOT_DIR}/scripts/db-backup.sh" \
+  "${ROOT_DIR}/scripts/db-restore.sh" \
+  "${ROOT_DIR}/scripts/archive-old-data.sh" \
+  "${ROOT_DIR}/scripts/replay-sample-events.sh" \
+  "${ROOT_DIR}/scripts/replay-dlq-events.sh"; do
+  if [ ! -f "${script}" ]; then
+    echo "FAIL: missing ${script}"
+    exit 1
+  fi
+done
+echo "OK: data lifecycle helper scripts are present"
 
 echo "Health check summary: passed=${HEALTH_PASSED} failed=${HEALTH_FAILED} skipped=${HEALTH_SKIPPED}"
 

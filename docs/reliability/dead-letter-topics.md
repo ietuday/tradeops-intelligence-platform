@@ -2,6 +2,8 @@
 
 Dead-letter topics capture source events that could not be processed after retry exhaustion. They are intended for debugging, manual inspection, and controlled replay.
 
+For the broader data lifecycle and replay runbook, see `docs/data-lifecycle/dlq-replay.md` and `docs/data-lifecycle/runbook.md`.
+
 ## Topics
 
 | Service | DLQ topic | Source examples |
@@ -46,3 +48,11 @@ printf '%s\n' '<originalPayload>' | \
 ```
 
 Do not bulk replay DLQ topics without checking idempotency and understanding why the events failed.
+
+The helper script defaults to dry-run guidance:
+
+```bash
+./scripts/replay-dlq-events.sh --topic surveillance.dlq --dry-run
+```
+
+Even with `--confirm`, the script prints manual commands instead of bulk replaying unknown DLQ messages automatically.

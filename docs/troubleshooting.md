@@ -76,7 +76,54 @@ docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk top
 docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume notification.dlq -n 1
 ```
 
-Fix: Inspect `errorMessage`, fix the source issue, then manually replay `originalPayload` to `originalTopic` only when it is safe. See `docs/reliability/dead-letter-topics.md`.
+Fix: Inspect `errorMessage`, fix the source issue, then manually replay `originalPayload` to `originalTopic` only when it is safe. See `docs/reliability/dead-letter-topics.md` and `docs/data-lifecycle/dlq-replay.md`.
+
+## Backup Or Restore Failure
+
+Symptom: `scripts/db-backup.sh` or `scripts/db-restore.sh` fails.
+
+Possible cause: Docker is not running, the Compose postgres service is unhealthy, the backup file is missing, or restore was attempted without `--confirm`.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml ps postgres
+./scripts/db-backup.sh
+./scripts/db-restore.sh backups/file.sql --confirm
+```
+
+Fix: Confirm Postgres is healthy, verify the backup file exists and is non-empty, and read `docs/data-lifecycle/backup-restore.md` before restoring.
+
+## Archive Script Finds No Rows
+
+Symptom: `scripts/archive-old-data.sh` exports CSV files with only headers or prints zero candidate rows.
+
+Possible cause: Local demo data is newer than the retention windows or the table does not exist in the current environment.
+
+Useful command:
+
+```bash
+./scripts/archive-old-data.sh
+docker compose -f infrastructure/docker/docker-compose.yml exec -T postgres \
+  psql -U tradeops -d tradeops -c "SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
+```
+
+Fix: This is usually expected in a fresh local environment. Adjust retention env vars only for local testing, and use `--delete-confirm` only after validating archive output.
+
+## Sample Replay Does Not Create Records
+
+Symptom: `scripts/replay-sample-events.sh --all` publishes events, but consumers do not create alerts, notifications, or audit logs.
+
+Possible cause: Redpanda is unavailable, the target consumer is unhealthy, the event was skipped as a duplicate, or the payload does not match the expected user/context.
+
+Useful command:
+
+```bash
+./scripts/replay-sample-events.sh --all
+docker compose -f infrastructure/docker/docker-compose.yml logs surveillance-service notification-service audit-service
+```
+
+Fix: Confirm Redpanda and consumers are healthy, inspect duplicate-skip metrics, and replay one known-good payload at a time.
 
 ## Duplicate Event Detected
 
