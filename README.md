@@ -308,6 +308,70 @@ Surveillance consumes Redpanda topics `order.created`, `order.filled`, `order.ca
 
 Surveillance events are published to Redpanda topics `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, and `surveillance.alert.dismissed`.
 
+## Demo: Trade Surveillance & Alerting
+
+Start the local Docker Compose stack:
+
+```bash
+make dev-up
+```
+
+Verify the surveillance service directly and through the API Gateway:
+
+```bash
+curl http://localhost:8090/health
+curl http://localhost:8080/api/surveillance/health
+```
+
+Run the guided demo:
+
+```bash
+./scripts/demo-surveillance.sh
+```
+
+The script checks service health, publishes the sample large-order event when Redpanda is available through Docker Compose, lists alerts through the API Gateway, then moves one alert from `OPEN` to `ACKNOWLEDGED` to `RESOLVED`.
+
+To trigger `LargeOrderRule` manually:
+
+```bash
+node -e 'const fs = require("fs"); process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync("docs/examples/surveillance/order-created-large-order.json", "utf8"))) + "\n");' | \
+  docker compose -f infrastructure/docker/docker-compose.yml exec -T redpanda rpk topic produce order.created
+```
+
+List open alerts with a token that has `risk_manager` or `trading_admin` role:
+
+```bash
+TOKEN="<risk manager or trading admin access token>"
+
+curl "http://localhost:8080/api/surveillance/alerts?status=OPEN&limit=50" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Acknowledge and resolve an alert:
+
+```bash
+ALERT_ID="<alert id>"
+
+curl -X POST "http://localhost:8080/api/surveillance/alerts/${ALERT_ID}/acknowledge" \
+  -H "Authorization: Bearer ${TOKEN}"
+
+curl -X POST "http://localhost:8080/api/surveillance/alerts/${ALERT_ID}/resolve" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Prometheus metrics to check:
+
+```text
+surveillance_alerts_created_total
+surveillance_alerts_acknowledged_total
+surveillance_alerts_resolved_total
+surveillance_rule_matches_total
+surveillance_rule_executions_total
+surveillance_kafka_messages_total
+surveillance_kafka_publish_errors_total
+surveillance_rule_duration_seconds
+```
+
 ## Local Docker Environment
 
 Create a local Docker environment file before starting the stack:

@@ -1,0 +1,11 @@
+{
+  "eventId": "55555555-5555-4555-8555-555555555555",
+  "eventType": "market.tick.normalized",
+  "symbol": "AAPL",
+  "price": 112,
+  "volume": 2500,
+  "source": "demo",
+  "eventTime": "2026-06-08T10:03:00Z",
+  "receivedAt": "2026-06-08T10:03:00Z",
+  "correlationId": "demo-surveillance-price-jump"
+}
