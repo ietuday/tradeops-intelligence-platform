@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tradeops-config
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  DATABASE_URL: {{ .Values.config.databaseUrl | quote }}
+  REDIS_URL: {{ .Values.config.redisUrl | quote }}
+  KAFKA_BROKERS: {{ .Values.config.kafkaBrokers | quote }}
+  MQTT_BROKER_URL: {{ .Values.config.mqttBrokerUrl | quote }}
+  PROXY_TIMEOUT_MS: {{ .Values.config.proxyTimeoutMs | quote }}
+  IDENTITY_SERVICE_URL: "http://identity-service:8084"
+  MARKET_DATA_SERVICE_URL: "http://market-data-service:8085"
+  ORDER_SERVICE_URL: "http://order-service:8086"
+  PORTFOLIO_SERVICE_URL: "http://portfolio-service:8087"
+  STRATEGY_SERVICE_URL: "http://strategy-service:8088"
+  RISK_SERVICE_URL: "http://risk-engine-service:8089"
+  SURVEILLANCE_SERVICE_URL: "http://surveillance-service:8090"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8091"
+  AUDIT_SERVICE_URL: "http://audit-service:8092"
+

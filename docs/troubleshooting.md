@@ -413,3 +413,34 @@ docker compose -f infrastructure/docker/docker-compose.yml ps
 ```
 
 Fix: Stop the conflicting process, change the host port mapping for local testing, or run `make dev-down` before restarting.
+
+## Helm Validation Skipped
+
+Symptom: `scripts/validate-helm.sh` says Helm is not installed and exits successfully.
+
+Possible cause: Helm is not installed on the local machine.
+
+Useful command:
+
+```bash
+./scripts/validate-helm.sh
+helm version
+```
+
+Fix: Install Helm, then rerun `helm lint infrastructure/helm/tradeops-platform` and `helm template tradeops infrastructure/helm/tradeops-platform`.
+
+## Kubernetes Pod Not Ready
+
+Symptom: A pod from the optional Helm chart stays in `CrashLoopBackOff` or never passes readiness.
+
+Possible cause: Placeholder secrets were not replaced, images are not available to the cluster, dependencies such as Postgres/Redis/Redpanda are missing, or `/ready` cannot reach required dependencies.
+
+Useful command:
+
+```bash
+kubectl get pods -n tradeops
+kubectl describe pod -n tradeops <pod-name>
+kubectl logs -n tradeops <pod-name>
+```
+
+Fix: Confirm local images are loaded into kind/minikube, replace `JWT_SECRET=replace-me`, configure dependency endpoints in `values.yaml`, and remember that Docker Compose remains the recommended local demo runtime.

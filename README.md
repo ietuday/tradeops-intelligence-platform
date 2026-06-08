@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.5.0` Data Retention, Archival & Event Replay.
+Latest release: `v1.6.0` Deployment Readiness: Kubernetes / Helm Optional Layer.
 
 ## Architecture Summary
 
@@ -22,7 +22,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Observability | Prometheus, Grafana, health/readiness endpoints, metrics, alert rules, SLO dashboards |
-| Runtime | Docker Compose, Makefile, Bash demo/smoke scripts |
+| Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
 
 ## Services
 
@@ -99,6 +99,7 @@ bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh
 bash -n scripts/replay-sample-events.sh
 bash -n scripts/replay-dlq-events.sh
+bash -n scripts/validate-helm.sh
 ```
 
 ## Local URLs
@@ -148,6 +149,24 @@ TradeOps includes local data lifecycle guidance and safe helper scripts for back
 
 Safety note: restore requires `--confirm`, archive deletion requires `--delete-confirm`, and DLQ replay remains manual/conservative by design.
 
+## Deployment Readiness
+
+Docker Compose remains the primary local demo runtime. The optional Helm chart is provided for Kubernetes deployment-readiness discussion and local rendering checks.
+
+| Asset | Location |
+| --- | --- |
+| Helm chart | [infrastructure/helm/tradeops-platform](infrastructure/helm/tradeops-platform) |
+| Helm chart README | [infrastructure/helm/tradeops-platform/README.md](infrastructure/helm/tradeops-platform/README.md) |
+| Kubernetes/Helm guide | [docs/deployment/kubernetes-helm.md](docs/deployment/kubernetes-helm.md) |
+| Deployment readiness checklist | [docs/deployment/deployment-readiness.md](docs/deployment/deployment-readiness.md) |
+
+Validate the chart:
+
+```bash
+./scripts/validate-helm.sh
+make validate-helm
+```
+
 ## Documentation
 
 - [Architecture overview](docs/architecture/overview.md)
@@ -167,6 +186,8 @@ Safety note: restore requires `--confirm`, archive deletion requires `--delete-c
 - [Event replay guide](docs/data-lifecycle/event-replay.md)
 - [DLQ replay guide](docs/data-lifecycle/dlq-replay.md)
 - [Data lifecycle runbook](docs/data-lifecycle/runbook.md)
+- [Kubernetes/Helm guide](docs/deployment/kubernetes-helm.md)
+- [Deployment readiness checklist](docs/deployment/deployment-readiness.md)
 - [Reliability patterns](docs/reliability/resilience-patterns.md)
 - [Dead-letter topics](docs/reliability/dead-letter-topics.md)
 - [Graceful shutdown](docs/reliability/graceful-shutdown.md)
@@ -180,6 +201,7 @@ Safety note: restore requires `--confirm`, archive deletion requires `--delete-c
 
 ## Release Notes
 
+- [v1.6.0 Deployment Readiness: Kubernetes / Helm Optional Layer](docs/release-notes/v1.6.0.md)
 - [v1.5.0 Data Retention, Archival & Event Replay](docs/release-notes/v1.5.0.md)
 - [v1.4.0 Advanced Observability & SLO Dashboards](docs/release-notes/v1.4.0.md)
 - [v1.3.0 Audit Trail & Compliance Reporting](docs/release-notes/v1.3.0.md)
@@ -216,7 +238,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -226,6 +248,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Event schemas are documented by examples, not enforced by a schema registry.
 - Audit export is API-returned JSON/CSV, not durable file generation.
 - Data lifecycle scripts are local operational helpers, not regulated production retention automation.
+- Helm manifests are deployment-readiness artifacts, not a fully managed production cluster setup.
 - Notification email delivery is mock/log-only.
 - Frontend apps are placeholders/foundations, not complete trading UIs.
 - No Kubernetes, Helm, cloud deployment, TLS ingress, or managed secret store is included yet.
@@ -237,7 +260,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Add distributed tracing.
 - Add schema validation or schema registry for Kafka events.
 - Add richer portfolio screenshots.
-- Add Kubernetes/Helm only after the local platform is stable enough to justify it.
+- Add production-grade Kubernetes hardening after the optional Helm layer is validated against a real cluster.
 
 ## Validation
 
@@ -261,4 +284,6 @@ bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh
 bash -n scripts/replay-sample-events.sh
 bash -n scripts/replay-dlq-events.sh
+bash -n scripts/validate-helm.sh
+./scripts/validate-helm.sh
 ```

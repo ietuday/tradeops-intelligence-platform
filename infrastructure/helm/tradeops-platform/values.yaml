@@ -1,0 +1,131 @@
+global:
+  namespace: tradeops
+  imagePullPolicy: IfNotPresent
+  environment: local-k8s
+
+services:
+  apiGateway:
+    enabled: true
+    name: api-gateway
+    image: tradeops/api-gateway
+    tag: local
+    port: 8080
+    replicas: 1
+
+  identityService:
+    enabled: true
+    name: identity-service
+    envPrefix: IDENTITY
+    image: tradeops/identity-service
+    tag: local
+    port: 8084
+    replicas: 1
+
+  marketDataService:
+    enabled: true
+    name: market-data-service
+    envPrefix: MARKET_DATA
+    image: tradeops/market-data-service
+    tag: local
+    port: 8085
+    replicas: 1
+
+  orderService:
+    enabled: true
+    name: order-service
+    envPrefix: ORDER
+    image: tradeops/order-service
+    tag: local
+    port: 8086
+    replicas: 1
+
+  portfolioService:
+    enabled: true
+    name: portfolio-service
+    envPrefix: PORTFOLIO
+    image: tradeops/portfolio-service
+    tag: local
+    port: 8087
+    replicas: 1
+
+  strategyService:
+    enabled: true
+    name: strategy-service
+    envPrefix: STRATEGY
+    image: tradeops/strategy-service
+    tag: local
+    port: 8088
+    replicas: 1
+
+  riskEngineService:
+    enabled: true
+    name: risk-engine-service
+    envPrefix: RISK
+    image: tradeops/risk-engine-service
+    tag: local
+    port: 8089
+    replicas: 1
+
+  surveillanceService:
+    enabled: true
+    name: surveillance-service
+    envPrefix: SURVEILLANCE
+    image: tradeops/surveillance-service
+    tag: local
+    port: 8090
+    replicas: 1
+
+  notificationService:
+    enabled: true
+    name: notification-service
+    envPrefix: NOTIFICATION
+    image: tradeops/notification-service
+    tag: local
+    port: 8091
+    replicas: 1
+
+  auditService:
+    enabled: true
+    name: audit-service
+    envPrefix: AUDIT
+    image: tradeops/audit-service
+    tag: local
+    port: 8092
+    replicas: 1
+
+config:
+  databaseUrl: "postgres://tradeops:tradeops@postgres:5432/tradeops?sslmode=disable"
+  redisUrl: "redis://redis:6379"
+  kafkaBrokers: "redpanda:9092"
+  mqttBrokerUrl: "tcp://mosquitto:1883"
+  jwtSecretRef: "tradeops-secrets"
+  proxyTimeoutMs: "10000"
+
+secrets:
+  createExample: true
+  jwtSecret: "replace-me"
+
+ingress:
+  enabled: false
+  className: ""
+  host: tradeops.local
+
+serviceAccount:
+  create: true
+  name: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  enabled: true
+  livenessPath: /health
+  readinessPath: /ready
+  initialDelaySeconds: 15
+  periodSeconds: 10
+

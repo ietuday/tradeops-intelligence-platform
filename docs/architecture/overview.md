@@ -29,7 +29,7 @@ The platform is designed for portfolio and interview demonstration. It is not ye
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Observability | Prometheus, Grafana, alert rules, SLO docs, structured logs, correlation IDs |
-| Runtime | Docker Compose |
+| Runtime | Docker Compose, optional Helm/Kubernetes deployment-readiness chart |
 
 ## High-Level Architecture
 
@@ -153,6 +153,14 @@ flowchart LR
 - Prometheus loads local alert rules for service availability, gateway failures/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures.
 - SLO-oriented docs live under `docs/observability/` and describe demo SLIs, dashboard usage, alert behavior, and runbook steps.
 - Correlation IDs flow through the gateway to help trace requests across services.
+
+## Deployment Readiness
+
+- Docker Compose remains the primary local runtime and demo path.
+- The optional Helm chart under `infrastructure/helm/tradeops-platform/` renders Kubernetes Deployments and Services for application services.
+- Kubernetes config separates non-secret values in a ConfigMap from placeholder secret values in a Secret.
+- Application pods include `/health` liveness probes, `/ready` readiness probes, resource requests/limits, and `terminationGracePeriodSeconds: 30`.
+- Stateful infrastructure such as PostgreSQL, Redis, Redpanda, Mosquitto, Prometheus, and Grafana is expected to be managed separately for Kubernetes deployments.
 
 ## Security Flow
 

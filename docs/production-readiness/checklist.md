@@ -132,9 +132,21 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [ ] Add backup/restore runbooks for stateful services.
 - [ ] Add persistent production alert routing and dashboard ownership.
 
+## Kubernetes / Helm
+
+- [x] Optional Helm chart exists for application service deployment readiness.
+- [x] Chart renders Deployments, Services, ConfigMap, example Secret, ServiceAccount, and optional ingress.
+- [x] Liveness/readiness probes are mapped to `/health` and `/ready`.
+- [x] Resource requests and limits are included.
+- [x] ConfigMap and Secret responsibilities are separated.
+- [x] Helm validation script is included and skips gracefully when Helm is unavailable.
+- [ ] Validate chart in a real kind/minikube cluster.
+- [ ] Add production secrets management, TLS ingress, autoscaling, network policies, and rollout strategy.
+- [ ] Use managed or separately operated PostgreSQL, Redis, Kafka/Redpanda, MQTT, Prometheus, and Grafana for production.
+
 ## Deployment Gaps
 
-- [ ] No Kubernetes or Helm deployment has been added yet.
+- [x] Optional Kubernetes/Helm deployment-readiness artifacts exist.
 - [ ] No production ingress/TLS setup exists.
 - [ ] No CI/CD pipeline is documented as a hard requirement yet.
 - [ ] No real cloud database, Kafka, or secret manager integration exists.

@@ -1,10 +1,11 @@
 DOCKER_COMPOSE_FILE := infrastructure/docker/docker-compose.yml
 DOCKER_ENV_FILE := infrastructure/docker/.env
+HELM_CHART := infrastructure/helm/tradeops-platform
 
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
 PYTHON_SERVICES := strategy-service risk-engine-service
 
-.PHONY: help test test-go test-node test-python compose-config validate-scripts smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+.PHONY: help test test-go test-node test-python compose-config validate-scripts helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
 
 help:
 	@echo "TradeOps local commands"
@@ -15,6 +16,7 @@ help:
 	@echo "  make test-python          Run Python service tests when tests exist"
 	@echo "  make compose-config       Validate Docker Compose config"
 	@echo "  make validate-scripts     Validate Bash script syntax"
+	@echo "  make validate-helm        Validate optional Helm chart when Helm is installed"
 	@echo "  make smoke                Run smoke test against a running stack"
 	@echo "  make demo-surveillance    Run surveillance demo"
 	@echo "  make demo-notifications   Run notification demo"
@@ -54,6 +56,24 @@ validate-scripts:
 	bash -n scripts/demo-surveillance.sh
 	bash -n scripts/demo-notifications.sh
 	bash -n scripts/demo-e2e-tradeops.sh
+	bash -n scripts/demo-reliability.sh
+	bash -n scripts/demo-audit.sh
+	bash -n scripts/demo-observability.sh
+	bash -n scripts/db-backup.sh
+	bash -n scripts/db-restore.sh
+	bash -n scripts/archive-old-data.sh
+	bash -n scripts/replay-sample-events.sh
+	bash -n scripts/replay-dlq-events.sh
+	bash -n scripts/validate-helm.sh
+
+helm-lint:
+	helm lint $(HELM_CHART)
+
+helm-template:
+	helm template tradeops $(HELM_CHART)
+
+validate-helm:
+	./scripts/validate-helm.sh
 
 smoke:
 	./scripts/smoke-test.sh

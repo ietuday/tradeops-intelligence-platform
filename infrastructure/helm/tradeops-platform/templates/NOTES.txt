@@ -1,0 +1,23 @@
+TradeOps Helm chart rendered successfully.
+
+Docker Compose remains the recommended local demo runtime.
+
+Namespace:
+  {{ include "tradeops.namespace" . }}
+
+Application services:
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  - {{ $svc.name }}:{{ $svc.port }}
+{{- end }}
+{{- end }}
+
+Useful commands:
+  helm template {{ .Release.Name }} {{ .Chart.Name }}
+  kubectl get pods -n {{ include "tradeops.namespace" . }}
+  kubectl get services -n {{ include "tradeops.namespace" . }}
+
+Secret handling:
+  The rendered Secret uses placeholder JWT_SECRET={{ .Values.secrets.jwtSecret | quote }} when secrets.createExample=true.
+  Replace it with a real Kubernetes Secret or External Secrets provider before any real deployment.
+

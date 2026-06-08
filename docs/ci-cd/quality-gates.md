@@ -6,7 +6,7 @@ TradeOps uses GitHub Actions and local Makefile commands to keep the repository 
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
-| CI | `.github/workflows/ci.yml` | Runs API Gateway tests, Go service tests, Python service tests, script syntax checks, and Docker Compose config validation. |
+| CI | `.github/workflows/ci.yml` | Runs API Gateway tests, Go service tests, Python service tests, script syntax checks, Docker Compose config validation, and optional Helm chart validation. |
 | Security | `.github/workflows/security.yml` | Runs secret scanning, Go vet/govulncheck, Node audit, optional Python dependency audit, and a basic secret-pattern grep. |
 | Docker | `.github/workflows/docker.yml` | Builds all service Docker images locally with `:ci` tags. Images are not pushed. |
 | Docs | `.github/workflows/docs.yml` | Ensures required documentation exists and runs markdown linting as a non-blocking review aid. |
@@ -18,6 +18,7 @@ TradeOps uses GitHub Actions and local Makefile commands to keep the repository 
 - Python dependency install and `pytest` when Python tests exist.
 - Bash syntax validation for smoke and demo scripts.
 - Docker Compose configuration validation.
+- Optional Helm chart lint/template validation through `scripts/validate-helm.sh`.
 - Security checks and dependency audits.
 - Docker image build validation.
 - Required documentation checks.
@@ -72,7 +73,8 @@ The security workflow is useful but intentionally not over-tuned. Some local dem
 - Python dependency audits can be noisy, so they are non-blocking by default.
 - Markdown linting is non-blocking and meant to catch obvious documentation issues.
 - No images are pushed to a container registry.
-- No Kubernetes, Helm, or cloud deployment validation is included.
+- Helm validation checks renderability of the optional chart; it does not deploy to a real cluster.
+- No cloud deployment validation is included.
 
 ## Run Locally
 
@@ -84,6 +86,7 @@ make test-node
 make test-go
 make test-python
 make validate-scripts
+make validate-helm
 make compose-config
 make docker-build
 ```

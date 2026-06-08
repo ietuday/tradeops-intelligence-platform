@@ -93,7 +93,8 @@ for script in \
   "${ROOT_DIR}/scripts/db-restore.sh" \
   "${ROOT_DIR}/scripts/archive-old-data.sh" \
   "${ROOT_DIR}/scripts/replay-sample-events.sh" \
-  "${ROOT_DIR}/scripts/replay-dlq-events.sh"; do
+  "${ROOT_DIR}/scripts/replay-dlq-events.sh" \
+  "${ROOT_DIR}/scripts/validate-helm.sh"; do
   if [ ! -f "${script}" ]; then
     echo "FAIL: missing ${script}"
     exit 1

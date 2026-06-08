@@ -1,0 +1,167 @@
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svc.name }}
+  namespace: {{ include "tradeops.namespace" $ }}
+  labels:
+    {{- include "tradeops.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $svc.name }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $svc.name }}
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $svc.name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: {{ $svc.port | quote }}
+    spec:
+      serviceAccountName: {{ include "tradeops.serviceAccountName" $ }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ $svc.name }}
+          image: "{{ $svc.image }}:{{ $svc.tag }}"
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+          env:
+            - name: SERVICE_NAME
+              value: {{ $svc.name | quote }}
+            - name: PORT
+              value: {{ $svc.port | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: REDIS_URL
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: KAFKA_BROKERS
+            - name: MQTT_BROKER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: MQTT_BROKER_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.config.jwtSecretRef }}
+                  key: JWT_SECRET
+            {{- if $svc.envPrefix }}
+            - name: {{ $svc.envPrefix }}_SERVICE_PORT
+              value: {{ $svc.port | quote }}
+            - name: {{ $svc.envPrefix }}_DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: DATABASE_URL
+            - name: {{ $svc.envPrefix }}_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.config.jwtSecretRef }}
+                  key: JWT_SECRET
+            - name: {{ $svc.envPrefix }}_KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: KAFKA_BROKERS
+            {{- end }}
+            {{- if eq $svc.name "identity-service" }}
+            - name: IDENTITY_REDIS_ADDR
+              value: "redis:6379"
+            {{- end }}
+            {{- if eq $svc.name "market-data-service" }}
+            - name: MARKET_DATA_MQTT_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: MQTT_BROKER_URL
+            {{- end }}
+            {{- if eq $svc.name "api-gateway" }}
+            - name: IDENTITY_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: IDENTITY_SERVICE_URL
+            - name: MARKET_DATA_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: MARKET_DATA_SERVICE_URL
+            - name: ORDER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: ORDER_SERVICE_URL
+            - name: PORTFOLIO_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: PORTFOLIO_SERVICE_URL
+            - name: STRATEGY_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: STRATEGY_SERVICE_URL
+            - name: RISK_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: RISK_SERVICE_URL
+            - name: SURVEILLANCE_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: SURVEILLANCE_SERVICE_URL
+            - name: NOTIFICATION_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: NOTIFICATION_SERVICE_URL
+            - name: AUDIT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: AUDIT_SERVICE_URL
+            - name: PROXY_TIMEOUT_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: tradeops-config
+                  key: PROXY_TIMEOUT_MS
+            {{- end }}
+          {{- if $.Values.probes.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ $.Values.probes.livenessPath }}
+              port: http
+            initialDelaySeconds: {{ $.Values.probes.initialDelaySeconds }}
+            periodSeconds: {{ $.Values.probes.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: {{ $.Values.probes.readinessPath }}
+              port: http
+            initialDelaySeconds: {{ $.Values.probes.initialDelaySeconds }}
+            periodSeconds: {{ $.Values.probes.periodSeconds }}
+          {{- end }}
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+{{- end }}
+{{- end }}
+
