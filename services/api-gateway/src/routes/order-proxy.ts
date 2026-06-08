@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_ORDER_SERVICE_URL = 'http://order-service:8080';
 const UUID_PATTERN = '[0-9a-fA-F-]{36}';
@@ -106,7 +107,7 @@ async function forwardToOrderService(
   baseUrl: URL,
   orderPath: string
 ): Promise<void> {
-  const upstream = await fetch(new URL(orderPath, baseUrl).toString(), {
+  const upstream = await fetchUpstream('order-service', new URL(orderPath, baseUrl).toString(), {
     method: req.method,
     headers: buildProxyHeaders(req),
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined

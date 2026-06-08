@@ -27,6 +27,7 @@ type UserContext struct {
 
 type Store interface {
 	Create(context.Context, domain.Notification) (domain.Notification, error)
+	DuplicateExists(context.Context, string, string, string) (bool, error)
 	List(context.Context, repository.ListFilters) ([]domain.Notification, error)
 	Get(context.Context, string) (domain.Notification, error)
 	MarkRead(context.Context, string) (domain.Notification, error)
@@ -84,7 +85,7 @@ func (s *NotificationService) ProcessEvent(ctx context.Context, event domain.Sou
 	alert, err := ParseSurveillanceAlertEvent(event.Value)
 	if err != nil {
 		s.metrics.EventsFailed.Inc()
-		return nil
+		return err
 	}
 	if alert.EventType == "" {
 		alert.EventType = event.Topic
@@ -109,7 +110,7 @@ func ParseSurveillanceAlertEvent(payload []byte) (domain.SurveillanceAlertEvent,
 	if err := json.Unmarshal(payload, &event); err != nil {
 		return event, err
 	}
-	if event.AlertID == "" || event.EventType == "" {
+	if event.EventID == "" || event.AlertID == "" || event.EventType == "" {
 		return event, errors.New("invalid surveillance alert event")
 	}
 	return event, nil
@@ -164,12 +165,13 @@ func notificationFromAlert(alert domain.SurveillanceAlertEvent) domain.Notificat
 		message = fmt.Sprintf("%s alert dismissed", alert.AlertType)
 	}
 	metadata := map[string]any{
-		"alertId":     alert.AlertID,
-		"alertType":   alert.AlertType,
-		"entityType":  alert.EntityType,
-		"entityId":    alert.EntityID,
-		"alertStatus": alert.Status,
-		"eventType":   alert.EventType,
+		"sourceEventId": alert.EventID,
+		"alertId":       alert.AlertID,
+		"alertType":     alert.AlertType,
+		"entityType":    alert.EntityType,
+		"entityId":      alert.EntityID,
+		"alertStatus":   alert.Status,
+		"eventType":     alert.EventType,
 	}
 	if alert.Symbol != nil {
 		metadata["symbol"] = *alert.Symbol
@@ -210,6 +212,12 @@ func SeverityToPriority(severity string) string {
 func (s *NotificationService) sendInApp(ctx context.Context, notification domain.Notification) error {
 	notification.Channel = domain.ChannelInApp
 	notification.Status = domain.StatusSent
+	if duplicate, err := s.duplicateNotification(ctx, notification); err != nil {
+		return err
+	} else if duplicate {
+		s.metrics.DuplicateSkipped.WithLabelValues(metadataString(notification.Metadata, "eventType")).Inc()
+		return nil
+	}
 	created, err := s.store.Create(ctx, notification)
 	if err != nil {
 		return err
@@ -225,6 +233,12 @@ func (s *NotificationService) sendEmail(ctx context.Context, notification domain
 	start := time.Now()
 	notification.Channel = domain.ChannelEmail
 	notification.Status = domain.StatusSent
+	if duplicate, err := s.duplicateNotification(ctx, notification); err != nil {
+		return err
+	} else if duplicate {
+		s.metrics.DuplicateSkipped.WithLabelValues(metadataString(notification.Metadata, "eventType")).Inc()
+		return nil
+	}
 	created, err := s.store.Create(ctx, notification)
 	if err != nil {
 		return err
@@ -245,6 +259,12 @@ func (s *NotificationService) sendWebhook(ctx context.Context, notification doma
 	start := time.Now()
 	notification.Channel = domain.ChannelWebhook
 	notification.Status = domain.StatusPending
+	if duplicate, err := s.duplicateNotification(ctx, notification); err != nil {
+		return err
+	} else if duplicate {
+		s.metrics.DuplicateSkipped.WithLabelValues(metadataString(notification.Metadata, "eventType")).Inc()
+		return nil
+	}
 	created, err := s.store.Create(ctx, notification)
 	if err != nil {
 		return err
@@ -379,6 +399,15 @@ func (s *NotificationService) recordAttempt(ctx context.Context, notificationID,
 	return err
 }
 
+func (s *NotificationService) duplicateNotification(ctx context.Context, notification domain.Notification) (bool, error) {
+	sourceEventID := metadataString(notification.Metadata, "sourceEventId")
+	eventType := metadataString(notification.Metadata, "eventType")
+	if sourceEventID == "" || eventType == "" {
+		return false, nil
+	}
+	return s.store.DuplicateExists(ctx, sourceEventID, eventType, notification.Channel)
+}
+
 func (s *NotificationService) publish(ctx context.Context, eventType string, notification domain.Notification, correlationID string) {
 	_ = s.publisher.Publish(ctx, domain.NotificationEvent{
 		EventID:        uuid.NewString(),
@@ -393,6 +422,16 @@ func (s *NotificationService) publish(ctx context.Context, eventType string, not
 		OccurredAt:     time.Now().UTC(),
 		CorrelationID:  correlationID,
 	})
+}
+
+func metadataString(metadata map[string]any, key string) string {
+	if metadata == nil {
+		return ""
+	}
+	if value, ok := metadata[key].(string); ok {
+		return value
+	}
+	return ""
 }
 
 func ptrValue(value *string) string {

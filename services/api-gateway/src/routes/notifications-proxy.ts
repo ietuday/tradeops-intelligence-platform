@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_NOTIFICATION_SERVICE_URL = 'http://notification-service:8091';
 const UUID_PATTERN = '[0-9a-fA-F-]{36}';
@@ -108,7 +109,7 @@ async function forwardToNotificationService(
   const upstreamUrl = new URL(notificationPath, baseUrl);
   upstreamUrl.search = new URL(req.url, 'http://gateway.local').search;
 
-  const upstream = await fetch(upstreamUrl.toString(), {
+  const upstream = await fetchUpstream('notification-service', upstreamUrl.toString(), {
     method: req.method,
     headers: buildProxyHeaders(req),
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined

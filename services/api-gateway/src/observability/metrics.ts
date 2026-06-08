@@ -23,6 +23,20 @@ const httpRequestDurationSeconds = new client.Histogram({
   registers: [register]
 });
 
+const proxyUpstreamErrorsTotal = new client.Counter({
+  name: 'tradeops_api_gateway_proxy_upstream_errors_total',
+  help: 'Total upstream proxy errors by service and status.',
+  labelNames: ['service', 'status'],
+  registers: [register]
+});
+
+const proxyUpstreamTimeoutsTotal = new client.Counter({
+  name: 'tradeops_api_gateway_proxy_upstream_timeouts_total',
+  help: 'Total upstream proxy timeouts by service.',
+  labelNames: ['service'],
+  registers: [register]
+});
+
 function normalizeRoute(req: Request): string {
   return req.route?.path?.toString() || req.path || 'unknown';
 }
@@ -48,6 +62,14 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
 export async function metricsHandler(_req: Request, res: Response): Promise<void> {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
+}
+
+export function recordProxyUpstreamError(service: string, status: number): void {
+  proxyUpstreamErrorsTotal.inc({ service, status: String(status) });
+}
+
+export function recordProxyUpstreamTimeout(service: string): void {
+  proxyUpstreamTimeoutsTotal.inc({ service });
 }
 
 export { register };

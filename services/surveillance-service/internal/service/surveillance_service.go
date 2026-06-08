@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -19,19 +20,32 @@ type UserContext struct {
 	Roles  []string
 }
 
+type alertStore interface {
+	SaveExecution(context.Context, domain.RuleExecution) error
+	DuplicateAlertExists(context.Context, domain.Alert) (bool, error)
+	CreateAlert(context.Context, domain.Alert) (domain.Alert, error)
+	ListAlerts(context.Context, repository.AlertFilters) ([]domain.Alert, error)
+	GetAlert(context.Context, string) (domain.Alert, error)
+	UpdateStatus(context.Context, string, string) (domain.Alert, error)
+	Summary(context.Context) (repository.Summary, error)
+}
+
 type SurveillanceService struct {
-	repo     *repository.AlertRepository
+	repo     alertStore
 	producer *kafka.Producer
 	metrics  *observability.Metrics
 	engine   *RuleEngine
 }
 
-func NewSurveillanceService(repo *repository.AlertRepository, producer *kafka.Producer, metrics *observability.Metrics, engine *RuleEngine) *SurveillanceService {
+func NewSurveillanceService(repo alertStore, producer *kafka.Producer, metrics *observability.Metrics, engine *RuleEngine) *SurveillanceService {
 	return &SurveillanceService{repo: repo, producer: producer, metrics: metrics, engine: engine}
 }
 
 func (s *SurveillanceService) ProcessEvent(ctx context.Context, event domain.SourceEvent) error {
 	s.metrics.KafkaMessages.WithLabelValues(event.Topic).Inc()
+	if len(event.Value) > 0 && !json.Valid(event.Value) {
+		return errors.New("invalid source event JSON")
+	}
 	now := time.Now().UTC()
 	alerts, executions := s.engine.Evaluate(event, now)
 	for _, execution := range executions {
@@ -45,6 +59,14 @@ func (s *SurveillanceService) ProcessEvent(ctx context.Context, event domain.Sou
 		}
 	}
 	for _, alert := range alerts {
+		exists, err := s.repo.DuplicateAlertExists(ctx, alert)
+		if err != nil {
+			return err
+		}
+		if exists {
+			s.metrics.DuplicateSkipped.WithLabelValues(event.Topic).Inc()
+			continue
+		}
 		created, err := s.repo.CreateAlert(ctx, alert)
 		if err != nil {
 			return err
@@ -113,6 +135,9 @@ func (s *SurveillanceService) transition(ctx context.Context, user UserContext, 
 }
 
 func (s *SurveillanceService) publishAlertEvent(ctx context.Context, eventType string, alert domain.Alert, correlationID string) error {
+	if s.producer == nil {
+		return nil
+	}
 	return s.producer.Publish(ctx, domain.AlertEvent{
 		EventID:       uuid.NewString(),
 		EventType:     eventType,

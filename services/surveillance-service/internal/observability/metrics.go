@@ -19,6 +19,11 @@ type Metrics struct {
 	KafkaMessages      prometheus.CounterVec
 	KafkaPublishErrors prometheus.Counter
 	RuleDuration       prometheus.Histogram
+	EventsRetried      prometheus.CounterVec
+	EventsDeadlettered prometheus.CounterVec
+	ProcessingAttempts prometheus.CounterVec
+	ProcessingDuration prometheus.HistogramVec
+	DuplicateSkipped   prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -63,8 +68,29 @@ func NewMetrics() *Metrics {
 			Help:    "Surveillance rule execution duration in seconds.",
 			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
 		}),
+		EventsRetried: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_events_retried_total",
+			Help: "Total surveillance source events retried.",
+		}, []string{"topic"}),
+		EventsDeadlettered: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_events_deadlettered_total",
+			Help: "Total surveillance source events published to DLQ.",
+		}, []string{"topic"}),
+		ProcessingAttempts: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_event_processing_attempts_total",
+			Help: "Total surveillance event processing attempts by status.",
+		}, []string{"topic", "status"}),
+		ProcessingDuration: *prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "surveillance_event_processing_duration_seconds",
+			Help:    "Surveillance source event processing duration in seconds.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2},
+		}, []string{"topic"}),
+		DuplicateSkipped: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_duplicate_events_skipped_total",
+			Help: "Total duplicate surveillance alerts skipped.",
+		}, []string{"topic"}),
 	}
-	registry.MustRegister(metrics.AlertsCreated, metrics.AlertsAcknowledged, metrics.AlertsResolved, metrics.AlertsDismissed, &metrics.RuleMatches, &metrics.RuleExecutions, &metrics.KafkaMessages, metrics.KafkaPublishErrors, metrics.RuleDuration)
+	registry.MustRegister(metrics.AlertsCreated, metrics.AlertsAcknowledged, metrics.AlertsResolved, metrics.AlertsDismissed, &metrics.RuleMatches, &metrics.RuleExecutions, &metrics.KafkaMessages, metrics.KafkaPublishErrors, metrics.RuleDuration, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.ProcessingDuration, &metrics.DuplicateSkipped)
 	return metrics
 }
 

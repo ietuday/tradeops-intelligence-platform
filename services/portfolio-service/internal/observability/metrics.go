@@ -18,6 +18,10 @@ type Metrics struct {
 	UnrealizedPnL      prometheus.Gauge
 	ProcessingDuration prometheus.Histogram
 	KafkaPublishErrors prometheus.Counter
+	EventsRetried      prometheus.CounterVec
+	EventsDeadlettered prometheus.CounterVec
+	ProcessingAttempts prometheus.CounterVec
+	DuplicateSkipped   prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -58,8 +62,24 @@ func NewMetrics() *Metrics {
 			Name: "kafka_publish_errors_total",
 			Help: "Total Kafka publish errors.",
 		}),
+		EventsRetried: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "portfolio_events_retried_total",
+			Help: "Total portfolio source events retried.",
+		}, []string{"topic"}),
+		EventsDeadlettered: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "portfolio_events_deadlettered_total",
+			Help: "Total portfolio source events published to DLQ.",
+		}, []string{"topic"}),
+		ProcessingAttempts: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "portfolio_event_processing_attempts_total",
+			Help: "Total portfolio event processing attempts by status.",
+		}, []string{"topic", "status"}),
+		DuplicateSkipped: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "portfolio_duplicate_events_skipped_total",
+			Help: "Total duplicate portfolio events skipped.",
+		}, []string{"topic"}),
 	}
-	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors)
+	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.DuplicateSkipped)
 	return metrics
 }
 

@@ -62,6 +62,54 @@ docker compose -f infrastructure/docker/docker-compose.yml logs surveillance-ser
 
 Fix: Use known-good sample payloads under `docs/examples/`, publish to the exact expected topic, and check service logs for payload validation errors.
 
+## Event Stuck In DLQ
+
+Symptom: A failed event appears in `portfolio.dlq`, `surveillance.dlq`, or `notification.dlq`.
+
+Possible cause: The event failed all retry attempts because the payload was malformed, the database was unavailable, or a downstream call failed repeatedly.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume portfolio.dlq -n 1
+docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume surveillance.dlq -n 1
+docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume notification.dlq -n 1
+```
+
+Fix: Inspect `errorMessage`, fix the source issue, then manually replay `originalPayload` to `originalTopic` only when it is safe. See `docs/reliability/dead-letter-topics.md`.
+
+## Duplicate Event Detected
+
+Symptom: A replayed event does not create a new position update, alert, or notification.
+
+Possible cause: Idempotency checks skipped an event that was already processed.
+
+Useful command:
+
+```bash
+curl http://localhost:8087/metrics | grep portfolio_duplicate_events_skipped_total
+curl http://localhost:8090/metrics | grep surveillance_duplicate_events_skipped_total
+curl http://localhost:8091/metrics | grep notification_duplicate_events_skipped_total
+```
+
+Fix: Confirm the source event ID, rule/entity, or notification channel is truly new before expecting a new side effect.
+
+## Consumer Retry Storm
+
+Symptom: Logs repeatedly show processing failures before events are sent to DLQ.
+
+Possible cause: A malformed payload or unavailable dependency is causing every retry to fail.
+
+Useful command:
+
+```bash
+curl http://localhost:8087/metrics | grep portfolio_events_retried_total
+curl http://localhost:8090/metrics | grep surveillance_events_retried_total
+curl http://localhost:8091/metrics | grep notification_events_retried_total
+```
+
+Fix: Reduce input noise, inspect the failed payload, and check `EVENT_PROCESSING_MAX_RETRIES`, `EVENT_PROCESSING_RETRY_BACKOFF_MS`, and `EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER`.
+
 ## API Gateway Cannot Reach Service
 
 Symptom: Gateway route returns `502`.
@@ -77,6 +125,21 @@ docker compose -f infrastructure/docker/docker-compose.yml ps
 ```
 
 Fix: Confirm the upstream service is healthy and the gateway has the correct `*_SERVICE_URL` value.
+
+## API Gateway Upstream Timeout
+
+Symptom: Gateway route returns `504` with `UPSTREAM_TIMEOUT`.
+
+Possible cause: The upstream service accepted the connection but did not respond before `PROXY_TIMEOUT_MS`.
+
+Useful command:
+
+```bash
+curl -i http://localhost:8080/api/orders/health -H "x-correlation-id: demo-timeout"
+curl http://localhost:8080/metrics | grep tradeops_api_gateway_proxy_upstream_timeouts_total
+```
+
+Fix: Check the upstream service logs and tune `PROXY_TIMEOUT_MS` only after confirming the service is healthy. The default is `10000` milliseconds.
 
 ## JWT Missing Or Invalid
 
@@ -152,6 +215,21 @@ docker compose -f infrastructure/docker/docker-compose.yml logs notification-ser
 ```
 
 Fix: Use a reachable webhook endpoint, return a 2xx response, and then call `/api/notifications/{id}/retry` for failed notifications.
+
+## Webhook Timeout
+
+Symptom: Webhook delivery attempts fail even though notification-service remains healthy.
+
+Possible cause: The configured webhook endpoint is slow or unreachable from the Docker network.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml logs notification-service
+curl http://localhost:8091/metrics | grep notification_delivery_failures_total
+```
+
+Fix: Test the webhook from the same network context, use a fast 2xx response for demos, and retry the notification after the endpoint is fixed.
 
 ## Prometheus Target Down
 

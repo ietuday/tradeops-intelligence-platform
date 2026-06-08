@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.0.1` GitHub Release & Portfolio Polish.
+Latest release: `v1.2.0` Reliability, Resilience & Failure Handling.
 
 ## Architecture Summary
 
@@ -78,6 +78,7 @@ Run focused demos:
 ```bash
 ./scripts/demo-surveillance.sh
 ./scripts/demo-notifications.sh
+./scripts/demo-reliability.sh
 ```
 
 Validate scripts without running the platform:
@@ -87,6 +88,7 @@ bash -n scripts/smoke-test.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-e2e-tradeops.sh
+bash -n scripts/demo-reliability.sh
 ```
 
 ## Local URLs
@@ -107,6 +109,9 @@ bash -n scripts/demo-e2e-tradeops.sh
 - [Service dependency matrix](docs/architecture/service-dependency-matrix.md)
 - [API summary](docs/api/api-summary.md)
 - [CI/CD quality gates](docs/ci-cd/quality-gates.md)
+- [Reliability patterns](docs/reliability/resilience-patterns.md)
+- [Dead-letter topics](docs/reliability/dead-letter-topics.md)
+- [Graceful shutdown](docs/reliability/graceful-shutdown.md)
 - [Production-readiness checklist](docs/production-readiness/checklist.md)
 - [Troubleshooting guide](docs/troubleshooting.md)
 - [Repository cleanup guide](docs/release/repository-cleanup.md)
@@ -117,6 +122,7 @@ bash -n scripts/demo-e2e-tradeops.sh
 
 ## Release Notes
 
+- [v1.2.0 Reliability, Resilience & Failure Handling](docs/release-notes/v1.2.0.md)
 - [v1.1.0 CI/CD, Security Scanning & Quality Gates](docs/release-notes/v1.1.0.md)
 - [v1.0.1 GitHub Release & Portfolio Polish](docs/release-notes/v1.0.1.md)
 - [v1.0.0 Production Readiness & Platform Hardening](docs/release-notes/v1.0.0.md)
@@ -183,4 +189,5 @@ bash -n scripts/smoke-test.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-e2e-tradeops.sh
+bash -n scripts/demo-reliability.sh
 ```

@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_IDENTITY_SERVICE_URL = 'http://identity-service:8080';
 
@@ -72,7 +73,7 @@ async function forwardToIdentityService(
 ): Promise<void> {
   const targetUrl = buildTargetUrl(baseUrl, identityPath);
 
-  const upstream = await fetch(targetUrl, {
+  const upstream = await fetchUpstream('identity-service', targetUrl, {
     method: req.method,
     headers: buildProxyHeaders(req),
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined

@@ -141,11 +141,27 @@ func TestProcessEventBadPayloadDoesNotCrash(t *testing.T) {
 	store := &fakeStore{preferences: defaultPrefs("user-1")}
 	svc := NewNotificationServiceWithPublisher(store, observability.NewMetrics(), nil, nil, nil, 2)
 
-	if err := svc.ProcessEvent(context.Background(), domain.SourceEvent{Topic: "surveillance.alert.created", Value: []byte("{bad")}); err != nil {
-		t.Fatalf("bad payload should not return consumer error: %v", err)
+	if err := svc.ProcessEvent(context.Background(), domain.SourceEvent{Topic: "surveillance.alert.created", Value: []byte("{bad")}); err == nil {
+		t.Fatal("expected bad payload to return an error for retry/DLQ handling")
 	}
 	if len(store.created) != 0 {
 		t.Fatalf("bad payload should not create notifications")
+	}
+}
+
+func TestProcessEventSkipsDuplicateSourceEventChannel(t *testing.T) {
+	store := &fakeStore{preferences: defaultPrefs("user-1"), duplicate: true}
+	publisher := &fakePublisher{}
+	svc := NewNotificationServiceWithPublisher(store, observability.NewMetrics(), publisher, nil, nil, 2)
+
+	if err := svc.ProcessEvent(context.Background(), domain.SourceEvent{Topic: "surveillance.alert.created", Value: alertPayload(t, "surveillance.alert.created", "HIGH")}); err != nil {
+		t.Fatalf("process event failed: %v", err)
+	}
+	if len(store.created) != 0 {
+		t.Fatalf("duplicate event should not create notifications, got %d", len(store.created))
+	}
+	if len(publisher.events) != 0 {
+		t.Fatalf("duplicate event should not publish notification events, got %+v", publisher.events)
 	}
 }
 
@@ -234,12 +250,34 @@ func TestWebhookRetryBehavior(t *testing.T) {
 	}
 }
 
+func TestWebhookTimeoutFailure(t *testing.T) {
+	prefs := defaultPrefs("user-1")
+	url := "http://webhook.test/notify"
+	prefs.InAppEnabled = false
+	prefs.WebhookEnabled = true
+	prefs.WebhookURL = &url
+	store := &fakeStore{preferences: prefs}
+	client := &fakeHTTPClient{errs: []error{context.DeadlineExceeded, context.DeadlineExceeded}}
+	svc := NewNotificationServiceWithPublisher(store, observability.NewMetrics(), nil, client, nil, 2)
+
+	if err := svc.ProcessEvent(context.Background(), domain.SourceEvent{Topic: "surveillance.alert.created", Value: alertPayload(t, "surveillance.alert.created", "HIGH")}); err != nil {
+		t.Fatalf("process event failed: %v", err)
+	}
+	if got := store.statusByID[store.created[0].ID]; got != domain.StatusFailed {
+		t.Fatalf("expected webhook timeout to fail after retries, got %s", got)
+	}
+	if len(store.attempts) != 2 {
+		t.Fatalf("expected two failed timeout attempts, got %d", len(store.attempts))
+	}
+}
+
 type fakeStore struct {
 	notification domain.Notification
 	preferences  domain.Preferences
 	lastFilters  repository.ListFilters
 	markedRead   bool
 	retried      bool
+	duplicate    bool
 	created      []domain.Notification
 	attempts     []domain.DeliveryAttempt
 	statusByID   map[string]string
@@ -252,6 +290,10 @@ func (s *fakeStore) Create(_ context.Context, notification domain.Notification) 
 	}
 	s.statusByID[notification.ID] = notification.Status
 	return notification, nil
+}
+
+func (s *fakeStore) DuplicateExists(context.Context, string, string, string) (bool, error) {
+	return s.duplicate, nil
 }
 
 func (s *fakeStore) List(_ context.Context, filters repository.ListFilters) ([]domain.Notification, error) {

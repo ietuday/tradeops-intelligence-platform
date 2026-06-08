@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_PORTFOLIO_SERVICE_URL = 'http://portfolio-service:8080';
 
@@ -76,7 +77,7 @@ async function forwardToPortfolioService(
   baseUrl: URL,
   portfolioPath: string
 ): Promise<void> {
-  const upstream = await fetch(new URL(portfolioPath, baseUrl).toString(), {
+  const upstream = await fetchUpstream('portfolio-service', new URL(portfolioPath, baseUrl).toString(), {
     method: req.method,
     headers: buildProxyHeaders(req)
   });

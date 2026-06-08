@@ -50,7 +50,11 @@ func main() {
 	defer producer.Close()
 	portfolioService := service.NewPortfolioService(repository.NewPortfolioRepository(pool), producer, metrics, cfg.InitialCash)
 
-	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.OrderFilledTopic, portfolioService, logger)
+	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.OrderFilledTopic, portfolioService, logger, metrics, kafka.RetryConfig{
+		MaxRetries:        cfg.EventProcessingMaxRetries,
+		Backoff:           time.Duration(cfg.EventProcessingBackoffMS) * time.Millisecond,
+		BackoffMultiplier: cfg.EventProcessingMultiplier,
+	})
 	consumer.Start(ctx)
 	defer consumer.Close()
 

@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_STRATEGY_SERVICE_URL = 'http://strategy-service:8080';
 const UUID_PATTERN = '[0-9a-fA-F-]{36}';
@@ -109,7 +110,7 @@ async function forwardToStrategyService(
   baseUrl: URL,
   strategyPath: string
 ): Promise<void> {
-  const upstream = await fetch(new URL(strategyPath, baseUrl).toString(), {
+  const upstream = await fetchUpstream('strategy-service', new URL(strategyPath, baseUrl).toString(), {
     method: req.method,
     headers: buildProxyHeaders(req),
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined

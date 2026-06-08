@@ -20,6 +20,9 @@ type Config struct {
 	HighCancelWindowSeconds      int
 	RiskScoreThreshold           float64
 	AbnormalPriceMovementPercent float64
+	EventProcessingMaxRetries    int
+	EventProcessingBackoffMS     int
+	EventProcessingMultiplier    float64
 }
 
 func Load() (Config, error) {
@@ -36,6 +39,9 @@ func Load() (Config, error) {
 		HighCancelWindowSeconds:      getenvInt("SURVEILLANCE_HIGH_CANCEL_WINDOW_SECONDS", 300),
 		RiskScoreThreshold:           getenvFloat("SURVEILLANCE_RISK_SCORE_THRESHOLD", 80),
 		AbnormalPriceMovementPercent: getenvFloat("SURVEILLANCE_ABNORMAL_PRICE_MOVEMENT_PERCENT", 10),
+		EventProcessingMaxRetries:    getenvInt("EVENT_PROCESSING_MAX_RETRIES", 3),
+		EventProcessingBackoffMS:     getenvInt("EVENT_PROCESSING_RETRY_BACKOFF_MS", 500),
+		EventProcessingMultiplier:    getenvFloat("EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER", 2),
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("SURVEILLANCE_DATABASE_URL is required")

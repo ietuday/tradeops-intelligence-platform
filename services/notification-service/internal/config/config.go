@@ -8,24 +8,30 @@ import (
 )
 
 type Config struct {
-	Port                  string
-	DatabaseURL           string
-	JWTSecret             string
-	KafkaBrokers          []string
-	KafkaTopics           []string
-	WebhookTimeoutSeconds int
-	WebhookMaxRetries     int
+	Port                      string
+	DatabaseURL               string
+	JWTSecret                 string
+	KafkaBrokers              []string
+	KafkaTopics               []string
+	WebhookTimeoutSeconds     int
+	WebhookMaxRetries         int
+	EventProcessingMaxRetries int
+	EventProcessingBackoffMS  int
+	EventProcessingMultiplier float64
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		Port:                  getenv("NOTIFICATION_SERVICE_PORT", "8091"),
-		DatabaseURL:           os.Getenv("NOTIFICATION_DATABASE_URL"),
-		JWTSecret:             os.Getenv("NOTIFICATION_JWT_SECRET"),
-		KafkaBrokers:          splitCSV(getenv("NOTIFICATION_KAFKA_BROKERS", "redpanda:29092")),
-		KafkaTopics:           splitCSV(getenv("NOTIFICATION_KAFKA_TOPICS", "surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed")),
-		WebhookTimeoutSeconds: getenvInt("NOTIFICATION_WEBHOOK_TIMEOUT_SECONDS", 3),
-		WebhookMaxRetries:     getenvInt("NOTIFICATION_WEBHOOK_MAX_RETRIES", 3),
+		Port:                      getenv("NOTIFICATION_SERVICE_PORT", "8091"),
+		DatabaseURL:               os.Getenv("NOTIFICATION_DATABASE_URL"),
+		JWTSecret:                 os.Getenv("NOTIFICATION_JWT_SECRET"),
+		KafkaBrokers:              splitCSV(getenv("NOTIFICATION_KAFKA_BROKERS", "redpanda:29092")),
+		KafkaTopics:               splitCSV(getenv("NOTIFICATION_KAFKA_TOPICS", "surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed")),
+		WebhookTimeoutSeconds:     getenvInt("NOTIFICATION_WEBHOOK_TIMEOUT_SECONDS", 3),
+		WebhookMaxRetries:         getenvInt("NOTIFICATION_WEBHOOK_MAX_RETRIES", 3),
+		EventProcessingMaxRetries: getenvInt("EVENT_PROCESSING_MAX_RETRIES", 3),
+		EventProcessingBackoffMS:  getenvInt("EVENT_PROCESSING_RETRY_BACKOFF_MS", 500),
+		EventProcessingMultiplier: getenvFloat("EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER", 2),
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("NOTIFICATION_DATABASE_URL is required")
@@ -51,6 +57,14 @@ func getenv(key, fallback string) string {
 
 func getenvInt(key string, fallback int) int {
 	value, err := strconv.Atoi(getenv(key, ""))
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func getenvFloat(key string, fallback float64) float64 {
+	value, err := strconv.ParseFloat(getenv(key, ""), 64)
 	if err != nil {
 		return fallback
 	}

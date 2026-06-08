@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_SURVEILLANCE_SERVICE_URL = 'http://surveillance-service:8090';
 const UUID_PATTERN = '[0-9a-fA-F-]{36}';
@@ -102,7 +103,7 @@ async function forwardToSurveillanceService(
   const upstreamUrl = new URL(surveillancePath, baseUrl);
   upstreamUrl.search = new URL(req.url, 'http://gateway.local').search;
 
-  const upstream = await fetch(upstreamUrl.toString(), {
+  const upstream = await fetchUpstream('surveillance-service', upstreamUrl.toString(), {
     method: req.method,
     headers: buildProxyHeaders(req),
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined

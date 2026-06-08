@@ -8,26 +8,32 @@ import (
 )
 
 type Config struct {
-	Port             string
-	DatabaseURL      string
-	KafkaBrokers     []string
-	OrderFilledTopic string
-	PortfolioTopic   string
-	SnapshotTopic    string
-	JWTSecret        string
-	InitialCash      float64
+	Port                      string
+	DatabaseURL               string
+	KafkaBrokers              []string
+	OrderFilledTopic          string
+	PortfolioTopic            string
+	SnapshotTopic             string
+	JWTSecret                 string
+	InitialCash               float64
+	EventProcessingMaxRetries int
+	EventProcessingBackoffMS  int
+	EventProcessingMultiplier float64
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		Port:             getenv("PORTFOLIO_SERVICE_PORT", "8080"),
-		DatabaseURL:      os.Getenv("PORTFOLIO_DATABASE_URL"),
-		KafkaBrokers:     splitCSV(getenv("PORTFOLIO_KAFKA_BROKERS", "redpanda:29092")),
-		OrderFilledTopic: getenv("PORTFOLIO_ORDER_FILLED_TOPIC", "order.filled"),
-		PortfolioTopic:   getenv("PORTFOLIO_UPDATED_TOPIC", "portfolio.updated"),
-		SnapshotTopic:    getenv("PORTFOLIO_SNAPSHOT_TOPIC", "portfolio.snapshot.created"),
-		JWTSecret:        os.Getenv("PORTFOLIO_JWT_SECRET"),
-		InitialCash:      floatEnv("PORTFOLIO_INITIAL_CASH", 100000),
+		Port:                      getenv("PORTFOLIO_SERVICE_PORT", "8080"),
+		DatabaseURL:               os.Getenv("PORTFOLIO_DATABASE_URL"),
+		KafkaBrokers:              splitCSV(getenv("PORTFOLIO_KAFKA_BROKERS", "redpanda:29092")),
+		OrderFilledTopic:          getenv("PORTFOLIO_ORDER_FILLED_TOPIC", "order.filled"),
+		PortfolioTopic:            getenv("PORTFOLIO_UPDATED_TOPIC", "portfolio.updated"),
+		SnapshotTopic:             getenv("PORTFOLIO_SNAPSHOT_TOPIC", "portfolio.snapshot.created"),
+		JWTSecret:                 os.Getenv("PORTFOLIO_JWT_SECRET"),
+		InitialCash:               floatEnv("PORTFOLIO_INITIAL_CASH", 100000),
+		EventProcessingMaxRetries: intEnv("EVENT_PROCESSING_MAX_RETRIES", 3),
+		EventProcessingBackoffMS:  intEnv("EVENT_PROCESSING_RETRY_BACKOFF_MS", 500),
+		EventProcessingMultiplier: floatEnv("EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER", 2),
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("PORTFOLIO_DATABASE_URL is required")
@@ -61,6 +67,14 @@ func splitCSV(value string) []string {
 func floatEnv(key string, fallback float64) float64 {
 	value, err := strconv.ParseFloat(getenv(key, ""), 64)
 	if err != nil || value < 0 {
+		return fallback
+	}
+	return value
+}
+
+func intEnv(key string, fallback int) int {
+	value, err := strconv.Atoi(getenv(key, ""))
+	if err != nil {
 		return fallback
 	}
 	return value

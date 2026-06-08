@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_MARKET_DATA_SERVICE_URL = 'http://market-data-service:8080';
 
@@ -72,7 +73,7 @@ async function forwardToMarketDataService(
   baseUrl: URL,
   marketPath: string
 ): Promise<void> {
-  const upstream = await fetch(buildTargetUrl(baseUrl, marketPath), {
+  const upstream = await fetchUpstream('market-data-service', buildTargetUrl(baseUrl, marketPath), {
     method: req.method,
     headers: buildProxyHeaders(req)
   });

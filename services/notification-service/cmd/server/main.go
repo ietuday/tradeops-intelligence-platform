@@ -51,7 +51,11 @@ func main() {
 
 	httpClient := &http.Client{Timeout: time.Duration(cfg.WebhookTimeoutSeconds) * time.Second}
 	notificationService := service.NewNotificationServiceWithPublisher(repository.NewNotificationRepository(pool), metrics, producer, httpClient, logger, cfg.WebhookMaxRetries)
-	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, notificationService, logger)
+	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, notificationService, logger, metrics, kafka.RetryConfig{
+		MaxRetries:        cfg.EventProcessingMaxRetries,
+		Backoff:           time.Duration(cfg.EventProcessingBackoffMS) * time.Millisecond,
+		BackoffMultiplier: cfg.EventProcessingMultiplier,
+	})
 	consumer.Start(ctx)
 	defer consumer.Close()
 

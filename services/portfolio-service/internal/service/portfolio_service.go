@@ -49,6 +49,7 @@ func (s *PortfolioService) ProcessOrderFilled(ctx context.Context, payload []byt
 		return err
 	}
 	if result.Duplicate {
+		s.metrics.DuplicateSkipped.WithLabelValues(event.EventType).Inc()
 		return nil
 	}
 	s.metrics.Updates.Inc()

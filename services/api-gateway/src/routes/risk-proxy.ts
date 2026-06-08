@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_RISK_SERVICE_URL = 'http://risk-engine-service:8080';
 
@@ -77,7 +78,7 @@ async function forwardToRiskService(
   baseUrl: URL,
   riskPath: string
 ): Promise<void> {
-  const upstream = await fetch(new URL(riskPath, baseUrl).toString(), {
+  const upstream = await fetchUpstream('risk-engine-service', new URL(riskPath, baseUrl).toString(), {
     method: req.method,
     headers: buildProxyHeaders(req)
   });

@@ -59,6 +59,24 @@ func (r *AlertRepository) CreateAlert(ctx context.Context, alert domain.Alert) (
 	return alert, nil
 }
 
+func (r *AlertRepository) DuplicateAlertExists(ctx context.Context, alert domain.Alert) (bool, error) {
+	sourceTopic := ""
+	if value, ok := alert.Metadata["sourceTopic"].(string); ok {
+		sourceTopic = value
+	}
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM surveillance_alerts
+			WHERE alert_type = $1
+			  AND entity_id = $2
+			  AND COALESCE(metadata->>'sourceTopic', '') = $3
+		)
+	`, alert.AlertType, alert.EntityID, sourceTopic).Scan(&exists)
+	return exists, err
+}
+
 func (r *AlertRepository) ListAlerts(ctx context.Context, filters AlertFilters) ([]domain.Alert, error) {
 	where, args := buildAlertFilters(filters)
 	args = append(args, filters.Limit, filters.Offset)

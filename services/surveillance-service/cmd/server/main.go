@@ -59,7 +59,11 @@ func main() {
 		AbnormalPriceMovementPercent: cfg.AbnormalPriceMovementPercent,
 	})
 	surveillanceService := service.NewSurveillanceService(repository.NewAlertRepository(pool), producer, metrics, engine)
-	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, surveillanceService, logger)
+	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, surveillanceService, logger, metrics, kafka.RetryConfig{
+		MaxRetries:        cfg.EventProcessingMaxRetries,
+		Backoff:           time.Duration(cfg.EventProcessingBackoffMS) * time.Millisecond,
+		BackoffMultiplier: cfg.EventProcessingMultiplier,
+	})
 	consumer.Start(ctx)
 	defer consumer.Close()
 

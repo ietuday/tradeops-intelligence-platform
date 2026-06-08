@@ -3,6 +3,7 @@ import { createApp } from '../src/index';
 
 describe('API Gateway order proxy', () => {
   const originalOrderServiceUrl = process.env.ORDER_SERVICE_URL;
+  const originalProxyTimeoutMs = process.env.PROXY_TIMEOUT_MS;
   const fetchMock = jest.fn();
 
   beforeEach(() => {
@@ -13,6 +14,7 @@ describe('API Gateway order proxy', () => {
 
   afterAll(() => {
     process.env.ORDER_SERVICE_URL = originalOrderServiceUrl;
+    process.env.PROXY_TIMEOUT_MS = originalProxyTimeoutMs;
   });
 
   it('forwards /api/orders/health to order-service /health', async () => {
@@ -60,6 +62,50 @@ describe('API Gateway order proxy', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://order-service.test:8080/orders/98e3d0cd-68d3-4a25-b4ff-7f04a329731e', expect.objectContaining({ method: 'GET' }));
     expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://order-service.test:8080/orders/98e3d0cd-68d3-4a25-b4ff-7f04a329731e/cancel', expect.objectContaining({ method: 'POST' }));
+  });
+
+  it('returns 502 when upstream order-service is unavailable', async () => {
+    fetchMock.mockRejectedValue(new Error('connection refused'));
+
+    const response = await request(createApp())
+      .get('/api/orders/health')
+      .set('x-correlation-id', 'order-corr-502');
+
+    expect(response.status).toBe(502);
+    expect(response.headers['x-correlation-id']).toBe('order-corr-502');
+    expect(response.body).toEqual({
+      error: {
+        code: 'UPSTREAM_UNAVAILABLE',
+        message: 'order-service is unavailable.',
+        correlationId: 'order-corr-502'
+      }
+    });
+  });
+
+  it('returns 504 when upstream order-service times out', async () => {
+    process.env.PROXY_TIMEOUT_MS = '10';
+    fetchMock.mockImplementation((_url, init: RequestInit) => new Promise((_resolve, reject) => {
+      const signal = init.signal as AbortSignal;
+      signal.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    }));
+
+    const response = await request(createApp())
+      .get('/api/orders/health')
+      .set('x-correlation-id', 'order-corr-504');
+
+    expect(response.status).toBe(504);
+    expect(response.headers['x-correlation-id']).toBe('order-corr-504');
+    expect(response.body).toEqual({
+      error: {
+        code: 'UPSTREAM_TIMEOUT',
+        message: 'order-service did not respond before the proxy timeout.',
+        correlationId: 'order-corr-504'
+      }
+    });
   });
 });
 

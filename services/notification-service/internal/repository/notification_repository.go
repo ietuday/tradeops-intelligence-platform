@@ -59,6 +59,20 @@ func (r *NotificationRepository) Create(ctx context.Context, notification domain
 	return notification, nil
 }
 
+func (r *NotificationRepository) DuplicateExists(ctx context.Context, sourceEventID, sourceEventType, channel string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM notifications
+			WHERE metadata->>'sourceEventId' = $1
+			  AND metadata->>'eventType' = $2
+			  AND channel = $3
+		)
+	`, sourceEventID, sourceEventType, channel).Scan(&exists)
+	return exists, err
+}
+
 func (r *NotificationRepository) List(ctx context.Context, filters ListFilters) ([]domain.Notification, error) {
 	where, args := buildFilters(filters)
 	args = append(args, filters.Limit, filters.Offset)
