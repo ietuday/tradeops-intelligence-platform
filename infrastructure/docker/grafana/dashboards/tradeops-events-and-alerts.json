@@ -1,0 +1,201 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (topic) (rate(surveillance_kafka_messages_total[5m]))",
+          "legendFormat": "{{topic}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Surveillance Events Consumed",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(notification_events_processed_total[5m])) or vector(0)",
+          "legendFormat": "processed",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(notification_events_failed_total[5m])) or vector(0)",
+          "legendFormat": "failed",
+          "refId": "B"
+        }
+      ],
+      "title": "Notification Events",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(surveillance_alerts_created_total[5m])) or vector(0)",
+          "legendFormat": "created",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(surveillance_alerts_acknowledged_total[5m])) or vector(0)",
+          "legendFormat": "acknowledged",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(surveillance_alerts_resolved_total[5m])) or vector(0)",
+          "legendFormat": "resolved",
+          "refId": "C"
+        }
+      ],
+      "title": "Surveillance Alert Lifecycle",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(notification_delivery_attempts_total[5m])) or vector(0)",
+          "legendFormat": "attempts",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(notification_delivery_failures_total[5m])) or vector(0)",
+          "legendFormat": "failures",
+          "refId": "B"
+        }
+      ],
+      "title": "Notification Delivery",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": [
+    "tradeops",
+    "events",
+    "alerts"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TradeOps Events And Alerts",
+  "uid": "tradeops-events-and-alerts",
+  "version": 1,
+  "weekStart": ""
+}

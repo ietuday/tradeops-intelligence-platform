@@ -4,6 +4,20 @@ TradeOps Intelligence Platform is an enterprise-grade local trading, risk, AI an
 
 The platform is designed to run completely on a local machine without any cloud account.
 
+Latest release: `v1.0.0` Production Readiness & Platform Hardening.
+
+## v1.0.0 Readiness Docs
+
+- [Architecture overview](docs/architecture/overview.md)
+- [Event-flow reference](docs/architecture/event-flow.md)
+- [Service dependency matrix](docs/architecture/service-dependency-matrix.md)
+- [API summary](docs/api/api-summary.md)
+- [Production-readiness checklist](docs/production-readiness/checklist.md)
+- [Troubleshooting guide](docs/troubleshooting.md)
+- [Interview walkthrough](docs/interview/project-walkthrough.md)
+- [v1.0.0 release notes](docs/release-notes/v1.0.0.md)
+- [End-to-end demo script](scripts/demo-e2e-tradeops.sh)
+
 ## Current Scope
 
 The repository currently includes the platform foundation, identity/RBAC, market data streaming, order management, portfolio management, strategy backtesting, portfolio risk analytics, trade surveillance alerting, and notification processing.
@@ -485,6 +499,16 @@ Check notification metrics:
 curl http://localhost:8091/metrics | grep '^notification_'
 curl http://localhost:8080/api/notifications/metrics | grep '^notification_'
 ```
+
+## Demo: End-To-End TradeOps Flow
+
+Run the guided platform demo after Docker Compose is healthy:
+
+```bash
+./scripts/demo-e2e-tradeops.sh
+```
+
+The script checks service health, uses a local demo JWT or explains the token requirement, publishes the large-order sample event when Redpanda is available, waits for a surveillance alert, acknowledges it, lists notifications, and marks one notification as `READ`.
 
 ## Notification Troubleshooting
 
