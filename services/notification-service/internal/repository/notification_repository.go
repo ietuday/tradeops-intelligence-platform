@@ -40,6 +40,25 @@ func NewNotificationRepository(db *pgxpool.Pool) *NotificationRepository {
 	return &NotificationRepository{db: db}
 }
 
+func (r *NotificationRepository) Create(ctx context.Context, notification domain.Notification) (domain.Notification, error) {
+	metadata, err := json.Marshal(notification.Metadata)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	err = r.db.QueryRow(ctx, `
+		INSERT INTO notifications (id, user_id, channel, priority, status, title, message, source, metadata, read_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12)
+		RETURNING id::text, user_id::text, channel, priority, status, title, message, source, metadata, read_at, created_at, updated_at
+	`, notification.ID, notification.UserID, notification.Channel, notification.Priority, notification.Status, notification.Title, notification.Message, notification.Source, string(metadata), notification.ReadAt, notification.CreatedAt, notification.UpdatedAt).Scan(
+		&notification.ID, &notification.UserID, &notification.Channel, &notification.Priority, &notification.Status, &notification.Title, &notification.Message, &notification.Source, &metadata, &notification.ReadAt, &notification.CreatedAt, &notification.UpdatedAt,
+	)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	notification.Metadata = decodeMetadata(metadata)
+	return notification, nil
+}
+
 func (r *NotificationRepository) List(ctx context.Context, filters ListFilters) ([]domain.Notification, error) {
 	where, args := buildFilters(filters)
 	args = append(args, filters.Limit, filters.Offset)
@@ -78,6 +97,19 @@ func (r *NotificationRepository) Get(ctx context.Context, id string) (domain.Not
 
 func (r *NotificationRepository) MarkRead(ctx context.Context, id string) (domain.Notification, error) {
 	return r.updateStatus(ctx, id, domain.StatusRead, true)
+}
+
+func (r *NotificationRepository) UpdateStatus(ctx context.Context, id, status string) (domain.Notification, error) {
+	return r.updateStatus(ctx, id, status, false)
+}
+
+func (r *NotificationRepository) RecordAttempt(ctx context.Context, attempt domain.DeliveryAttempt) (domain.DeliveryAttempt, error) {
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO notification_delivery_attempts (id, notification_id, channel, status, attempt_number, error_message, attempted_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id::text, notification_id::text, channel, status, attempt_number, error_message, attempted_at
+	`, attempt.ID, attempt.NotificationID, attempt.Channel, attempt.Status, attempt.AttemptNumber, attempt.ErrorMessage, attempt.AttemptedAt).Scan(&attempt.ID, &attempt.NotificationID, &attempt.Channel, &attempt.Status, &attempt.AttemptNumber, &attempt.ErrorMessage, &attempt.AttemptedAt)
+	return attempt, err
 }
 
 func (r *NotificationRepository) Retry(ctx context.Context, id string) (domain.Notification, error) {
@@ -191,6 +223,12 @@ func (r *NotificationRepository) updateStatus(ctx context.Context, id, status st
 	}
 	notification.Metadata = decodeMetadata(metadata)
 	return notification, nil
+}
+
+func (r *NotificationRepository) NextAttemptNumber(ctx context.Context, notificationID string) (int, error) {
+	var next int
+	err := r.db.QueryRow(ctx, `SELECT COALESCE(MAX(attempt_number) + 1, 1) FROM notification_delivery_attempts WHERE notification_id = $1`, notificationID).Scan(&next)
+	return next, err
 }
 
 func buildFilters(filters ListFilters) (string, []any) {

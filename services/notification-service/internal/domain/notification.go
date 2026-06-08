@@ -38,6 +38,20 @@ type Notification struct {
 	UpdatedAt time.Time      `json:"updatedAt"`
 }
 
+type NotificationEvent struct {
+	EventID        string         `json:"eventId"`
+	EventType      string         `json:"eventType"`
+	NotificationID string         `json:"notificationId"`
+	UserID         *string        `json:"userId,omitempty"`
+	Channel        string         `json:"channel"`
+	Priority       string         `json:"priority"`
+	Status         string         `json:"status"`
+	Source         string         `json:"source"`
+	Metadata       map[string]any `json:"metadata"`
+	OccurredAt     time.Time      `json:"occurredAt"`
+	CorrelationID  string         `json:"correlationId,omitempty"`
+}
+
 type DeliveryAttempt struct {
 	ID             string    `json:"id"`
 	NotificationID string    `json:"notificationId"`

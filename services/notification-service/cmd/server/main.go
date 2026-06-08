@@ -13,6 +13,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/config"
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/db"
 	httpapi "github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/http"
+	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/observability"
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/repository"
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/security"
@@ -45,7 +46,15 @@ func main() {
 	}
 
 	metrics := observability.NewMetrics()
-	notificationService := service.NewNotificationService(repository.NewNotificationRepository(pool), metrics)
+	producer := kafka.NewProducer(cfg.KafkaBrokers)
+	defer producer.Close()
+
+	httpClient := &http.Client{Timeout: time.Duration(cfg.WebhookTimeoutSeconds) * time.Second}
+	notificationService := service.NewNotificationServiceWithPublisher(repository.NewNotificationRepository(pool), metrics, producer, httpClient, logger, cfg.WebhookMaxRetries)
+	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, notificationService, logger)
+	consumer.Start(ctx)
+	defer consumer.Close()
+
 	router := httpapi.NewRouter(httpapi.Dependencies{
 		DB:        pool,
 		Metrics:   metrics,
