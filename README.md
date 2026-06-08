@@ -436,6 +436,7 @@ Verify the notification service directly and through the API Gateway:
 ```bash
 curl http://localhost:8091/health
 curl http://localhost:8080/api/notifications/health
+curl http://localhost:8080/api/notifications/ready
 ```
 
 Run the guided demo:
@@ -446,12 +447,64 @@ Run the guided demo:
 
 The script checks service health, publishes a sample `surveillance.alert.created` event when Redpanda is available through Docker Compose, lists notifications through the API Gateway, and marks one notification as `READ`.
 
-To publish the sample event manually:
+To publish the sample surveillance alert event manually:
 
 ```bash
 node -e 'const fs = require("fs"); process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync("docs/examples/notifications/surveillance-alert-created-high.json", "utf8"))) + "\n");' | \
   docker compose -f infrastructure/docker/docker-compose.yml exec -T redpanda rpk topic produce surveillance.alert.created
 ```
+
+List notifications with a user token:
+
+```bash
+TOKEN="<access token from /api/auth/login>"
+
+curl "http://localhost:8080/api/notifications?limit=20" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Mark a notification as read:
+
+```bash
+curl -X POST "http://localhost:8080/api/notifications/<notification-id>/mark-read" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+Configure a webhook preference:
+
+```bash
+curl -X PUT "http://localhost:8080/api/notifications/preferences" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data @docs/examples/notifications/notification-preference-webhook.json
+```
+
+Check notification metrics:
+
+```bash
+curl http://localhost:8091/metrics | grep '^notification_'
+curl http://localhost:8080/api/notifications/metrics | grep '^notification_'
+```
+
+## Notification Troubleshooting
+
+`notification-service` is not healthy:
+Check `docker compose -f infrastructure/docker/docker-compose.yml ps notification-service`, then inspect logs with `docker compose -f infrastructure/docker/docker-compose.yml logs notification-service`. Confirm `NOTIFICATION_DATABASE_URL`, `NOTIFICATION_JWT_SECRET`, Postgres, and Redpanda are available.
+
+Redpanda topic is not receiving events:
+Verify Redpanda is running and publish the sample payload manually with `rpk topic produce surveillance.alert.created`. Confirm the notification service logs show the consumer started.
+
+Webhook delivery failed:
+Confirm the saved webhook URL is reachable from inside the Docker network, returns a 2xx response, and does not exceed the sender timeout. Failed attempts are recorded in `notification_delivery_attempts`.
+
+Notification was not created:
+Use `docs/examples/notifications/surveillance-alert-created-high.json` as a known-good payload. Check `notification_events_failed_total`, service logs, and the `notifications` table for the target user.
+
+JWT/RBAC failure:
+Use a fresh token from `/api/auth/login` or set `NOTIFICATION_DEMO_TOKEN` before running `scripts/demo-notifications.sh`. Local services should share the same JWT secret as identity.
+
+Database migration missing:
+Restart `notification-service` after Postgres is healthy. The service runs its migration on startup; if the tables are still absent, check the database URL and startup logs for migration errors.
 
 ## Local Docker Environment
 

@@ -16,7 +16,7 @@ if [ -f "${ENV_FILE}" ]; then
   set +a
 fi
 
-JWT_SECRET="${NOTIFICATION_JWT_SECRET:-${IDENTITY_JWT_SECRET:-local_dev_jwt_secret_change_me_123456789}}"
+JWT_SECRET="${NOTIFICATION_JWT_SECRET:-${IDENTITY_JWT_SECRET:-}}"
 TOKEN="${NOTIFICATION_DEMO_TOKEN:-}"
 
 echo "TradeOps notification demo"
@@ -34,6 +34,11 @@ check_contains() {
 }
 
 make_demo_token() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "Node.js is required to mint a local demo JWT. Set NOTIFICATION_DEMO_TOKEN to skip token generation." >&2
+    return 1
+  fi
+
   node -e '
 const crypto = require("crypto");
 const secret = process.argv[1];
@@ -76,6 +81,22 @@ node -e 'const fs = require("fs"); process.stdout.write(JSON.stringify(JSON.pars
 EOF
 }
 
+print_token_help() {
+  cat <<EOF
+
+A JWT is required for notification list, mark-read, summary, and preference APIs.
+
+Set one of the following before rerunning this demo:
+
+  NOTIFICATION_DEMO_TOKEN=<access token from /api/auth/login>
+  NOTIFICATION_JWT_SECRET=<same local secret used by identity/api services>
+  IDENTITY_JWT_SECRET=<same local secret used by identity/api services>
+
+When ${ENV_FILE} exists, this script also loads JWT secrets from that file.
+
+EOF
+}
+
 find_notification() {
   curl -fsS "${API_URL}/api/notifications?status=SENT&limit=10" \
     -H "Authorization: Bearer ${TOKEN}" |
@@ -93,8 +114,13 @@ process.stdin.on("end", () => {
 
 check_contains "notification-service /health" "${NOTIFICATION_URL}/health" "notification-service"
 check_contains "API Gateway /api/notifications/health" "${API_URL}/api/notifications/health" "notification-service"
+check_contains "API Gateway /api/notifications/ready" "${API_URL}/api/notifications/ready" "ready"
 
 if [ -z "${TOKEN}" ]; then
+  if [ -z "${JWT_SECRET}" ]; then
+    print_token_help
+    exit 1
+  fi
   TOKEN="$(make_demo_token)"
 fi
 
