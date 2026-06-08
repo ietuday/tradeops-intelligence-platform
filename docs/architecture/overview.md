@@ -28,7 +28,7 @@ The platform is designed for portfolio and interview demonstration. It is not ye
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka, Prometheus client |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
-| Observability | Prometheus, Grafana, structured logs, correlation IDs |
+| Observability | Prometheus, Grafana, alert rules, SLO docs, structured logs, correlation IDs |
 | Runtime | Docker Compose |
 
 ## High-Level Architecture
@@ -149,7 +149,9 @@ flowchart LR
 - Each service exposes `/health`, `/ready`, and `/metrics`.
 - The API Gateway also proxies major service health, readiness, and metrics routes where supported.
 - Prometheus scrapes gateway and service metrics over the Docker Compose network.
-- Grafana reads Prometheus and includes platform overview dashboard exports.
+- Grafana reads Prometheus and includes dashboards for platform overview, API Gateway, event processing, surveillance/notifications, and audit/compliance.
+- Prometheus loads local alert rules for service availability, gateway failures/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures.
+- SLO-oriented docs live under `docs/observability/` and describe demo SLIs, dashboard usage, alert behavior, and runbook steps.
 - Correlation IDs flow through the gateway to help trace requests across services.
 
 ## Security Flow

@@ -1,0 +1,23 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "id": null,
+  "panels": [
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 }, "id": 1, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (topic) (rate(audit_events_processed_total[5m])) or vector(0)", "legendFormat": "{{topic}}", "refId": "A" }], "title": "Audit Events Processed", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 }, "id": 2, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (service_name, event_type, severity) (rate(audit_logs_created_total[5m])) or vector(0)", "legendFormat": "{{service_name}} {{event_type}} {{severity}}", "refId": "A" }], "title": "Audit Logs Created", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 }, "id": 3, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (topic) (rate(audit_events_failed_total[5m])) or vector(0)", "legendFormat": "{{topic}}", "refId": "A" }], "title": "Audit Event Failures", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 }, "id": 4, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (topic) (rate(audit_events_deadlettered_total[5m])) or vector(0)", "legendFormat": "{{topic}}", "refId": "A" }], "title": "Audit DLQ / Deadletter Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 }, "id": 5, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (format) (rate(audit_export_requests_total[5m])) or vector(0)", "legendFormat": "{{format}}", "refId": "A" }], "title": "Audit Export Requests", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 }, "id": 6, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (topic) (rate(audit_logs_duplicate_skipped_total[5m])) or vector(0)", "legendFormat": "{{topic}}", "refId": "A" }, { "expr": "sum(rate(audit_kafka_publish_errors_total[5m])) or vector(0)", "legendFormat": "publish errors", "refId": "B" }], "title": "Audit Duplicate Skips & Publish Errors", "type": "timeseries" }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": ["tradeops", "audit", "compliance"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TradeOps Audit & Compliance",
+  "uid": "tradeops-audit-compliance",
+  "version": 1
+}

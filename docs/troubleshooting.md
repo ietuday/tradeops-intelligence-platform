@@ -277,6 +277,21 @@ curl http://localhost:8091/metrics
 
 Fix: Confirm the service is running and that `infrastructure/docker/prometheus/prometheus.yml` points at the correct Compose service name and port.
 
+## Prometheus Alert Rules Missing
+
+Symptom: Prometheus is healthy but `http://localhost:9090/rules` does not show TradeOps alert groups.
+
+Possible cause: Rule files are not mounted, `rule_files` is missing, or the alert YAML is invalid.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml config
+docker compose -f infrastructure/docker/docker-compose.yml logs prometheus
+```
+
+Fix: Confirm `infrastructure/docker/prometheus/prometheus.yml` loads `/etc/prometheus/rules/*.yml` and Compose mounts `./prometheus/rules:/etc/prometheus/rules:ro`.
+
 ## Grafana Dashboard Not Loading
 
 Symptom: Grafana starts but TradeOps dashboards are missing.
@@ -291,6 +306,21 @@ find infrastructure/docker/grafana -type f
 ```
 
 Fix: Restart Grafana and confirm dashboard JSON files are mounted under the configured provisioning path.
+
+## Grafana Dashboard Shows No Data
+
+Symptom: A TradeOps dashboard loads but panels are empty or show zero.
+
+Possible cause: The stack has not generated matching traffic/events yet, Prometheus targets are down, or the selected time range does not include demo activity.
+
+Useful command:
+
+```bash
+./scripts/demo-observability.sh
+curl http://localhost:9090/api/v1/targets
+```
+
+Fix: Run `make smoke` for health traffic, then run focused demos such as surveillance, notifications, and audit to generate event metrics.
 
 ## Go Tests Fail Due Module Download
 

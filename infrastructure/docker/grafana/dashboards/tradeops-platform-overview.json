@@ -1,7 +1,5 @@
 {
-  "annotations": {
-    "list": []
-  },
+  "annotations": { "list": [] },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -9,172 +7,24 @@
   "links": [],
   "liveNow": false,
   "panels": [
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "expr": "up",
-          "legendFormat": "{{job}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Service Up Status",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (job) (rate(http_requests_total[5m]))",
-          "legendFormat": "{{job}}",
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP Requests Per Second",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum by (le, job) (rate(http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p95 {{job}}",
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP Request Duration p95",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(kafka_publish_errors_total[5m])) or vector(0)",
-          "legendFormat": "publish errors",
-          "refId": "A"
-        }
-      ],
-      "title": "Kafka Publish Errors",
-      "type": "timeseries"
-    }
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 }, "id": 1, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "up", "legendFormat": "{{job}}", "refId": "A" }], "title": "Service Up Status", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 }, "id": 2, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (route) (rate(tradeops_api_gateway_http_requests_total[5m])) or vector(0)", "legendFormat": "{{route}}", "refId": "A" }, { "expr": "sum(rate(tradeops_identity_service_http_requests_total[5m])) or vector(0)", "legendFormat": "identity", "refId": "B" }], "title": "HTTP Request Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 }, "id": 3, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum(rate(tradeops_api_gateway_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0)", "legendFormat": "gateway 5xx", "refId": "A" }, { "expr": "sum(rate(kafka_publish_errors_total[5m])) or vector(0)", "legendFormat": "kafka publish errors", "refId": "B" }], "title": "Error Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 }, "id": 4, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "histogram_quantile(0.95, sum by (le) (rate(tradeops_api_gateway_http_request_duration_seconds_bucket[5m]))) or vector(0)", "legendFormat": "gateway p95", "refId": "A" }, { "expr": "histogram_quantile(0.95, sum by (le) (rate(tradeops_identity_service_http_request_duration_seconds_bucket[5m]))) or vector(0)", "legendFormat": "identity p95", "refId": "B" }], "title": "p95 Latency", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 }, "id": 5, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum(rate(portfolio_event_processing_attempts_total{status=\"success\"}[5m])) or vector(0)", "legendFormat": "portfolio", "refId": "A" }, { "expr": "sum(rate(surveillance_event_processing_attempts_total{status=\"success\"}[5m])) or vector(0)", "legendFormat": "surveillance", "refId": "B" }, { "expr": "sum(rate(notification_event_processing_attempts_total{status=\"success\"}[5m])) or vector(0)", "legendFormat": "notification", "refId": "C" }, { "expr": "sum(rate(audit_event_processing_attempts_total{status=\"success\"}[5m])) or vector(0)", "legendFormat": "audit", "refId": "D" }], "title": "Event Processing Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 }, "id": 6, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum(rate(portfolio_events_deadlettered_total[5m])) or vector(0)", "legendFormat": "portfolio dlq", "refId": "A" }, { "expr": "sum(rate(surveillance_events_deadlettered_total[5m])) or vector(0)", "legendFormat": "surveillance dlq", "refId": "B" }, { "expr": "sum(rate(notification_events_deadlettered_total[5m])) or vector(0)", "legendFormat": "notification dlq", "refId": "C" }, { "expr": "sum(rate(audit_events_deadlettered_total[5m])) or vector(0)", "legendFormat": "audit dlq", "refId": "D" }], "title": "DLQ / Deadletter Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 21 }, "id": 7, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum(rate(surveillance_alerts_created_total[5m])) or vector(0)", "legendFormat": "alerts", "refId": "A" }, { "expr": "sum(rate(notification_delivery_failures_total[5m])) or vector(0)", "legendFormat": "notification failures", "refId": "B" }], "title": "Surveillance & Notification Signals", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 21 }, "id": 8, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (service_name, severity) (rate(audit_logs_created_total[5m])) or vector(0)", "legendFormat": "{{service_name}} {{severity}}", "refId": "A" }], "title": "Audit Logs Created", "type": "timeseries" }
   ],
   "refresh": "15s",
   "schemaVersion": 39,
-  "tags": [
-    "tradeops",
-    "platform"
-  ],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-30m",
-    "to": "now"
-  },
+  "tags": ["tradeops", "overview", "slo"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
   "title": "TradeOps Platform Overview",
   "uid": "tradeops-platform-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

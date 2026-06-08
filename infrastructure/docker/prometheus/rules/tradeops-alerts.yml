@@ -1,0 +1,108 @@
+groups:
+  - name: tradeops-service-availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TradeOps service target is down"
+          description: "{{ $labels.job }} has been down for at least 1 minute."
+
+  - name: tradeops-api-gateway
+    rules:
+      - alert: HighGateway5xxRate
+        expr: sum(rate(tradeops_api_gateway_http_requests_total{status_code=~"5.."}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API Gateway 5xx rate"
+          description: "API Gateway 5xx responses are above the local demo threshold."
+      - alert: HighGatewayLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(tradeops_api_gateway_http_request_duration_seconds_bucket[5m]))) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API Gateway p95 latency"
+          description: "API Gateway p95 latency is above 500ms."
+      - alert: GatewayUpstreamTimeouts
+        expr: sum(increase(tradeops_api_gateway_proxy_upstream_timeouts_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gateway upstream timeout detected"
+          description: "API Gateway recorded upstream proxy timeouts."
+
+  - name: tradeops-event-processing
+    rules:
+      - alert: EventProcessingFailures
+        expr: sum(increase(portfolio_event_processing_attempts_total{status="failed"}[5m])) + sum(increase(surveillance_event_processing_attempts_total{status="failed"}[5m])) + sum(increase(notification_event_processing_attempts_total{status="failed"}[5m])) + sum(increase(audit_event_processing_attempts_total{status="failed"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Event processing failures detected"
+          description: "One or more event consumers recorded failed processing attempts."
+      - alert: DLQMessagesDetected
+        expr: sum(increase(portfolio_events_deadlettered_total[5m])) + sum(increase(surveillance_events_deadlettered_total[5m])) + sum(increase(notification_events_deadlettered_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead-letter messages detected"
+          description: "A non-audit event consumer published messages to a DLQ."
+      - alert: EventRetrySpike
+        expr: sum(increase(portfolio_events_retried_total[5m])) + sum(increase(surveillance_events_retried_total[5m])) + sum(increase(notification_events_retried_total[5m])) + sum(increase(audit_events_retried_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Event retry spike"
+          description: "Event retry volume is above the local demo threshold."
+
+  - name: tradeops-surveillance-notification-audit
+    rules:
+      - alert: SurveillanceAlertSpike
+        expr: sum(increase(surveillance_alerts_created_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Surveillance alert spike"
+          description: "Surveillance alert creation is above the local demo threshold."
+      - alert: NotificationDeliveryFailures
+        expr: sum(increase(notification_delivery_failures_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Notification delivery failure detected"
+          description: "Notification delivery failures increased."
+      - alert: WebhookDeliveryFailures
+        expr: sum(increase(notification_delivery_attempts_total[5m])) > 0 and sum(increase(notification_delivery_failures_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Webhook or notification delivery failures detected"
+          description: "Delivery attempts and failures increased together."
+      - alert: AuditIngestionFailures
+        expr: sum(increase(audit_events_failed_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Audit ingestion failure detected"
+          description: "Audit-service failed to process one or more source events."
+      - alert: AuditDLQMessagesDetected
+        expr: sum(increase(audit_events_deadlettered_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Audit DLQ messages detected"
+          description: "Audit-service published source events to audit.dlq."

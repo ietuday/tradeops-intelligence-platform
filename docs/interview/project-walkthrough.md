@@ -8,7 +8,7 @@ TradeOps Intelligence Platform is a local microservices trading intelligence sys
 
 The platform is organized around independent services. The API Gateway is the client entry point. Identity issues JWTs. The order service handles order creation with idempotency. A filled order emits an event that portfolio consumes to update holdings and publish portfolio updates. Risk and strategy services generate analytics and events. Surveillance consumes market, order, portfolio, risk, and strategy events, runs rules such as large order and abnormal price movement detection, and creates alert lifecycle events. Notification consumes surveillance alert events, creates user notifications, supports preferences, and records delivery attempts. Audit consumes important user, business, and system events and stores searchable audit logs.
 
-Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, and Redpanda.
+Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports for platform health, gateway traffic, event processing, surveillance/notifications, and audit/compliance, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, and Redpanda.
 
 ## Architecture Explanation
 
@@ -34,7 +34,7 @@ The order service accepts an `Idempotency-Key` header during order creation. Rep
 
 ## How Observability Is Handled
 
-Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network. Grafana reads Prometheus and includes platform dashboard exports. The gateway propagates correlation IDs so logs and requests can be connected across services.
+Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs and requests can be connected across services.
 
 ## How Kafka/Redpanda Is Used
 
@@ -60,13 +60,15 @@ The audit service consumes important platform events, maps them to normalized ac
 4. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
 5. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
 6. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
-7. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+7. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
+8. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
 - The system separates synchronous command/query APIs from asynchronous domain events.
 - Idempotency is handled at order creation, where duplicate side effects matter most.
 - Services own their persistence and expose health/readiness/metrics consistently.
+- Observability is treated as a first-class platform capability with dashboards, alert rules, SLO docs, and runbooks.
 - Event consumers are defensive so bad demo payloads do not crash the process.
 - The gateway keeps external routing stable while services retain internal base paths.
 - Audit logging demonstrates compliance-style traceability without coupling business services to synchronous audit writes.
@@ -77,6 +79,6 @@ The audit service consumes important platform events, maps them to normalized ac
 - This is a local Compose platform, not a production deployment.
 - Kafka schemas are documented by examples but not enforced by a schema registry.
 - There is no distributed tracing yet.
-- Grafana dashboards are useful starters, not full SLO dashboards.
+- Consumer lag metrics are not implemented yet; current event-health views use retry, failure, duplicate, and DLQ metrics.
 - Email delivery is mock-only.
 - Kubernetes/Helm, CI/CD, managed secrets, TLS ingress, and production database isolation are future work.

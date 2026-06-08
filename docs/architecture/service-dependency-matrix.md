@@ -19,3 +19,5 @@
 - Most services listen on `8080` inside Docker; surveillance, notification, and audit intentionally use `8090`, `8091`, and `8092`.
 - The API Gateway is the preferred entry point for client traffic.
 - Direct service ports are useful for smoke tests and troubleshooting.
+- Prometheus scrapes every backend service directly through the Compose network and loads alert rules from `infrastructure/docker/prometheus/rules/`.
+- Grafana dashboards are provisioned from `infrastructure/docker/grafana/dashboards/`; see `docs/observability/grafana-dashboards.md`.

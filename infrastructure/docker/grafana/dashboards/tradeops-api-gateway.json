@@ -1,0 +1,23 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "id": null,
+  "panels": [
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 }, "id": 1, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (route, method) (rate(tradeops_api_gateway_http_requests_total[5m])) or vector(0)", "legendFormat": "{{method}} {{route}}", "refId": "A" }], "title": "Gateway Request Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 }, "id": 2, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (status_code) (rate(tradeops_api_gateway_http_requests_total{status_code=~\"4..|5..\"}[5m])) or vector(0)", "legendFormat": "{{status_code}}", "refId": "A" }], "title": "Gateway 4xx / 5xx Rate", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 7 }, "id": 3, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, route) (rate(tradeops_api_gateway_http_request_duration_seconds_bucket[5m]))) or vector(0)", "legendFormat": "p95 {{route}}", "refId": "A" }], "title": "Gateway p95 Latency", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 }, "id": 4, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (service, status) (rate(tradeops_api_gateway_proxy_upstream_errors_total[5m])) or vector(0)", "legendFormat": "{{service}} {{status}}", "refId": "A" }], "title": "Proxy Upstream Errors", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 }, "id": 5, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (service) (rate(tradeops_api_gateway_proxy_upstream_timeouts_total[5m])) or vector(0)", "legendFormat": "{{service}}", "refId": "A" }], "title": "Proxy Upstream Timeouts", "type": "timeseries" },
+    { "datasource": { "type": "prometheus", "uid": "prometheus" }, "fieldConfig": { "defaults": {}, "overrides": [] }, "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 }, "id": 6, "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } }, "targets": [{ "expr": "sum by (route) (tradeops_api_gateway_http_requests_total) or vector(0)", "legendFormat": "{{route}}", "refId": "A" }], "title": "Requests By Route", "type": "timeseries" }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": ["tradeops", "api-gateway"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TradeOps API Gateway",
+  "uid": "tradeops-api-gateway",
+  "version": 1
+}

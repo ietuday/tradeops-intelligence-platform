@@ -57,10 +57,12 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 
 - [x] Services expose Prometheus metrics.
 - [x] Docker Compose includes Prometheus and Grafana.
-- [x] Basic Grafana dashboard exports are included.
+- [x] Grafana dashboard exports cover platform overview, API Gateway, event processing, surveillance/notifications, and audit/compliance.
+- [x] Prometheus alert rules cover local service availability, gateway failures/latency, event failures, DLQ events, notifications, and audit ingestion.
+- [x] SLO-oriented docs and an observability runbook are included.
 - [x] Correlation IDs flow through gateway requests.
 - [ ] Add distributed tracing.
-- [ ] Add alert rules for service health, latency, and event failures.
+- [ ] Add Alertmanager routing, ownership, and escalation policies.
 
 ## Logging
 
@@ -74,9 +76,10 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 
 - [x] HTTP, Kafka, surveillance, risk, order, portfolio, market, and notification metrics are exposed where implemented.
 - [x] Prometheus scrape targets cover all backend services.
-- [ ] Add SLO-oriented dashboards.
-- [ ] Add service-specific alert thresholds.
+- [x] SLO-oriented dashboards are included for local demo workflows.
+- [x] Service and workflow alert thresholds are documented for local demos.
 - [ ] Add business KPI dashboards for trading workflows.
+- [ ] Add Kafka consumer lag metrics.
 
 ## Health And Readiness
 
@@ -112,9 +115,10 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Compose starts the full local platform.
 - [x] Compose includes infrastructure dependencies.
 - [x] Compose config validation passes.
+- [x] Compose mounts Prometheus alert rules and Grafana dashboard provisioning for local observability demos.
 - [ ] Compose is not a production orchestrator.
 - [ ] Add backup/restore runbooks for stateful services.
-- [ ] Add persistent operational dashboards and alerting rules.
+- [ ] Add persistent production alert routing and dashboard ownership.
 
 ## Deployment Gaps
 

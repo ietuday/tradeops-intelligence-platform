@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.3.0` Audit Trail & Compliance Reporting.
+Latest release: `v1.4.0` Advanced Observability & SLO Dashboards.
 
 ## Architecture Summary
 
@@ -21,7 +21,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
-| Observability | Prometheus, Grafana, health/readiness endpoints, metrics |
+| Observability | Prometheus, Grafana, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Runtime | Docker Compose, Makefile, Bash demo/smoke scripts |
 
 ## Services
@@ -81,6 +81,7 @@ Run focused demos:
 ./scripts/demo-notifications.sh
 ./scripts/demo-audit.sh
 ./scripts/demo-reliability.sh
+./scripts/demo-observability.sh
 ```
 
 Validate scripts without running the platform:
@@ -92,6 +93,7 @@ bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
+bash -n scripts/demo-observability.sh
 ```
 
 ## Local URLs
@@ -105,6 +107,26 @@ bash -n scripts/demo-reliability.sh
 | Angular Shell Placeholder | http://localhost:4200 |
 | React Dashboard Placeholder | http://localhost:4300 |
 
+## Observability & SLOs
+
+TradeOps includes Prometheus scraping, Grafana dashboard provisioning, local alert rules, and SLO-oriented documentation for demo and interview walkthroughs.
+
+| Asset | Location |
+| --- | --- |
+| Metrics catalog | [docs/observability/metrics-catalog.md](docs/observability/metrics-catalog.md) |
+| Grafana dashboard guide | [docs/observability/grafana-dashboards.md](docs/observability/grafana-dashboards.md) |
+| Prometheus alert guide | [docs/observability/prometheus-alerts.md](docs/observability/prometheus-alerts.md) |
+| SLO guide | [docs/observability/slo-guide.md](docs/observability/slo-guide.md) |
+| Observability runbook | [docs/observability/runbook.md](docs/observability/runbook.md) |
+| Alert rules | [infrastructure/docker/prometheus/rules/tradeops-alerts.yml](infrastructure/docker/prometheus/rules/tradeops-alerts.yml) |
+| Grafana dashboards | [infrastructure/docker/grafana/dashboards](infrastructure/docker/grafana/dashboards) |
+
+Run the read-only observability demo:
+
+```bash
+./scripts/demo-observability.sh
+```
+
 ## Documentation
 
 - [Architecture overview](docs/architecture/overview.md)
@@ -113,6 +135,11 @@ bash -n scripts/demo-reliability.sh
 - [API summary](docs/api/api-summary.md)
 - [Audit trail](docs/audit/audit-trail.md)
 - [CI/CD quality gates](docs/ci-cd/quality-gates.md)
+- [Observability metrics catalog](docs/observability/metrics-catalog.md)
+- [Grafana dashboard guide](docs/observability/grafana-dashboards.md)
+- [Prometheus alert guide](docs/observability/prometheus-alerts.md)
+- [SLO guide](docs/observability/slo-guide.md)
+- [Observability runbook](docs/observability/runbook.md)
 - [Reliability patterns](docs/reliability/resilience-patterns.md)
 - [Dead-letter topics](docs/reliability/dead-letter-topics.md)
 - [Graceful shutdown](docs/reliability/graceful-shutdown.md)
@@ -126,6 +153,7 @@ bash -n scripts/demo-reliability.sh
 
 ## Release Notes
 
+- [v1.4.0 Advanced Observability & SLO Dashboards](docs/release-notes/v1.4.0.md)
 - [v1.3.0 Audit Trail & Compliance Reporting](docs/release-notes/v1.3.0.md)
 - [v1.2.0 Reliability, Resilience & Failure Handling](docs/release-notes/v1.2.0.md)
 - [v1.1.0 CI/CD, Security Scanning & Quality Gates](docs/release-notes/v1.1.0.md)
@@ -160,7 +188,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -177,9 +205,9 @@ It is still a local portfolio platform, not a real production deployment. See th
 
 - Add CI/CD pipeline documentation and automated release checks.
 - Add OpenAPI specs for gateway routes.
-- Add distributed tracing and alert rules.
+- Add distributed tracing.
 - Add schema validation or schema registry for Kafka events.
-- Add richer Grafana dashboards and portfolio screenshots.
+- Add richer portfolio screenshots.
 - Add Kubernetes/Helm only after the local platform is stable enough to justify it.
 
 ## Validation
@@ -198,4 +226,5 @@ bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
+bash -n scripts/demo-observability.sh
 ```
