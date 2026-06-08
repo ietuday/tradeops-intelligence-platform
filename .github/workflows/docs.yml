@@ -1,0 +1,48 @@
+name: Docs
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  docs-validation:
+    name: Documentation validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Required documentation files exist
+        run: |
+          required_files=(
+            README.md
+            docs/architecture/overview.md
+            docs/architecture/event-flow.md
+            docs/architecture/service-dependency-matrix.md
+            docs/api/api-summary.md
+            docs/production-readiness/checklist.md
+            docs/troubleshooting.md
+            docs/interview/project-walkthrough.md
+          )
+
+          missing=0
+          for file in "${required_files[@]}"; do
+            if [ -f "${file}" ]; then
+              echo "OK: ${file}"
+            else
+              echo "MISSING: ${file}"
+              missing=1
+            fi
+          done
+
+          exit "${missing}"
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        continue-on-error: true
+        with:
+          globs: |
+            README.md
+            docs/**/*.md

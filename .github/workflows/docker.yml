@@ -1,0 +1,63 @@
+name: Docker
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  docker-build-api-gateway:
+    name: Build API Gateway image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t tradeops/api-gateway:ci services/api-gateway
+
+  docker-build-go-services:
+    name: Build Go service image (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: identity-service
+            image: tradeops/identity-service:ci
+          - service: market-data-service
+            image: tradeops/market-data-service:ci
+          - service: order-service
+            image: tradeops/order-service:ci
+          - service: portfolio-service
+            image: tradeops/portfolio-service:ci
+          - service: surveillance-service
+            image: tradeops/surveillance-service:ci
+          - service: notification-service
+            image: tradeops/notification-service:ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t ${{ matrix.image }} services/${{ matrix.service }}
+
+  docker-build-python-services:
+    name: Build Python service image (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: strategy-service
+            image: tradeops/strategy-service:ci
+          - service: risk-engine-service
+            image: tradeops/risk-engine-service:ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t ${{ matrix.image }} services/${{ matrix.service }}

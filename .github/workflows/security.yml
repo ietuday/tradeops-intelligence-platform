@@ -1,0 +1,139 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Suspicious assignment grep
+        run: |
+          set +e
+          matches="$(grep -RInE '(JWT_SECRET|PASSWORD|API_KEY|PRIVATE_KEY)=' \
+            --exclude-dir=.git \
+            --exclude-dir=node_modules \
+            --exclude-dir=.venv \
+            --exclude='*.md' \
+            . || true)"
+          if [ -n "${matches}" ]; then
+            echo "Potential secret-like assignments found. Review before release:"
+            echo "${matches}"
+          else
+            echo "No suspicious secret-like assignments found."
+          fi
+
+  go-security:
+    name: Go vet and govulncheck (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - identity-service
+          - market-data-service
+          - order-service
+          - portfolio-service
+          - surveillance-service
+          - notification-service
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: "$(go env GOPATH)/bin/govulncheck" ./...
+
+  node-security:
+    name: Node dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api-gateway
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: services/api-gateway/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit high and critical vulnerabilities
+        run: npm audit --audit-level=high
+
+  python-security:
+    name: Python dependency audit (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - strategy-service
+          - risk-engine-service
+    defaults:
+      run:
+        working-directory: services/${{ matrix.service }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/${{ matrix.service }}/requirements.txt
+
+      - name: Install audit tooling
+        run: python -m pip install --upgrade pip pip-audit
+
+      - name: Install service dependencies if present
+        run: |
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            echo "No requirements.txt found; skipping dependency install."
+          fi
+
+      - name: Run pip-audit
+        run: pip-audit

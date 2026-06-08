@@ -106,6 +106,7 @@ bash -n scripts/demo-e2e-tradeops.sh
 - [Event-flow reference](docs/architecture/event-flow.md)
 - [Service dependency matrix](docs/architecture/service-dependency-matrix.md)
 - [API summary](docs/api/api-summary.md)
+- [CI/CD quality gates](docs/ci-cd/quality-gates.md)
 - [Production-readiness checklist](docs/production-readiness/checklist.md)
 - [Troubleshooting guide](docs/troubleshooting.md)
 - [Repository cleanup guide](docs/release/repository-cleanup.md)
@@ -116,9 +117,35 @@ bash -n scripts/demo-e2e-tradeops.sh
 
 ## Release Notes
 
+- [v1.1.0 CI/CD, Security Scanning & Quality Gates](docs/release-notes/v1.1.0.md)
 - [v1.0.1 GitHub Release & Portfolio Polish](docs/release-notes/v1.0.1.md)
 - [v1.0.0 Production Readiness & Platform Hardening](docs/release-notes/v1.0.0.md)
 - [Earlier release notes](docs/release-notes/)
+
+## CI/CD & Quality Gates
+
+GitHub Actions workflows live under `.github/workflows/`:
+
+| Workflow | Purpose |
+| --- | --- |
+| `ci.yml` | Node, Go, Python, script, and Docker Compose validation. |
+| `security.yml` | Secret scanning, vulnerability checks, audits, and static security checks. |
+| `docker.yml` | Builds all service Docker images with local CI tags. |
+| `docs.yml` | Validates required docs and runs non-blocking Markdown linting. |
+
+Common local commands:
+
+```bash
+make help
+make validate-scripts
+make compose-config
+make test-node
+make test-go
+make test-python
+make docker-build
+```
+
+See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, security scanning notes, and local validation guidance.
 
 ## Production-Readiness Note
 

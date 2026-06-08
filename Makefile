@@ -1,7 +1,95 @@
-DOCKER_COMPOSE_FILE=infrastructure/docker/docker-compose.yml
-DOCKER_ENV_FILE=infrastructure/docker/.env
+DOCKER_COMPOSE_FILE := infrastructure/docker/docker-compose.yml
+DOCKER_ENV_FILE := infrastructure/docker/.env
 
-.PHONY: dev-up dev-down logs ps test smoke
+GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
+PYTHON_SERVICES := strategy-service risk-engine-service
+
+.PHONY: help test test-go test-node test-python compose-config validate-scripts smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+
+help:
+	@echo "TradeOps local commands"
+	@echo ""
+	@echo "  make test                 Run Node, Go, and Python tests"
+	@echo "  make test-go              Run Go service tests"
+	@echo "  make test-node            Run API Gateway tests"
+	@echo "  make test-python          Run Python service tests when tests exist"
+	@echo "  make compose-config       Validate Docker Compose config"
+	@echo "  make validate-scripts     Validate Bash script syntax"
+	@echo "  make smoke                Run smoke test against a running stack"
+	@echo "  make demo-surveillance    Run surveillance demo"
+	@echo "  make demo-notifications   Run notification demo"
+	@echo "  make demo-e2e             Run end-to-end demo"
+	@echo "  make docker-build         Build service Docker images locally"
+	@echo "  make clean                Explain cleanup options"
+	@echo "  make clean-local          Remove local/generated folders"
+	@echo "  make dev-up               Start local Docker Compose stack"
+	@echo "  make dev-down             Stop local Docker Compose stack"
+
+test: test-node test-go test-python
+
+test-node:
+	cd services/api-gateway && npm test -- --runInBand
+
+test-go:
+	@for service in $(GO_SERVICES); do \
+		echo "==> go test services/$$service"; \
+		(cd services/$$service && go test ./...) || exit $$?; \
+	done
+
+test-python:
+	@for service in $(PYTHON_SERVICES); do \
+		echo "==> pytest services/$$service"; \
+		if [ -d services/$$service/tests ]; then \
+			(cd services/$$service && python -m pytest) || exit $$?; \
+		else \
+			echo "No tests directory for $$service; skipping."; \
+		fi; \
+	done
+
+compose-config:
+	docker compose -f $(DOCKER_COMPOSE_FILE) config
+
+validate-scripts:
+	bash -n scripts/smoke-test.sh
+	bash -n scripts/demo-surveillance.sh
+	bash -n scripts/demo-notifications.sh
+	bash -n scripts/demo-e2e-tradeops.sh
+
+smoke:
+	./scripts/smoke-test.sh
+
+demo-surveillance:
+	./scripts/demo-surveillance.sh
+
+demo-notifications:
+	./scripts/demo-notifications.sh
+
+demo-e2e:
+	./scripts/demo-e2e-tradeops.sh
+
+docker-build:
+	docker build -t tradeops/api-gateway:ci services/api-gateway
+	docker build -t tradeops/identity-service:ci services/identity-service
+	docker build -t tradeops/market-data-service:ci services/market-data-service
+	docker build -t tradeops/order-service:ci services/order-service
+	docker build -t tradeops/portfolio-service:ci services/portfolio-service
+	docker build -t tradeops/surveillance-service:ci services/surveillance-service
+	docker build -t tradeops/notification-service:ci services/notification-service
+	docker build -t tradeops/strategy-service:ci services/strategy-service
+	docker build -t tradeops/risk-engine-service:ci services/risk-engine-service
+
+clean:
+	@echo "No files removed. Use 'make clean-local' to remove generated local folders."
+	@echo "See docs/release/repository-cleanup.md before publishing."
+
+clean-local:
+	find . -name node_modules -type d -prune -exec rm -rf {} +
+	find . -name dist -type d -prune -exec rm -rf {} +
+	find . -name coverage -type d -prune -exec rm -rf {} +
+	find . -name .venv -type d -prune -exec rm -rf {} +
+	find . -name __pycache__ -type d -prune -exec rm -rf {} +
+	find . -name .pytest_cache -type d -prune -exec rm -rf {} +
+	find . -name '*.log' -type f -delete
 
 dev-up:
 	docker compose --env-file $(DOCKER_ENV_FILE) -f $(DOCKER_COMPOSE_FILE) up --build -d
@@ -14,9 +102,3 @@ logs:
 
 ps:
 	docker compose --env-file $(DOCKER_ENV_FILE) -f $(DOCKER_COMPOSE_FILE) ps
-
-test:
-	cd services/api-gateway && npm test
-
-smoke:
-	./scripts/smoke-test.sh
