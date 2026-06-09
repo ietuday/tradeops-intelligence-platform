@@ -83,6 +83,12 @@ make ps
 make smoke
 ```
 
+Validate Compose config in CI-style mode without relying on a local `.env`:
+
+```bash
+docker compose --env-file infrastructure/docker/.env.example -f infrastructure/docker/docker-compose.yml config
+```
+
 Stop the platform:
 
 ```bash
@@ -400,7 +406,7 @@ Recommended release validation:
 (cd services/notification-service && go test ./...)
 (cd services/audit-service && go test ./...)
 (cd services/api-gateway && npm test -- --runInBand)
-docker compose -f infrastructure/docker/docker-compose.yml config
+docker compose --env-file infrastructure/docker/.env.example -f infrastructure/docker/docker-compose.yml config
 bash -n scripts/run-load-tests.sh
 bash -n scripts/perf-smoke.sh
 bash -n scripts/smoke-test.sh

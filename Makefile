@@ -1,5 +1,6 @@
 DOCKER_COMPOSE_FILE := infrastructure/docker/docker-compose.yml
 DOCKER_ENV_FILE := infrastructure/docker/.env
+DOCKER_ENV_EXAMPLE_FILE := infrastructure/docker/.env.example
 HELM_CHART := infrastructure/helm/tradeops-platform
 
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
@@ -53,7 +54,7 @@ test-python:
 	done
 
 compose-config:
-	docker compose -f $(DOCKER_COMPOSE_FILE) config
+	docker compose --env-file $(DOCKER_ENV_EXAMPLE_FILE) -f $(DOCKER_COMPOSE_FILE) config
 
 validate-scripts:
 	bash -n scripts/security-check.sh
