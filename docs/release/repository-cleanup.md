@@ -54,6 +54,7 @@ rm -rf tmp/
 git status --short
 git check-ignore node_modules dist .venv __pycache__ .pytest_cache coverage tmp .env infrastructure/docker/.env
 git check-ignore -v infrastructure/docker/.env
+./scripts/security-check.sh
 ```
 
 Expected tracked release files that should remain:

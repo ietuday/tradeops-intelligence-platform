@@ -1,10 +1,10 @@
 # TradeOps Intelligence Platform
 
-Enterprise-style local trading intelligence platform with microservices, event-driven workflows, JWT/RBAC, audit trails, observability, demo scripts, and production-readiness documentation.
+TradeOps Intelligence Platform is an enterprise-style event-driven trading microservices platform built to demonstrate senior backend engineering concepts including Go microservices, API Gateway, JWT/RBAC, Kafka/Redpanda, MQTT ingestion, PostgreSQL, Redis, observability, reliability, audit trails, notifications, security hardening, Helm deployment readiness, and performance testing.
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.9.0` Performance Testing, Load Testing & Capacity Planning.
+Current release: `v2.0.0` Final Portfolio Release.
 
 ## Architecture Summary
 
@@ -40,6 +40,27 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Surveillance Service | Rule-based alerts from order/market/risk events | `8090` |
 | Notification Service | Alert notifications, preferences, webhook/mock email delivery | `8091` |
 | Audit Service | Searchable audit logs, summaries, exports, compliance event trail | `8092` |
+
+## Feature Highlights
+
+- Event-driven trading workflow across orders, portfolio, risk, surveillance, notifications, and audit.
+- Go microservices for transactional domains, Python services for analytics-oriented domains, and a Node.js API Gateway.
+- JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
+- Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
+- Docker Compose local runtime with optional Helm/Kubernetes deployment-readiness artifacts.
+
+## Portfolio Pack
+
+| Resource | Link |
+| --- | --- |
+| Project overview | [docs/portfolio/project-overview.md](docs/portfolio/project-overview.md) |
+| Interview pitch | [docs/portfolio/interview-pitch.md](docs/portfolio/interview-pitch.md) |
+| Demo walkthrough | [docs/portfolio/demo-walkthrough.md](docs/portfolio/demo-walkthrough.md) |
+| Resume bullets | [docs/portfolio/resume-bullets.md](docs/portfolio/resume-bullets.md) |
+| LinkedIn/GitHub summary | [docs/portfolio/linkedin-github-summary.md](docs/portfolio/linkedin-github-summary.md) |
+| Interview Q&A | [docs/interview/tradeops-interview-qa.md](docs/interview/tradeops-interview-qa.md) |
+| Architecture summary | [docs/portfolio/architecture-summary.md](docs/portfolio/architecture-summary.md) |
+| Final validation checklist | [docs/portfolio/final-validation-checklist.md](docs/portfolio/final-validation-checklist.md) |
 
 ## Quick Start
 
@@ -235,8 +256,13 @@ Validate the chart:
 make validate-helm
 ```
 
+## Screenshots
+
+No screenshots are committed by default. Use the [portfolio screenshots guide](docs/portfolio/screenshots-guide.md) for suggested captures such as Docker Compose services, Prometheus targets, Grafana dashboards, Redpanda topics, API responses, demo output, Helm template output, and GitHub Actions status.
+
 ## Documentation
 
+- [Documentation index](docs/index.md)
 - [Architecture overview](docs/architecture/overview.md)
 - [Event-flow reference](docs/architecture/event-flow.md)
 - [Service dependency matrix](docs/architecture/service-dependency-matrix.md)
@@ -276,12 +302,23 @@ make validate-helm
 - [Troubleshooting guide](docs/troubleshooting.md)
 - [Repository cleanup guide](docs/release/repository-cleanup.md)
 - [Screenshot guide](docs/screenshots/README.md)
+- [Portfolio screenshots guide](docs/portfolio/screenshots-guide.md)
+- [Portfolio project overview](docs/portfolio/project-overview.md)
+- [Portfolio interview pitch](docs/portfolio/interview-pitch.md)
+- [Portfolio demo walkthrough](docs/portfolio/demo-walkthrough.md)
+- [Portfolio architecture summary](docs/portfolio/architecture-summary.md)
+- [Portfolio final roadmap](docs/portfolio/future-roadmap.md)
+- [Final validation checklist](docs/portfolio/final-validation-checklist.md)
 - [Interview walkthrough](docs/interview/project-walkthrough.md)
+- [Interview Q&A](docs/interview/tradeops-interview-qa.md)
 - [Resume bullets](docs/interview/resume-bullets.md)
+- [Portfolio resume bullets](docs/portfolio/resume-bullets.md)
 - [LinkedIn/GitHub project summary](docs/interview/project-summary-for-linkedin.md)
+- [Portfolio LinkedIn/GitHub summary](docs/portfolio/linkedin-github-summary.md)
 
 ## Release Notes
 
+- [v2.0.0 Final Portfolio Release](docs/release-notes/v2.0.0.md)
 - [v1.9.0 Performance Testing, Load Testing & Capacity Planning](docs/release-notes/v1.9.0.md)
 - [v1.8.0 Security Hardening & Threat Modeling](docs/release-notes/v1.8.0.md)
 - [v1.7.0 Distributed Tracing & Correlation Visibility](docs/release-notes/v1.7.0.md)

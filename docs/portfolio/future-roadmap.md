@@ -1,0 +1,19 @@
+# Future Roadmap
+
+TradeOps is intentionally scoped as a local portfolio platform. These are realistic next steps for a production-oriented evolution.
+
+- OpenTelemetry tracing with Jaeger or Tempo.
+- Real OAuth/OIDC provider integration.
+- mTLS between services.
+- Real email provider for notification delivery.
+- Managed PostgreSQL and managed Kafka/Redpanda.
+- Cloud deployment with production ingress/TLS.
+- Real market data provider integration.
+- Advanced strategy engine and richer backtesting.
+- WebSocket real-time dashboard.
+- Production-grade migration runner.
+- Multi-tenant account/workspace support.
+- Data warehouse integration for analytics and audit retention.
+- Schema registry or contract tests for Kafka events.
+- Distributed rate limiting and WAF integration.
+- Consumer lag instrumentation and autoscaling policies.
