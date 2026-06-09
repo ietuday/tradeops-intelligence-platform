@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.3.0` OpenTelemetry Distributed Tracing.
+Current release: `v2.4.0` Database Migration Runner & Seed Management.
 
 ## Architecture Summary
 
@@ -15,6 +15,8 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 v2.2.0 adds tenant-aware architecture using shared PostgreSQL tables with `tenant_id` columns, a standard JWT `tenantId` claim, `X-Tenant-ID` service propagation, tenant-aware events, audit records, and WebSocket filtering. See [tenant model](docs/multitenancy/tenant-model.md).
 
 v2.3.0 adds local-demo OpenTelemetry tracing with Jaeger for the API Gateway, order, surveillance, notification, and audit flow while preserving `X-Correlation-ID` for logs, events, DLQ, and audit lookup. See [OpenTelemetry tracing](docs/tracing/opentelemetry.md).
+
+v2.4.0 adds a lightweight SQL migration runner, `schema_migrations` tracking, checksum validation, and idempotent demo seed management. See [database migrations](docs/database/migrations.md).
 
 ## Tech Stack
 
@@ -92,6 +94,13 @@ make ps
 make smoke
 ```
 
+Run database migrations and demo seeds against local PostgreSQL:
+
+```bash
+./scripts/db-migrate.sh
+./scripts/db-seed.sh
+```
+
 Validate Compose config in CI-style mode without relying on a local `.env`:
 
 ```bash
@@ -122,6 +131,7 @@ Run focused demos:
 ./scripts/demo-observability.sh
 ./scripts/demo-correlation-tracing.sh
 ./scripts/demo-otel-tracing.sh
+./scripts/demo-db-migrations.sh
 ```
 
 Validate scripts without running the platform:
@@ -138,6 +148,9 @@ bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
 bash -n scripts/demo-otel-tracing.sh
+bash -n scripts/db-migrate.sh
+bash -n scripts/db-seed.sh
+bash -n scripts/demo-db-migrations.sh
 bash -n scripts/demo-websocket-streams.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
@@ -180,6 +193,18 @@ Run the read-only observability demo:
 ```bash
 ./scripts/demo-observability.sh
 ```
+
+## Database Migrations & Seeds
+
+TradeOps includes a simple SQL+Bash migration workflow for local demos and CI-friendly validation:
+
+```bash
+./scripts/db-migrate.sh
+./scripts/db-seed.sh
+./scripts/demo-db-migrations.sh
+```
+
+The runner creates `schema_migrations`, applies sorted SQL migrations once, validates checksums, and keeps seeds idempotent with `ON CONFLICT`. See [database migrations](docs/database/migrations.md), [seed management](docs/database/seed-management.md), and the [database runbook](docs/database/db-runbook.md).
 
 ## Real-Time WebSocket Streaming
 

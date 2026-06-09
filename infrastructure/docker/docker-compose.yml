@@ -395,6 +395,50 @@ services:
     networks:
       - tradeops-net
 
+  db-migrate:
+    image: postgres:16.2
+    container_name: tradeops-db-migrate
+    profiles:
+      - tools
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-tradeops}
+      POSTGRES_USER: ${POSTGRES_USER:-tradeops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tradeops_dev}
+      DB_MIGRATIONS_DIR: /database/migrations
+    volumes:
+      - ../../infrastructure/database:/database:ro
+      - ../../scripts:/scripts:ro
+    entrypoint: ["/bin/bash", "/scripts/db-migrate.sh"]
+    networks:
+      - tradeops-net
+
+  db-seed:
+    image: postgres:16.2
+    container_name: tradeops-db-seed
+    profiles:
+      - tools
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-tradeops}
+      POSTGRES_USER: ${POSTGRES_USER:-tradeops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tradeops_dev}
+      DB_SEEDS_DIR: /database/seeds
+    volumes:
+      - ../../infrastructure/database:/database:ro
+      - ../../scripts:/scripts:ro
+    entrypoint: ["/bin/bash", "/scripts/db-seed.sh"]
+    networks:
+      - tradeops-net
+
   redis:
     image: redis:7.2.4-alpine3.19
     container_name: tradeops-redis

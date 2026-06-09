@@ -44,6 +44,9 @@
 
 ## Data Lifecycle
 
+- [Database migrations](database/migrations.md)
+- [Seed management](database/seed-management.md)
+- [Database runbook](database/db-runbook.md)
 - [Retention policy](data-lifecycle/retention-policy.md)
 - [Archival strategy](data-lifecycle/archival-strategy.md)
 - [Backup and restore](data-lifecycle/backup-restore.md)
@@ -97,6 +100,7 @@
 
 ## Release Notes
 
+- [v2.4.0 Database Migration Runner & Seed Management](release-notes/v2.4.0.md)
 - [v2.3.0 OpenTelemetry Distributed Tracing](release-notes/v2.3.0.md)
 - [v2.2.0 Multi-Tenant Architecture](release-notes/v2.2.0.md)
 - [v2.1.0 Real-Time WebSocket Streaming Layer](release-notes/v2.1.0.md)

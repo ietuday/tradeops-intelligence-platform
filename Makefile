@@ -69,6 +69,10 @@ validate-scripts:
 	bash -n scripts/demo-observability.sh
 	bash -n scripts/demo-correlation-tracing.sh
 	bash -n scripts/demo-websocket-streams.sh
+	bash -n scripts/demo-otel-tracing.sh
+	bash -n scripts/db-migrate.sh
+	bash -n scripts/db-seed.sh
+	bash -n scripts/demo-db-migrations.sh
 	bash -n scripts/db-backup.sh
 	bash -n scripts/db-restore.sh
 	bash -n scripts/archive-old-data.sh
