@@ -16,4 +16,7 @@ type OrderEvent struct {
 	FillPrice     *float64  `json:"fillPrice"`
 	OccurredAt    time.Time `json:"occurredAt"`
 	CorrelationID string    `json:"correlationId"`
+	TraceParent   string    `json:"traceparent,omitempty"`
+	TraceID       string    `json:"traceId,omitempty"`
+	SpanID        string    `json:"spanId,omitempty"`
 }

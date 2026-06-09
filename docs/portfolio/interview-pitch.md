@@ -2,7 +2,7 @@
 
 ## 30-Second Pitch
 
-TradeOps is an event-driven trading microservices platform I built to demonstrate senior backend engineering. It uses Go, Python FastAPI, Node.js, PostgreSQL, Redis, Redpanda/Kafka, MQTT, Prometheus, Grafana, Docker Compose, and optional Helm templates to model order flow, portfolio updates, risk, surveillance, notifications, and audit trails.
+TradeOps is an event-driven trading microservices platform I built to demonstrate senior backend engineering. It uses Go, Python FastAPI, Node.js, PostgreSQL, Redis, Redpanda/Kafka, MQTT, Prometheus, Grafana, Jaeger/OpenTelemetry, Docker Compose, and optional Helm templates to model order flow, portfolio updates, risk, surveillance, notifications, and audit trails.
 
 ## 60-Second Pitch
 
@@ -36,7 +36,7 @@ The system includes idempotency for order creation, retry/backoff patterns in ev
 
 ## Observability Explanation
 
-Each backend exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes services, Grafana dashboards show gateway latency/errors and event processing health, and correlation IDs connect HTTP requests to events/logs/audit records.
+Each backend exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes services, Grafana dashboards show gateway latency/errors and event processing health, Jaeger shows OpenTelemetry traces for selected request/event flows, and correlation IDs connect HTTP requests to events/logs/audit records.
 
 ## Security Explanation
 

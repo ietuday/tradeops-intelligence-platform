@@ -7,6 +7,7 @@ type SourceEvent struct {
 	Key           string
 	Value         []byte
 	CorrelationID string
+	TraceParent   string
 }
 
 type SurveillanceAlertEvent struct {
@@ -24,4 +25,5 @@ type SurveillanceAlertEvent struct {
 	Metadata      map[string]any `json:"metadata"`
 	OccurredAt    time.Time      `json:"occurredAt"`
 	CorrelationID string         `json:"correlationId,omitempty"`
+	TraceParent   string         `json:"traceparent,omitempty"`
 }

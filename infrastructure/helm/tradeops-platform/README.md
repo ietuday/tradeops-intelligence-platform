@@ -16,6 +16,7 @@ This chart is an optional Kubernetes deployment-readiness layer for TradeOps Int
 ## What This Chart Does Not Include
 
 - Production PostgreSQL, Redis, Redpanda, Mosquitto, Prometheus, or Grafana installs.
+- Jaeger or OpenTelemetry Collector installs.
 - Cloud-specific storage, ingress, load balancers, or secret managers.
 - Real secrets.
 - Production-grade autoscaling, pod disruption budgets, network policies, or service mesh config.
@@ -66,6 +67,7 @@ The application services expect these dependencies to be reachable by DNS names 
 - `redis`
 - `redpanda`
 - `mosquitto`
+- Optional OTLP endpoint such as `http://jaeger:4318` when `otel.enabled=true`
 
 For local Kubernetes, you can run equivalent services in-cluster or point the values at externally reachable endpoints.
 
@@ -74,6 +76,5 @@ For local Kubernetes, you can run equivalent services in-cluster or point the va
 - No managed database, backup, or migration workflow is included.
 - No Kafka topic provisioning is included.
 - No TLS or production ingress configuration is included.
-- No Alertmanager, log aggregation, or tracing stack is included.
+- No Alertmanager, log aggregation, or tracing backend is included.
 - No autoscaling or rollout strategy is included.
-

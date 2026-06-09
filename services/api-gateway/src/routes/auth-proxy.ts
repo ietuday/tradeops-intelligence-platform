@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { tenantHeaders } from '../middleware/tenant';
-import { fetchUpstream } from './proxy-utils';
+import { fetchUpstream, withTraceHeaders } from './proxy-utils';
 
 const DEFAULT_IDENTITY_SERVICE_URL = 'http://identity-service:8080';
 
@@ -63,7 +63,7 @@ function buildProxyHeaders(req: Request): HeadersInit {
     headers['x-correlation-id'] = correlationId;
   }
 
-  return { ...headers, ...tenantHeaders(req) };
+  return withTraceHeaders({ ...headers, ...tenantHeaders(req) }, req);
 }
 
 async function forwardToIdentityService(

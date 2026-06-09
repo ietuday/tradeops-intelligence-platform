@@ -1,6 +1,6 @@
 # Correlation ID Standard
 
-Correlation IDs make it possible to follow one request or event flow through the gateway, services, Kafka events, logs, DLQ messages, and audit logs without adding a heavy tracing stack.
+Correlation IDs make it possible to follow one request or event flow through the gateway, services, Kafka events, logs, DLQ messages, and audit logs. v2.3.0 also adds OpenTelemetry trace IDs for Jaeger visualization; both IDs are useful and intentionally coexist.
 
 ## Standard Names
 
@@ -10,6 +10,7 @@ Correlation IDs make it possible to follow one request or event flow through the
 | JSON event field | `correlationId` |
 | Log field | `correlationId` |
 | Audit column | `audit_logs.correlation_id` |
+| OpenTelemetry span attribute | `correlation.id` |
 
 ## Generation Rule
 
@@ -24,6 +25,7 @@ Correlation IDs make it possible to follow one request or event flow through the
 - Services include the active correlation ID in produced Kafka/Redpanda events.
 - Consumers include correlation ID in logs, retry/DLQ payloads, and outgoing events.
 - Audit-service persists `correlationId` or `correlation_id` into `audit_logs.correlation_id`.
+- OpenTelemetry spans include `correlation.id` when available.
 
 ## HTTP Example
 
@@ -50,13 +52,18 @@ X-Correlation-ID: demo-correlation-123
 }
 ```
 
+## Correlation ID Vs Trace ID
+
+- `correlationId` is the stable app-level debug and audit lookup ID.
+- `traceId` is the OpenTelemetry trace tree ID shown in Jaeger.
+- Audit logs persist `correlationId`; trace IDs may appear in events/spans but are not the primary audit key.
+- Do not use `correlationId`, `traceId`, `spanId`, or unbounded `tenantId` as Prometheus labels.
+
 ## Known Limitations
 
-- This release does not add Jaeger, Tempo, OpenTelemetry Collector, or Loki.
-- Correlation IDs identify related logs/events but do not provide spans, timing trees, or distributed trace sampling.
+- Correlation IDs identify related logs/events; OpenTelemetry adds spans, timing trees, and sampling.
 - Some legacy demo payloads may use static IDs for repeatability.
 
 ## Future Improvement
 
-OpenTelemetry tracing can be added later once the platform needs span-level latency attribution across HTTP, Kafka, database, and webhook calls.
-
+Future work can expand tracing to Python services, database spans, webhook spans, and full Kafka header instrumentation.

@@ -1,3 +1,4 @@
+import './observability/tracing';
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
@@ -8,6 +9,7 @@ import { correlationIdMiddleware, CORRELATION_ID_HEADER } from './middleware/cor
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
 import { metricsHandler, metricsMiddleware } from './observability/metrics';
+import { shutdownTracing, tracingMiddleware } from './observability/tracing';
 import { authProxyRouter } from './routes/auth-proxy';
 import { auditProxyRouter } from './routes/audit-proxy';
 import { healthRouter } from './routes/health';
@@ -48,6 +50,7 @@ export function createApp() {
       correlationId: req.headers[CORRELATION_ID_HEADER]
     })
   }));
+  app.use(tracingMiddleware);
   app.use(metricsMiddleware);
   app.use(createRateLimitMiddleware({
     windowMs: Number.isFinite(rateLimitWindowMs) && rateLimitWindowMs > 0 ? rateLimitWindowMs : 60000,
@@ -105,4 +108,12 @@ if (require.main === module) {
   server.listen(port, '0.0.0.0', () => {
     logger.info({ port }, 'API Gateway started');
   });
+
+  const shutdown = () => {
+    server.close(() => {
+      void shutdownTracing().finally(() => process.exit(0));
+    });
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }

@@ -22,6 +22,7 @@ type Dependencies struct {
 func NewRouter(deps Dependencies) nethttp.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.CorrelationID)
+	router.Use(observability.TraceAttributes("audit-service"))
 
 	health := handlers.NewHealthHandler(deps.DB)
 	audit := handlers.NewAuditHandler(deps.Service)
@@ -38,5 +39,5 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Get("/api/v1/audit/export", audit.Export)
 	})
 
-	return router
+	return observability.HTTPHandler("audit-service", router)
 }

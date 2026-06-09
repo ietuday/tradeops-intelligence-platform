@@ -547,3 +547,18 @@ TENANT_ID=default-tenant ./scripts/replay-sample-events.sh --all
 ```
 
 Fix: Decode the JWT payload, confirm `tenantId`, check API Gateway forwarded `X-Tenant-ID`, and verify tenant migrations have run.
+
+## No Traces In Jaeger
+
+Symptom: Jaeger at `http://localhost:16686` has no traces for a demo request.
+
+Possible cause: Jaeger is not running, `OTEL_ENABLED` is false, services have not restarted with OTLP config, or no gateway traffic has been generated.
+
+Useful command:
+
+```bash
+./scripts/demo-otel-tracing.sh
+docker compose --env-file infrastructure/docker/.env.example -f infrastructure/docker/docker-compose.yml logs api-gateway | grep otel
+```
+
+Fix: Start Compose with `infrastructure/docker/.env.example`, generate traffic through the API Gateway, search Jaeger for service `api-gateway`, then use span attribute `correlation.id` to grep logs or query audit records.

@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.2.0` Multi-Tenant Architecture.
+Current release: `v2.3.0` OpenTelemetry Distributed Tracing.
 
 ## Architecture Summary
 
@@ -13,6 +13,8 @@ The platform exposes a single API Gateway for client traffic and uses service-ow
 Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus, Grafana, and Docker Compose.
 
 v2.2.0 adds tenant-aware architecture using shared PostgreSQL tables with `tenant_id` columns, a standard JWT `tenantId` claim, `X-Tenant-ID` service propagation, tenant-aware events, audit records, and WebSocket filtering. See [tenant model](docs/multitenancy/tenant-model.md).
+
+v2.3.0 adds local-demo OpenTelemetry tracing with Jaeger for the API Gateway, order, surveillance, notification, and audit flow while preserving `X-Correlation-ID` for logs, events, DLQ, and audit lookup. See [OpenTelemetry tracing](docs/tracing/opentelemetry.md).
 
 ## Tech Stack
 
@@ -23,7 +25,7 @@ v2.2.0 adds tenant-aware architecture using shared PostgreSQL tables with `tenan
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
-| Observability | Prometheus, Grafana, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
+| Observability | Prometheus, Grafana, Jaeger, OpenTelemetry, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Security | JWT/RBAC, Helmet, CORS config, request size limits, rate limiting, security checklist |
 | Multitenancy | Shared database tenant isolation, JWT `tenantId`, `X-Tenant-ID`, tenant-aware events |
 | Real-time | API Gateway WebSocket streams for market, order, alert, notification, and audit events |
@@ -53,6 +55,7 @@ v2.2.0 adds tenant-aware architecture using shared PostgreSQL tables with `tenan
 - Tenant-aware APIs, events, audit logs, and WebSocket streams using `default-tenant` for local demos.
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
+- Jaeger/OpenTelemetry tracing for the primary order-to-alert-to-notification-to-audit path.
 - Docker Compose local runtime with optional Helm/Kubernetes deployment-readiness artifacts.
 
 ## Portfolio Pack
@@ -118,6 +121,7 @@ Run focused demos:
 ./scripts/demo-reliability.sh
 ./scripts/demo-observability.sh
 ./scripts/demo-correlation-tracing.sh
+./scripts/demo-otel-tracing.sh
 ```
 
 Validate scripts without running the platform:
@@ -133,6 +137,7 @@ bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
+bash -n scripts/demo-otel-tracing.sh
 bash -n scripts/demo-websocket-streams.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
@@ -150,6 +155,7 @@ bash -n scripts/validate-helm.sh
 | Redpanda Console | http://localhost:8081 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 |
+| Jaeger | http://localhost:16686 |
 | Angular Shell Placeholder | http://localhost:4200 |
 | React Dashboard Placeholder | http://localhost:4300 |
 
@@ -164,6 +170,8 @@ TradeOps includes Prometheus scraping, Grafana dashboard provisioning, local ale
 | Prometheus alert guide | [docs/observability/prometheus-alerts.md](docs/observability/prometheus-alerts.md) |
 | SLO guide | [docs/observability/slo-guide.md](docs/observability/slo-guide.md) |
 | Observability runbook | [docs/observability/runbook.md](docs/observability/runbook.md) |
+| OpenTelemetry tracing | [docs/tracing/opentelemetry.md](docs/tracing/opentelemetry.md) |
+| OpenTelemetry runbook | [docs/tracing/otel-runbook.md](docs/tracing/otel-runbook.md) |
 | Alert rules | [infrastructure/docker/prometheus/rules/tradeops-alerts.yml](infrastructure/docker/prometheus/rules/tradeops-alerts.yml) |
 | Grafana dashboards | [infrastructure/docker/grafana/dashboards](infrastructure/docker/grafana/dashboards) |
 

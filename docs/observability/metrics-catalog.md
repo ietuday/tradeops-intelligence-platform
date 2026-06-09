@@ -4,6 +4,8 @@ This catalog lists the Prometheus metrics currently exposed by the local TradeOp
 
 Metrics are complemented by correlation IDs. Use `X-Correlation-ID` for HTTP, `correlationId` for events/logs, and `audit_logs.correlation_id` for audit searches when you need to follow one workflow across services.
 
+OpenTelemetry traces are available in Jaeger for selected services. Do not add `traceId`, `spanId`, `correlationId`, or unbounded `tenantId` as Prometheus labels; keep per-flow debugging in traces, logs, and audit search.
+
 ## API Gateway
 
 | Metric | Type | Purpose |

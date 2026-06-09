@@ -6,6 +6,8 @@ Events should include `correlationId` when available. API Gateway accepts or gen
 
 Tenant-owned events should also include top-level `tenantId`. Consumers preserve it, audit-service stores it as `tenant_id`, and WebSocket streams use it for tenant filtering. Older demo payloads fall back to `default-tenant`.
 
+v2.3.0 keeps the existing `correlationId` event field and adds lightweight `traceparent` propagation where practical. Consumers can continue processing old events without trace fields; they simply start a new trace while preserving `correlationId`.
+
 ## Topic Map
 
 | Topic | Producer | Consumers | Purpose |

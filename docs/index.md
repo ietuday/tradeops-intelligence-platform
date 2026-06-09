@@ -39,6 +39,8 @@
 - [Prometheus alerts](observability/prometheus-alerts.md)
 - [SLO guide](observability/slo-guide.md)
 - [Observability runbook](observability/runbook.md)
+- [OpenTelemetry tracing](tracing/opentelemetry.md)
+- [OpenTelemetry runbook](tracing/otel-runbook.md)
 
 ## Data Lifecycle
 
@@ -64,6 +66,8 @@
 
 ## Tracing
 
+- [OpenTelemetry distributed tracing](tracing/opentelemetry.md)
+- [OpenTelemetry runbook](tracing/otel-runbook.md)
 - [Correlation standard](tracing/correlation-standard.md)
 - [Structured logging](tracing/structured-logging.md)
 - [Tracing runbook](tracing/tracing-runbook.md)
@@ -93,6 +97,7 @@
 
 ## Release Notes
 
+- [v2.3.0 OpenTelemetry Distributed Tracing](release-notes/v2.3.0.md)
 - [v2.2.0 Multi-Tenant Architecture](release-notes/v2.2.0.md)
 - [v2.1.0 Real-Time WebSocket Streaming Layer](release-notes/v2.1.0.md)
 - [v2.0.0 Final Portfolio Release](release-notes/v2.0.0.md)

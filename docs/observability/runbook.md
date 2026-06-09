@@ -18,7 +18,10 @@ Open:
 ```text
 Prometheus: http://localhost:9090
 Grafana:    http://localhost:3000
+Jaeger:     http://localhost:16686
 ```
+
+For distributed traces, use [OpenTelemetry tracing](../tracing/opentelemetry.md). Do not create Prometheus labels from `traceId`, `spanId`, `correlationId`, or unbounded `tenantId` values.
 
 ## Service Down
 

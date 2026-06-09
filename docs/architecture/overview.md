@@ -6,6 +6,8 @@ The platform is designed for portfolio and interview demonstration. It is not ye
 
 v2.2.0 adds shared-database multitenancy. Tenant-owned tables use `tenant_id`, JWTs include `tenantId`, API Gateway propagates `X-Tenant-ID`, events include `tenantId`, audit logs store tenant context, and WebSocket streams filter tenant events by connection tenant.
 
+v2.3.0 adds OpenTelemetry tracing for the primary API Gateway -> order -> surveillance -> notification -> audit path. W3C `traceparent` and `tracestate` headers flow over HTTP, while Kafka events preserve `correlationId` and include `traceparent` where practical.
+
 ## Service List
 
 | Service | Purpose |
@@ -30,7 +32,7 @@ v2.2.0 adds shared-database multitenancy. Tenant-owned tables use `tenant_id`, J
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka, Prometheus client |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
-| Observability | Prometheus, Grafana, alert rules, SLO docs, structured logs, correlation IDs |
+| Observability | Prometheus, Grafana, Jaeger, OpenTelemetry, alert rules, SLO docs, structured logs, correlation IDs |
 | Runtime | Docker Compose, optional Helm/Kubernetes deployment-readiness chart |
 
 ## High-Level Architecture

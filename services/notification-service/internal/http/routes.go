@@ -22,6 +22,7 @@ type Dependencies struct {
 func NewRouter(deps Dependencies) nethttp.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.CorrelationID)
+	router.Use(observability.TraceAttributes("notification-service"))
 
 	health := handlers.NewHealthHandler(deps.DB)
 	notifications := handlers.NewNotificationHandler(deps.Service)
@@ -41,5 +42,5 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Post("/api/v1/notifications/{id}/retry", notifications.Retry)
 	})
 
-	return router
+	return observability.HTTPHandler("notification-service", router)
 }

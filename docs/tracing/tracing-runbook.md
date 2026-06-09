@@ -2,6 +2,8 @@
 
 Use this runbook to trace a single request or event flow with `X-Correlation-ID` / `correlationId`.
 
+For Jaeger/OpenTelemetry traces, see [OpenTelemetry tracing](opentelemetry.md) and [OpenTelemetry runbook](otel-runbook.md). Use `traceId` in Jaeger and `correlationId` in logs/audit queries.
+
 ## Trace Order Creation To Surveillance Alert
 
 Starting point: a client creates an order with `X-Correlation-ID`.
@@ -91,4 +93,3 @@ curl http://localhost:8091/metrics | grep notification_delivery_failures_total
 ```
 
 Expected result: notification logs and metrics show the failed delivery path; audit logs may also contain notification lifecycle events with the same correlation ID.
-

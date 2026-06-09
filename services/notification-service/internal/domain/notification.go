@@ -52,6 +52,9 @@ type NotificationEvent struct {
 	Metadata       map[string]any `json:"metadata"`
 	OccurredAt     time.Time      `json:"occurredAt"`
 	CorrelationID  string         `json:"correlationId,omitempty"`
+	TraceParent    string         `json:"traceparent,omitempty"`
+	TraceID        string         `json:"traceId,omitempty"`
+	SpanID         string         `json:"spanId,omitempty"`
 }
 
 type DeliveryAttempt struct {

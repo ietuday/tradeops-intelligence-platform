@@ -114,14 +114,38 @@ func (c *Consumer) consume(ctx context.Context, reader readerCloser) {
 			Key:           string(message.Key),
 			Value:         message.Value,
 			CorrelationID: headerValue(message.Headers, "correlationId"),
+			TraceParent:   firstNonEmpty(headerValue(message.Headers, "traceparent"), payloadField(message.Value, "traceparent")),
 		}
-		if err := c.processWithRetry(ctx, event); err != nil {
+		processCtx := observability.ContextWithTraceParent(ctx, event.TraceParent)
+		processCtx, span := observability.StartConsumerSpan(processCtx, "audit-service", event.Topic, event.CorrelationID, payloadField(event.Value, "tenantId"))
+		if err := c.processWithRetry(processCtx, event); err != nil {
 			c.logger.Warn("failed to process audit source event", "topic", message.Topic, "partition", message.Partition, "offset", message.Offset, "error", err)
 		}
+		span.End()
 		if err := reader.CommitMessages(ctx, message); err != nil && ctx.Err() == nil {
 			c.logger.Warn("failed to commit audit source event", "error", err)
 		}
 	}
+}
+
+func payloadField(payload []byte, key string) string {
+	var data map[string]any
+	if err := json.Unmarshal(payload, &data); err != nil {
+		return ""
+	}
+	if value, ok := data[key].(string); ok {
+		return value
+	}
+	return ""
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func (c *Consumer) processWithRetry(ctx context.Context, event domain.SourceEvent) error {

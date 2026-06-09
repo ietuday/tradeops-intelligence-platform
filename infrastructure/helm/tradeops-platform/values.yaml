@@ -101,6 +101,13 @@ config:
   jwtSecretRef: "tradeops-secrets"
   proxyTimeoutMs: "10000"
 
+otel:
+  enabled: false
+  exporterOtlpEndpoint: "http://jaeger:4318"
+  serviceVersion: "2.3.0"
+  tracesSampler: "parentbased_traceidratio"
+  tracesSamplerArg: "1.0"
+
 secrets:
   createExample: true
   jwtSecret: "replace-me"
@@ -128,4 +135,3 @@ probes:
   readinessPath: /ready
   initialDelaySeconds: 15
   periodSeconds: 10
-

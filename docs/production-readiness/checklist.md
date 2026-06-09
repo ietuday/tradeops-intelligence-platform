@@ -136,6 +136,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Compose includes infrastructure dependencies.
 - [x] Compose config validation passes.
 - [x] Compose mounts Prometheus alert rules and Grafana dashboard provisioning for local observability demos.
+- [x] Compose includes local Jaeger for OpenTelemetry tracing demos.
 - [x] Backup, restore, archive, and replay scripts operate through Docker Compose.
 - [ ] Compose is not a production orchestrator.
 - [ ] Add backup/restore runbooks for stateful services.
@@ -165,6 +166,8 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 
 - Local Compose uses a shared PostgreSQL database for convenience.
 - Multitenancy is shared-database/application-enforced; future production hardening may require tenant-specific partitions, encryption keys, rate limits, schemas, or databases.
+- OpenTelemetry tracing is local-demo focused; production would use a managed collector/backend and controlled sampling.
+- Trace IDs, span IDs, correlation IDs, and unbounded tenant IDs should not be used as Prometheus labels.
 - Event payload schemas are documented by examples, not enforced by a schema registry.
 - Notification email delivery is mock/log-only.
 - Webhook delivery is intentionally simple.

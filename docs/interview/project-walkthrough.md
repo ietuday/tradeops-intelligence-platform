@@ -8,7 +8,7 @@ TradeOps Intelligence Platform is a local microservices trading intelligence sys
 
 The platform is organized around independent services. The API Gateway is the client entry point. Identity issues JWTs. The order service handles order creation with idempotency. A filled order emits an event that portfolio consumes to update holdings and publish portfolio updates. Risk and strategy services generate analytics and events. Surveillance consumes market, order, portfolio, risk, and strategy events, runs rules such as large order and abnormal price movement detection, and creates alert lifecycle events. Notification consumes surveillance alert events, creates user notifications, supports preferences, and records delivery attempts. Audit consumes important user, business, and system events and stores searchable audit logs.
 
-Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports for platform health, gateway traffic, event processing, surveillance/notifications, and audit/compliance, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, and Redpanda.
+Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports for platform health, gateway traffic, event processing, surveillance/notifications, and audit/compliance, Jaeger shows OpenTelemetry traces for the gateway/order/surveillance/notification/audit path, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, Redpanda, and Jaeger.
 
 Correlation IDs provide lightweight tracing without a full tracing stack: the gateway accepts or generates `X-Correlation-ID`, services propagate `correlationId` into Kafka events, DLQ records keep the same ID, and audit-service stores it for querying.
 
@@ -42,7 +42,7 @@ The order service accepts an `Idempotency-Key` header during order creation. Rep
 
 ## How Observability Is Handled
 
-Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs, events, DLQ records, and audit logs can be connected across services.
+Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs, events, DLQ records, and audit logs can be connected across services. OpenTelemetry adds Jaeger traces for span-level timing across the primary order-to-alert-to-notification-to-audit flow.
 
 ## How Real-Time Streaming Works
 

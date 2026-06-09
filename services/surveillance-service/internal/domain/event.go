@@ -5,6 +5,7 @@ type SourceEvent struct {
 	Key           string
 	Value         []byte
 	CorrelationID string
+	TraceParent   string
 }
 
 type RuleExecution struct {

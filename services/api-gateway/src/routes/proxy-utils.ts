@@ -1,4 +1,6 @@
 import { recordProxyUpstreamError, recordProxyUpstreamTimeout } from '../observability/metrics';
+import { traceContextHeaders } from '../observability/tracing';
+import { Request } from 'express';
 
 const DEFAULT_PROXY_TIMEOUT_MS = 10_000;
 
@@ -49,6 +51,30 @@ export async function fetchUpstream(service: string, url: string, init: RequestI
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function withTraceHeaders(headers: HeadersInit, req?: Request): HeadersInit {
+  return {
+    ...(headers as Record<string, string>),
+    ...incomingTraceHeaders(req),
+    ...traceContextHeaders()
+  };
+}
+
+function incomingTraceHeaders(req?: Request): Record<string, string> {
+  if (!req) {
+    return {};
+  }
+  const headers: Record<string, string> = {};
+  const traceparent = req.header('traceparent');
+  const tracestate = req.header('tracestate');
+  if (traceparent) {
+    headers.traceparent = traceparent;
+  }
+  if (tracestate) {
+    headers.tracestate = tracestate;
+  }
+  return headers;
 }
 
 function isAbortError(error: unknown): boolean {

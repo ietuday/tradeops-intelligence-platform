@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/domain"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/observability"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -22,18 +23,24 @@ func NewProducer(brokers []string) *Producer {
 func (p *Producer) Publish(ctx context.Context, event domain.OrderEvent) error {
 	topic := topicForEvent(event.EventType)
 	writer := p.writer(topic)
+	event.TraceParent = observability.TraceParent(ctx)
+	event.TraceID, event.SpanID = observability.TraceIDs(ctx)
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
+	headers := []kafka.Header{
+		{Key: "eventType", Value: []byte(event.EventType)},
+		{Key: "correlationId", Value: []byte(event.CorrelationID)},
+	}
+	if event.TraceParent != "" {
+		headers = append(headers, kafka.Header{Key: "traceparent", Value: []byte(event.TraceParent)})
+	}
 	return writer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(event.OrderID),
-		Value: payload,
-		Time:  event.OccurredAt,
-		Headers: []kafka.Header{
-			{Key: "eventType", Value: []byte(event.EventType)},
-			{Key: "correlationId", Value: []byte(event.CorrelationID)},
-		},
+		Key:     []byte(event.OrderID),
+		Value:   payload,
+		Time:    event.OccurredAt,
+		Headers: headers,
 	})
 }
 

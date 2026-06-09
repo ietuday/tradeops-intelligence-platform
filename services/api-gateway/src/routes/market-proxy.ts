@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { tenantHeaders } from '../middleware/tenant';
-import { fetchUpstream } from './proxy-utils';
+import { fetchUpstream, withTraceHeaders } from './proxy-utils';
 
 const DEFAULT_MARKET_DATA_SERVICE_URL = 'http://market-data-service:8080';
 
@@ -65,7 +65,7 @@ function buildProxyHeaders(req: Request): HeadersInit {
   if (correlationId) {
     headers['x-correlation-id'] = correlationId;
   }
-  return { ...headers, ...tenantHeaders(req) };
+  return withTraceHeaders({ ...headers, ...tenantHeaders(req) }, req);
 }
 
 async function forwardToMarketDataService(

@@ -23,6 +23,7 @@ type Dependencies struct {
 func NewRouter(deps Dependencies) nethttp.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.CorrelationID)
+	router.Use(observability.TraceAttributes("order-service"))
 
 	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers)
 	orders := handlers.NewOrderHandler(deps.Service)
@@ -39,5 +40,5 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Post("/orders/{id}/cancel", orders.Cancel)
 	})
 
-	return router
+	return observability.HTTPHandler("order-service", router)
 }

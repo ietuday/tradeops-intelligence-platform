@@ -30,6 +30,10 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	shutdownTracing, err := observability.SetupTracing(ctx, "surveillance-service")
+	if err != nil {
+		logger.Warn("opentelemetry tracing disabled", "error", err)
+	}
 
 	pool, err := db.ConnectPostgres(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -95,5 +99,8 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
+	}
+	if err := shutdownTracing(shutdownCtx); err != nil {
+		logger.Warn("opentelemetry shutdown failed", "error", err)
 	}
 }

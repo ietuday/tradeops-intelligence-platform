@@ -67,6 +67,21 @@ describe('API Gateway order proxy', () => {
     expect(headers['x-tenant-id']).toBe('tenant-a');
   });
 
+  it('forwards W3C trace context headers to order-service', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { orders: [] }));
+    const traceparent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+
+    await request(createApp())
+      .get('/api/orders')
+      .set('traceparent', traceparent)
+      .set('tracestate', 'vendor=value');
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = init.headers as Record<string, string>;
+    expect(headers.traceparent).toBe(traceparent);
+    expect(headers.tracestate).toBe('vendor=value');
+  });
+
   it('does not let external X-Tenant-ID override JWT tenantId for non-admins', async () => {
     fetchMock.mockResolvedValue(jsonResponse(200, { orders: [] }));
     const token = signToken('tenant-a', ['trader']);

@@ -2,6 +2,7 @@ import { Request } from 'express';
 
 export interface TenantPrincipal {
   tenantId?: string;
+  userId?: string;
   roles: string[];
 }
 
@@ -38,11 +39,13 @@ export function parsePrincipal(authorization?: string): TenantPrincipal | undefi
 
   try {
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as {
+      sub?: unknown;
       tenantId?: unknown;
       roles?: unknown;
     };
     return {
       tenantId: typeof payload.tenantId === 'string' ? payload.tenantId : undefined,
+      userId: typeof payload.sub === 'string' ? payload.sub : undefined,
       roles: Array.isArray(payload.roles) ? payload.roles.filter((role): role is string => typeof role === 'string') : []
     };
   } catch {

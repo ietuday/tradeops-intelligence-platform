@@ -146,6 +146,18 @@ spec:
                   name: tradeops-config
                   key: PROXY_TIMEOUT_MS
             {{- end }}
+            {{- if and $.Values.otel.enabled (or (eq $svc.name "api-gateway") (eq $svc.name "order-service") (eq $svc.name "surveillance-service") (eq $svc.name "notification-service") (eq $svc.name "audit-service")) }}
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ $.Values.otel.exporterOtlpEndpoint | quote }}
+            - name: OTEL_SERVICE_VERSION
+              value: {{ $.Values.otel.serviceVersion | quote }}
+            - name: OTEL_TRACES_SAMPLER
+              value: {{ $.Values.otel.tracesSampler | quote }}
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: {{ $.Values.otel.tracesSamplerArg | quote }}
+            {{- end }}
           {{- if $.Values.probes.enabled }}
           livenessProbe:
             httpGet:
@@ -164,4 +176,3 @@ spec:
             {{- toYaml $.Values.resources | nindent 12 }}
 {{- end }}
 {{- end }}
-

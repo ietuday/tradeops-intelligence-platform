@@ -5,6 +5,7 @@ type SourceEvent struct {
 	Key           string
 	Value         []byte
 	CorrelationID string
+	TraceParent   string
 }
 
 type AuditLogEvent struct {
@@ -19,6 +20,9 @@ type AuditLogEvent struct {
 	EntityID      *string        `json:"entityId,omitempty"`
 	ActorUserID   *string        `json:"actorUserId,omitempty"`
 	CorrelationID *string        `json:"correlationId,omitempty"`
+	TraceParent   string         `json:"traceparent,omitempty"`
+	TraceID       string         `json:"traceId,omitempty"`
+	SpanID        string         `json:"spanId,omitempty"`
 	Metadata      map[string]any `json:"metadata"`
 	OccurredAt    string         `json:"occurredAt"`
 }
