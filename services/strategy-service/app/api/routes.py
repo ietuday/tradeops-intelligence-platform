@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth import UserContext, require_read, require_write
@@ -49,6 +49,7 @@ def get_strategy(strategy_id: str, user: UserContext = Depends(require_read), re
 def run_backtest(
     strategy_id: str,
     payload: BacktestRequest,
+    request: Request,
     user: UserContext = Depends(require_write),
     repository: StrategyRepository = Depends(repo),
     backtest_engine: BacktestEngine = Depends(get_backtest_engine),
@@ -60,7 +61,8 @@ def run_backtest(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Strategy not found.")
     engine = StrategyEngine(repository, backtest_engine, SignalService(kafka_producer))
     try:
-        run, signals, performance = engine.run_backtest(strategy, payload, x_correlation_id)
+        correlation_id = x_correlation_id or getattr(request.state, "correlation_id", None)
+        run, signals, performance = engine.run_backtest(strategy, payload, correlation_id)
     except BacktestValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     return BacktestResponse(

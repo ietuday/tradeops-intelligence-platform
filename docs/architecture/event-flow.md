@@ -2,6 +2,8 @@
 
 TradeOps uses Redpanda/Kafka for cross-service domain events and Mosquitto/MQTT for raw market tick ingestion.
 
+Events should include `correlationId` when available. API Gateway accepts or generates `X-Correlation-ID`, services propagate it to Kafka events, consumers preserve it in downstream events and DLQ records, and audit-service stores it in `audit_logs.correlation_id`.
+
 ## Topic Map
 
 | Topic | Producer | Consumers | Purpose |
@@ -68,6 +70,7 @@ sequenceDiagram
 - Notification payloads live under `docs/examples/notifications/`.
 - Audit payloads live under `docs/examples/audit/`.
 - Demo scripts publish compact JSON to Redpanda with `rpk topic produce`.
+- Replay/demo scripts accept `CORRELATION_ID` to inject a traceable `correlationId`.
 
 ## Current Limitations
 

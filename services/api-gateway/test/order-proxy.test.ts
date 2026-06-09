@@ -50,6 +50,7 @@ describe('API Gateway order proxy', () => {
     expect(headers.authorization).toBe('Bearer token');
     expect(headers['idempotency-key']).toBe('idem-1');
     expect(headers['content-type']).toMatch(/^application\/json/);
+    expect(headers['x-correlation-id']).toBeDefined();
   });
 
   it('forwards order lookup and cancel routes only for UUID paths', async () => {

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.auth import UserContext, require_full_read, require_read
@@ -33,6 +33,7 @@ def repo(db: Session = Depends(get_db)) -> RiskRepository:
 
 @router.get("/risk/portfolio/score", response_model=RiskScoreResponse)
 def risk_score(
+    request: Request,
     user: UserContext = Depends(require_read),
     repository: RiskRepository = Depends(repo),
     volatility_service: VolatilityService = Depends(get_volatility_service),
@@ -40,14 +41,15 @@ def risk_score(
     score_service: RiskScoreService = Depends(get_risk_score_service),
     producer: KafkaProducer = Depends(get_kafka_producer),
 ):
+    correlation_id = getattr(request.state, "correlation_id", None)
     score = calculate_score(repository, user.user_id, volatility_service, drawdown_service, score_service)
     saved = repository.save_score(user.user_id, score["score"], score["level"], score["factors"])
     metrics.risk_scores_calculated_total.inc()
     metrics.risk_score_current.set(score["score"])
-    producer.publish_score_updated({"eventType": "risk.score.updated", "userId": user.user_id, "score": score["score"], "level": score["level"], "riskScoreId": saved.id})
+    producer.publish_score_updated({"eventType": "risk.score.updated", "userId": user.user_id, "score": score["score"], "level": score["level"], "riskScoreId": saved.id, "correlationId": correlation_id})
     if score["level"] in {"HIGH", "CRITICAL"}:
         metrics.risk_breaches_total.inc()
-        producer.publish_breached({"eventType": "risk.breached", "userId": user.user_id, "score": score["score"], "level": score["level"]})
+        producer.publish_breached({"eventType": "risk.breached", "userId": user.user_id, "score": score["score"], "level": score["level"], "correlationId": correlation_id})
     return to_score_response(score)
 
 
@@ -87,6 +89,7 @@ def value_at_risk(
 
 @router.get("/risk/recommendations", response_model=list[RecommendationResponse])
 def recommendations(
+    request: Request,
     user: UserContext = Depends(require_read),
     repository: RiskRepository = Depends(repo),
     volatility_service: VolatilityService = Depends(get_volatility_service),
@@ -97,6 +100,7 @@ def recommendations(
     recommendation_service: RecommendationService = Depends(get_recommendation_service),
     producer: KafkaProducer = Depends(get_kafka_producer),
 ):
+    correlation_id = getattr(request.state, "correlation_id", None)
     holdings = repository.get_holdings(user.user_id)
     ticks = repository.get_market_ticks([item["symbol"] for item in holdings])
     volatility_result = volatility_service.calculate(ticks)
@@ -108,23 +112,25 @@ def recommendations(
     saved = repository.save_recommendations(user.user_id, generated)
     for item in saved:
         metrics.risk_recommendations_created_total.inc()
-        producer.publish_recommendation({"eventType": "risk.recommendation.created", "userId": user.user_id, "recommendationId": item.id, "type": item.recommendation_type})
+        producer.publish_recommendation({"eventType": "risk.recommendation.created", "userId": user.user_id, "recommendationId": item.id, "type": item.recommendation_type, "correlationId": correlation_id})
     return [to_recommendation_response(item) for item in saved]
 
 
 @router.get("/risk/anomalies", response_model=list[AnomalyResponse])
 def anomalies(
+    request: Request,
     user: UserContext = Depends(require_full_read),
     repository: RiskRepository = Depends(repo),
     anomaly_service: AnomalyService = Depends(get_anomaly_service),
     producer: KafkaProducer = Depends(get_kafka_producer),
 ):
+    correlation_id = getattr(request.state, "correlation_id", None)
     holdings = repository.get_holdings(user.user_id)
     detected = anomaly_service.detect(repository.get_market_ticks([item["symbol"] for item in holdings]))
     saved = repository.save_anomalies(user.user_id, detected) if detected else repository.latest_anomalies(user.user_id)
     for item in saved:
         metrics.risk_anomalies_detected_total.inc()
-        producer.publish_anomaly({"eventType": "risk.anomaly.detected", "userId": user.user_id, "anomalyId": item.id, "symbol": item.symbol})
+        producer.publish_anomaly({"eventType": "risk.anomaly.detected", "userId": user.user_id, "anomalyId": item.id, "symbol": item.symbol, "correlationId": correlation_id})
     return [to_anomaly_response(item) for item in saved]
 
 

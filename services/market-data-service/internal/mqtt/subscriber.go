@@ -52,7 +52,7 @@ func (s *Subscriber) Start(ctx context.Context) error {
 	if token := s.client.Subscribe(s.topic, 1, func(_ paho.Client, msg paho.Message) {
 		correlationID := uuid.NewString()
 		if err := s.service.HandleTickPayload(context.Background(), msg.Payload(), correlationID); err != nil {
-			s.logger.Warn("market tick rejected or failed", "topic", msg.Topic(), "error", err)
+			s.logger.Warn("market tick rejected or failed", "topic", msg.Topic(), "correlationId", correlationID, "error", err)
 		}
 	}); token.Wait() && token.Error() != nil {
 		return token.Error()

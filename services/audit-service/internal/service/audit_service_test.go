@@ -27,6 +27,47 @@ func TestNormalizeOrderCreatedEvent(t *testing.T) {
 	}
 }
 
+func TestNormalizeEventUsesCorrelationIdPayloadField(t *testing.T) {
+	event, err := NormalizeEvent("order.created", payload(t, map[string]any{
+		"eventId":       "event-1",
+		"orderId":       "order-1",
+		"correlationId": "payload-corr-1",
+	}), "")
+	if err != nil {
+		t.Fatalf("normalize failed: %v", err)
+	}
+	if ptrValue(event.CorrelationID) != "payload-corr-1" {
+		t.Fatalf("expected payload correlationId, got %q", ptrValue(event.CorrelationID))
+	}
+}
+
+func TestNormalizeEventUsesSnakeCaseCorrelationIdPayloadField(t *testing.T) {
+	event, err := NormalizeEvent("order.created", payload(t, map[string]any{
+		"eventId":        "event-1",
+		"orderId":        "order-1",
+		"correlation_id": "payload-corr-2",
+	}), "")
+	if err != nil {
+		t.Fatalf("normalize failed: %v", err)
+	}
+	if ptrValue(event.CorrelationID) != "payload-corr-2" {
+		t.Fatalf("expected payload correlation_id, got %q", ptrValue(event.CorrelationID))
+	}
+}
+
+func TestNormalizeEventHandlesMissingCorrelationId(t *testing.T) {
+	event, err := NormalizeEvent("order.created", payload(t, map[string]any{
+		"eventId": "event-1",
+		"orderId": "order-1",
+	}), "")
+	if err != nil {
+		t.Fatalf("normalize failed: %v", err)
+	}
+	if event.CorrelationID != nil {
+		t.Fatalf("expected missing correlation ID to remain nil, got %q", ptrValue(event.CorrelationID))
+	}
+}
+
 func TestNormalizeSurveillanceAlertCreatedEvent(t *testing.T) {
 	event, err := NormalizeEvent("surveillance.alert.created", payload(t, map[string]any{
 		"eventId":  "event-1",

@@ -2,6 +2,8 @@
 
 This catalog lists the Prometheus metrics currently exposed by the local TradeOps services. Metric names are intentionally kept close to the service implementation so dashboards can be traced back to code quickly during demos and interviews.
 
+Metrics are complemented by correlation IDs. Use `X-Correlation-ID` for HTTP, `correlationId` for events/logs, and `audit_logs.correlation_id` for audit searches when you need to follow one workflow across services.
+
 ## API Gateway
 
 | Metric | Type | Purpose |
@@ -82,4 +84,3 @@ This catalog lists the Prometheus metrics currently exposed by the local TradeOp
 ## Dashboard Query Pattern
 
 Dashboards use `or vector(0)` for optional metrics so an empty local demo does not render broken panels before events have been generated. This is a demo-friendly fallback, not a substitute for production cardinality and scrape health reviews.
-

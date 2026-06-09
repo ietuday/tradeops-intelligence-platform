@@ -2,6 +2,8 @@
 
 Use this runbook when dashboards look empty, alerts fire, or a local demo needs a quick health check.
 
+For single-flow investigations, pair metrics with a correlation ID. The standard header is `X-Correlation-ID`, and event/log payloads use `correlationId`.
+
 ## Quick Checks
 
 ```bash
@@ -44,8 +46,9 @@ Grafana:    http://localhost:3000
 
 1. Check service logs for payload validation or dependency errors.
 2. Inspect the matching DLQ topic with `rpk topic consume`.
-3. Compare the failed payload to examples under `docs/examples/`.
-4. Replay only known-safe corrected events.
+3. Search logs for the DLQ record `correlationId`.
+4. Compare the failed payload to examples under `docs/examples/`.
+5. Replay only known-safe corrected events.
 
 ## Notification Delivery Alert
 
@@ -60,4 +63,3 @@ Grafana:    http://localhost:3000
 2. Inspect `audit_events_failed_total` and `audit_events_deadlettered_total`.
 3. Verify the source topic and payload shape.
 4. Use `./scripts/demo-audit.sh` with known-good payloads to compare behavior.
-

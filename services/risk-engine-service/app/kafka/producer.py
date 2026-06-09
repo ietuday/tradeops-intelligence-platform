@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Any
 
 from confluent_kafka import Producer
@@ -47,6 +48,7 @@ class KafkaProducer:
 
     def _publish(self, topic: str, payload: dict[str, Any]) -> None:
         try:
+            payload.setdefault("correlationId", str(uuid.uuid4()))
             self.producer.produce(topic, json.dumps(payload, default=str).encode("utf-8"))
             self.producer.poll(0)
             self.producer.flush(2)

@@ -76,7 +76,7 @@ docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk top
 docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk topic consume notification.dlq -n 1
 ```
 
-Fix: Inspect `errorMessage`, fix the source issue, then manually replay `originalPayload` to `originalTopic` only when it is safe. See `docs/reliability/dead-letter-topics.md` and `docs/data-lifecycle/dlq-replay.md`.
+Fix: Inspect `errorMessage` and `correlationId`, fix the source issue, then manually replay `originalPayload` to `originalTopic` only when it is safe. See `docs/reliability/dead-letter-topics.md` and `docs/data-lifecycle/dlq-replay.md`.
 
 ## Backup Or Restore Failure
 
@@ -172,6 +172,21 @@ docker compose -f infrastructure/docker/docker-compose.yml ps
 ```
 
 Fix: Confirm the upstream service is healthy and the gateway has the correct `*_SERVICE_URL` value.
+
+## Trace A Request By Correlation ID
+
+Symptom: A request or event flow failed and you need to follow it across services.
+
+Possible cause: The failure moved across HTTP, Kafka events, notifications, or audit ingestion.
+
+Useful command:
+
+```bash
+CORRELATION_ID=demo-correlation-123 ./scripts/demo-correlation-tracing.sh
+docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway order-service surveillance-service notification-service audit-service | grep demo-correlation-123
+```
+
+Fix: Use `X-Correlation-ID` on HTTP requests, confirm downstream events include `correlationId`, inspect DLQ records for the same ID, and query audit logs with `correlationId`.
 
 ## API Gateway Upstream Timeout
 

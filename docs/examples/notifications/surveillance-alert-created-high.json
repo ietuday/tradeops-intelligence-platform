@@ -14,5 +14,5 @@
     "threshold": 100000
   },
   "occurredAt": "2026-06-08T11:00:00Z",
-  "correlationId": "demo-notification-high-alert"
+  "correlationId": "demo-correlation-123"
 }

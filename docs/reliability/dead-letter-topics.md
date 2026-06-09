@@ -3,6 +3,7 @@
 Dead-letter topics capture source events that could not be processed after retry exhaustion. They are intended for debugging, manual inspection, and controlled replay.
 
 For the broader data lifecycle and replay runbook, see `docs/data-lifecycle/dlq-replay.md` and `docs/data-lifecycle/runbook.md`.
+DLQ records include `correlationId` when the source event payload or Kafka headers provide one.
 
 ## Topics
 
@@ -47,7 +48,7 @@ printf '%s\n' '<originalPayload>' | \
   docker compose -f infrastructure/docker/docker-compose.yml exec -T redpanda rpk topic produce '<originalTopic>'
 ```
 
-Do not bulk replay DLQ topics without checking idempotency and understanding why the events failed.
+Do not bulk replay DLQ topics without checking idempotency and understanding why the events failed. Use the correlation ID to search service logs before replay.
 
 The helper script defaults to dry-run guidance:
 

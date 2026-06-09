@@ -10,5 +10,5 @@
   "limitPrice": 150,
   "status": "created",
   "occurredAt": "2026-06-08T10:00:00Z",
-  "correlationId": "demo-surveillance-large-order"
+  "correlationId": "demo-correlation-123"
 }

@@ -39,6 +39,13 @@ curl "http://localhost:8080/api/audit/export?format=csv&severity=WARNING" \
 
 Supported filters: `eventType`, `serviceName`, `actorUserId`, `entityType`, `entityId`, `action`, `severity`, `correlationId`, `from`, `to`, `limit`, and `offset`.
 
+Trace by correlation ID:
+
+```bash
+curl "http://localhost:8080/api/audit/logs?correlationId=demo-correlation-123" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
 ## RBAC
 
 - Read APIs: `trading_admin`, `risk_manager`, `analyst`
@@ -60,6 +67,8 @@ EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER=2
 ```
 
 After retry exhaustion, the event is published to `audit.dlq` with original topic, original payload, error message, service name, failure timestamp, correlation ID, and retry count.
+
+The normalizer reads both `correlationId` and `correlation_id` from source payloads when Kafka headers do not provide a correlation ID.
 
 ## Limitations
 

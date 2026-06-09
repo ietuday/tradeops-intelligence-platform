@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.6.0` Deployment Readiness: Kubernetes / Helm Optional Layer.
+Latest release: `v1.7.0` Distributed Tracing & Correlation Visibility.
 
 ## Architecture Summary
 
@@ -21,7 +21,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
-| Observability | Prometheus, Grafana, health/readiness endpoints, metrics, alert rules, SLO dashboards |
+| Observability | Prometheus, Grafana, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
 
 ## Services
@@ -82,6 +82,7 @@ Run focused demos:
 ./scripts/demo-audit.sh
 ./scripts/demo-reliability.sh
 ./scripts/demo-observability.sh
+./scripts/demo-correlation-tracing.sh
 ```
 
 Validate scripts without running the platform:
@@ -94,6 +95,7 @@ bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
+bash -n scripts/demo-correlation-tracing.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh
@@ -132,6 +134,32 @@ Run the read-only observability demo:
 ```bash
 ./scripts/demo-observability.sh
 ```
+
+## Distributed Tracing & Correlation Visibility
+
+TradeOps uses lightweight correlation IDs instead of a heavy tracing stack. The standard HTTP header is `X-Correlation-ID`, Kafka/JSON events use `correlationId`, logs use `correlationId`, and audit logs persist `audit_logs.correlation_id`.
+
+Run the safe tracing demo:
+
+```bash
+./scripts/demo-correlation-tracing.sh
+CORRELATION_ID=demo-correlation-123 ./scripts/demo-correlation-tracing.sh --publish-sample
+```
+
+Grep logs by correlation ID:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway order-service surveillance-service notification-service audit-service | grep demo-correlation-123
+```
+
+Query audit logs by correlation ID:
+
+```bash
+curl "http://localhost:8080/api/audit/logs?correlationId=demo-correlation-123" \
+  -H "Authorization: Bearer ${TOKEN}"
+```
+
+See [correlation standard](docs/tracing/correlation-standard.md), [structured logging](docs/tracing/structured-logging.md), and [tracing runbook](docs/tracing/tracing-runbook.md). OpenTelemetry tracing is a future enhancement.
 
 ## Data Retention, Backup & Replay
 
@@ -180,6 +208,9 @@ make validate-helm
 - [Prometheus alert guide](docs/observability/prometheus-alerts.md)
 - [SLO guide](docs/observability/slo-guide.md)
 - [Observability runbook](docs/observability/runbook.md)
+- [Correlation ID standard](docs/tracing/correlation-standard.md)
+- [Structured logging guidance](docs/tracing/structured-logging.md)
+- [Tracing runbook](docs/tracing/tracing-runbook.md)
 - [Data retention policy](docs/data-lifecycle/retention-policy.md)
 - [Archival strategy](docs/data-lifecycle/archival-strategy.md)
 - [Backup and restore guide](docs/data-lifecycle/backup-restore.md)
@@ -201,6 +232,7 @@ make validate-helm
 
 ## Release Notes
 
+- [v1.7.0 Distributed Tracing & Correlation Visibility](docs/release-notes/v1.7.0.md)
 - [v1.6.0 Deployment Readiness: Kubernetes / Helm Optional Layer](docs/release-notes/v1.6.0.md)
 - [v1.5.0 Data Retention, Archival & Event Replay](docs/release-notes/v1.5.0.md)
 - [v1.4.0 Advanced Observability & SLO Dashboards](docs/release-notes/v1.4.0.md)
@@ -238,7 +270,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, correlation IDs, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -249,6 +281,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Audit export is API-returned JSON/CSV, not durable file generation.
 - Data lifecycle scripts are local operational helpers, not regulated production retention automation.
 - Helm manifests are deployment-readiness artifacts, not a fully managed production cluster setup.
+- Correlation IDs are lightweight tracing aids, not full distributed tracing spans.
 - Notification email delivery is mock/log-only.
 - Frontend apps are placeholders/foundations, not complete trading UIs.
 - No Kubernetes, Helm, cloud deployment, TLS ingress, or managed secret store is included yet.
@@ -257,7 +290,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 
 - Add CI/CD pipeline documentation and automated release checks.
 - Add OpenAPI specs for gateway routes.
-- Add distributed tracing.
+- Add OpenTelemetry tracing when span-level visibility is worth the added infrastructure.
 - Add schema validation or schema registry for Kafka events.
 - Add richer portfolio screenshots.
 - Add production-grade Kubernetes hardening after the optional Helm layer is validated against a real cluster.
@@ -279,6 +312,7 @@ bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
+bash -n scripts/demo-correlation-tracing.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh

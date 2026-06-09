@@ -6,6 +6,6 @@
   "symbol": "AAPL",
   "side": "BUY",
   "quantity": 100,
-  "correlationId": "audit-demo-order-created",
+  "correlationId": "demo-correlation-123",
   "occurredAt": "2026-06-08T10:00:00Z"
 }

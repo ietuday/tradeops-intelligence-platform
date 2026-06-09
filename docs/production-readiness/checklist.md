@@ -72,6 +72,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Prometheus alert rules cover local service availability, gateway failures/latency, event failures, DLQ events, notifications, and audit ingestion.
 - [x] SLO-oriented docs and an observability runbook are included.
 - [x] Correlation IDs flow through gateway requests.
+- [x] Correlation IDs are propagated through key Kafka events, DLQ records, logs, and audit persistence.
 - [ ] Add distributed tracing.
 - [ ] Add Alertmanager routing, ownership, and escalation policies.
 

@@ -59,6 +59,7 @@ validate-scripts:
 	bash -n scripts/demo-reliability.sh
 	bash -n scripts/demo-audit.sh
 	bash -n scripts/demo-observability.sh
+	bash -n scripts/demo-correlation-tracing.sh
 	bash -n scripts/db-backup.sh
 	bash -n scripts/db-restore.sh
 	bash -n scripts/archive-old-data.sh

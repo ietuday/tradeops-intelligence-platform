@@ -15,6 +15,15 @@ describe('API Gateway health endpoints', () => {
     expect(response.headers['x-correlation-id']).toBeDefined();
   });
 
+  it('preserves a provided correlation ID', async () => {
+    const response = await request(app)
+      .get('/health')
+      .set('x-correlation-id', 'provided-corr-1');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['x-correlation-id']).toBe('provided-corr-1');
+  });
+
   it('returns readiness status', async () => {
     const response = await request(app).get('/ready');
 

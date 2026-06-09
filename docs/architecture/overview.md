@@ -1,6 +1,6 @@
 # TradeOps Architecture Overview
 
-TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, observability, and Docker Compose operations.
+TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, correlation visibility, observability, and Docker Compose operations.
 
 The platform is designed for portfolio and interview demonstration. It is not yet a real production deployment, but the service boundaries, messaging patterns, health checks, metrics, and runbooks mirror production concerns.
 
@@ -153,6 +153,8 @@ flowchart LR
 - Prometheus loads local alert rules for service availability, gateway failures/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures.
 - SLO-oriented docs live under `docs/observability/` and describe demo SLIs, dashboard usage, alert behavior, and runbook steps.
 - Correlation IDs flow through the gateway to help trace requests across services.
+- `X-Correlation-ID` is the standard HTTP header, `correlationId` is the standard event/log field, and audit logs persist it as `correlation_id`.
+- This release intentionally uses lightweight correlation tracing rather than Jaeger, Tempo, OpenTelemetry Collector, or Loki.
 
 ## Deployment Readiness
 
