@@ -1,6 +1,6 @@
 # TradeOps Intelligence Platform
 
-TradeOps Intelligence Platform is an enterprise-style event-driven trading microservices platform built to demonstrate senior backend engineering concepts including Go microservices, API Gateway, JWT/RBAC, Kafka/Redpanda, MQTT ingestion, PostgreSQL, Redis, observability, reliability, audit trails, notifications, security hardening, Helm deployment readiness, and performance testing.
+TradeOps Intelligence Platform is an enterprise-style event-driven trading microservices platform built to demonstrate senior backend engineering concepts including Go microservices, API Gateway, JWT/RBAC, Kafka/Redpanda, MQTT ingestion, PostgreSQL, Redis, real-time WebSocket streaming, observability, reliability, audit trails, notifications, security hardening, Helm deployment readiness, and performance testing.
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
@@ -23,6 +23,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Observability | Prometheus, Grafana, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Security | JWT/RBAC, Helmet, CORS config, request size limits, rate limiting, security checklist |
+| Real-time | API Gateway WebSocket streams for market, order, alert, notification, and audit events |
 | Performance | Lightweight curl timing checks, optional k6 scenarios, capacity-planning docs |
 | Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
 
@@ -45,6 +46,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 
 - Event-driven trading workflow across orders, portfolio, risk, surveillance, notifications, and audit.
 - Go microservices for transactional domains, Python services for analytics-oriented domains, and a Node.js API Gateway.
+- Real-time WebSocket streams for market ticks, order events, alerts, notifications, and audit events.
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
 - Docker Compose local runtime with optional Helm/Kubernetes deployment-readiness artifacts.
@@ -127,6 +129,7 @@ bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
+bash -n scripts/demo-websocket-streams.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh
@@ -165,6 +168,28 @@ Run the read-only observability demo:
 ```bash
 ./scripts/demo-observability.sh
 ```
+
+## Real-Time WebSocket Streaming
+
+The API Gateway exposes lightweight WebSocket streams for live platform events:
+
+```text
+/ws
+/ws/market
+/ws/orders
+/ws/alerts
+/ws/notifications
+/ws/audit
+```
+
+Try the safe demo:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --orders
+TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts --publish-sample
+```
+
+See [WebSocket streaming](docs/realtime/websocket-streaming.md) and the [real-time runbook](docs/realtime/realtime-runbook.md).
 
 ## Performance Testing & Capacity Planning
 
@@ -283,6 +308,8 @@ No screenshots are committed by default. Use the [portfolio screenshots guide](d
 - [Correlation ID standard](docs/tracing/correlation-standard.md)
 - [Structured logging guidance](docs/tracing/structured-logging.md)
 - [Tracing runbook](docs/tracing/tracing-runbook.md)
+- [WebSocket streaming](docs/realtime/websocket-streaming.md)
+- [Real-time runbook](docs/realtime/realtime-runbook.md)
 - [Threat model](docs/security/threat-model.md)
 - [RBAC matrix](docs/security/rbac-matrix.md)
 - [API security guide](docs/security/api-security.md)
@@ -324,6 +351,7 @@ No screenshots are committed by default. Use the [portfolio screenshots guide](d
 
 ## Release Notes
 
+- [v2.1.0 Real-Time WebSocket Streaming Layer](docs/release-notes/v2.1.0.md)
 - [v2.0.0 Final Portfolio Release](docs/release-notes/v2.0.0.md)
 - [v1.9.0 Performance Testing, Load Testing & Capacity Planning](docs/release-notes/v1.9.0.md)
 - [v1.8.0 Security Hardening & Threat Modeling](docs/release-notes/v1.8.0.md)
@@ -417,6 +445,7 @@ bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
+bash -n scripts/demo-websocket-streams.sh
 bash -n scripts/security-check.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh

@@ -10,7 +10,7 @@ TradeOps is intentionally scoped as a local portfolio platform. These are realis
 - Cloud deployment with production ingress/TLS.
 - Real market data provider integration.
 - Advanced strategy engine and richer backtesting.
-- WebSocket real-time dashboard.
+- WebSocket real-time dashboard UI on top of the backend streaming endpoints.
 - Production-grade migration runner.
 - Multi-tenant account/workspace support.
 - Data warehouse integration for analytics and audit retention.

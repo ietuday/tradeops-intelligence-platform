@@ -37,6 +37,48 @@ const proxyUpstreamTimeoutsTotal = new client.Counter({
   registers: [register]
 });
 
+const websocketConnectionsActive = new client.Gauge({
+  name: 'tradeops_api_gateway_websocket_connections_active',
+  help: 'Active WebSocket connections by stream.',
+  labelNames: ['stream'],
+  registers: [register]
+});
+
+const websocketConnectionsTotal = new client.Counter({
+  name: 'tradeops_api_gateway_websocket_connections_total',
+  help: 'Total WebSocket connections accepted by stream.',
+  labelNames: ['stream'],
+  registers: [register]
+});
+
+const websocketMessagesSentTotal = new client.Counter({
+  name: 'tradeops_api_gateway_websocket_messages_sent_total',
+  help: 'Total WebSocket messages sent by stream and topic.',
+  labelNames: ['stream', 'topic'],
+  registers: [register]
+});
+
+const websocketMessagesFailedTotal = new client.Counter({
+  name: 'tradeops_api_gateway_websocket_messages_failed_total',
+  help: 'Total WebSocket message send failures by stream and topic.',
+  labelNames: ['stream', 'topic'],
+  registers: [register]
+});
+
+const websocketAuthFailuresTotal = new client.Counter({
+  name: 'tradeops_api_gateway_websocket_auth_failures_total',
+  help: 'Total WebSocket authentication failures by stream.',
+  labelNames: ['stream'],
+  registers: [register]
+});
+
+const websocketKafkaEventsConsumedTotal = new client.Counter({
+  name: 'tradeops_api_gateway_websocket_kafka_events_consumed_total',
+  help: 'Total Kafka events consumed for WebSocket streaming by topic.',
+  labelNames: ['topic'],
+  registers: [register]
+});
+
 function normalizeRoute(req: Request): string {
   return req.route?.path?.toString() || req.path || 'unknown';
 }
@@ -70,6 +112,31 @@ export function recordProxyUpstreamError(service: string, status: number): void 
 
 export function recordProxyUpstreamTimeout(service: string): void {
   proxyUpstreamTimeoutsTotal.inc({ service });
+}
+
+export function recordWebSocketConnectionOpened(stream: string): void {
+  websocketConnectionsActive.inc({ stream });
+  websocketConnectionsTotal.inc({ stream });
+}
+
+export function recordWebSocketConnectionClosed(stream: string): void {
+  websocketConnectionsActive.dec({ stream });
+}
+
+export function recordWebSocketMessageSent(stream: string, topic: string): void {
+  websocketMessagesSentTotal.inc({ stream, topic });
+}
+
+export function recordWebSocketMessageFailed(stream: string, topic: string): void {
+  websocketMessagesFailedTotal.inc({ stream, topic });
+}
+
+export function recordWebSocketAuthFailure(stream: string): void {
+  websocketAuthFailuresTotal.inc({ stream });
+}
+
+export function recordWebSocketKafkaEventConsumed(topic: string): void {
+  websocketKafkaEventsConsumedTotal.inc({ topic });
 }
 
 export { register };

@@ -1,0 +1,14 @@
+{
+  "type": "order.filled",
+  "topic": "order.filled",
+  "correlationId": "demo-websocket-order-001",
+  "timestamp": "2026-06-09T10:01:00Z",
+  "payload": {
+    "orderId": "order-demo-001",
+    "symbol": "AAPL",
+    "side": "BUY",
+    "quantity": 10,
+    "fillPrice": 190.25,
+    "correlationId": "demo-websocket-order-001"
+  }
+}

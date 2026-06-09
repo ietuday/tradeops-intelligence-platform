@@ -1,0 +1,13 @@
+{
+  "type": "audit.log.created",
+  "topic": "audit.log.created",
+  "correlationId": "demo-websocket-audit-001",
+  "timestamp": "2026-06-09T10:04:00Z",
+  "payload": {
+    "auditLogId": "audit-demo-001",
+    "serviceName": "order-service",
+    "eventType": "ORDER_FILLED",
+    "severity": "INFO",
+    "correlationId": "demo-websocket-audit-001"
+  }
+}

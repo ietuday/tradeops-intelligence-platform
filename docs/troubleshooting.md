@@ -188,6 +188,22 @@ docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway orde
 
 Fix: Use `X-Correlation-ID` on HTTP requests, confirm downstream events include `correlationId`, inspect DLQ records for the same ID, and query audit logs with `correlationId`.
 
+## WebSocket Stream Has No Messages
+
+Symptom: `/ws/*` connects but only heartbeat messages appear.
+
+Possible cause: No new Kafka events were published, the gateway Kafka consumer is not connected, or the client subscribed to the wrong stream.
+
+Useful command:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts --publish-sample
+docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway
+curl http://localhost:8080/metrics | grep websocket
+```
+
+Fix: Confirm `WS_ENABLED=true`, Redpanda is healthy, the token role can access the stream, and the target topic has new events.
+
 ## API Gateway Upstream Timeout
 
 Symptom: Gateway route returns `504` with `UPSTREAM_TIMEOUT`.

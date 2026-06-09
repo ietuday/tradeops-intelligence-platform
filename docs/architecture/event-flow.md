@@ -36,6 +36,8 @@ Events should include `correlationId` when available. API Gateway accepts or gen
 | `notification.retry_requested` | `notification-service` | `audit-service` | Notification retry requested event. |
 | `audit.log.created` | `audit-service` | None currently | Audit log created event. |
 
+The API Gateway WebSocket layer also consumes selected topics for live clients: `market.ticks`, order lifecycle topics, `surveillance.alert.*`, `notification.*`, and `audit.log.created`.
+
 ## End-To-End Event Story
 
 ```mermaid
@@ -60,8 +62,10 @@ sequenceDiagram
   Notification->>Kafka: notification.created / notification.sent
   Kafka->>Audit: order / portfolio / risk / alert / notification events
   Audit->>Kafka: audit.log.created
+  Kafka->>Gateway: streamed topics for /ws/*
   Client->>Gateway: GET /api/surveillance/alerts
   Client->>Gateway: GET /api/notifications
+  Client->>Gateway: WebSocket /ws/alerts
 ```
 
 ## Demo Payloads
@@ -69,6 +73,7 @@ sequenceDiagram
 - Surveillance payloads live under `docs/examples/surveillance/`.
 - Notification payloads live under `docs/examples/notifications/`.
 - Audit payloads live under `docs/examples/audit/`.
+- WebSocket stream message examples live under `docs/examples/websocket/`.
 - Demo scripts publish compact JSON to Redpanda with `rpk topic produce`.
 - Replay/demo scripts accept `CORRELATION_ID` to inject a traceable `correlationId`.
 

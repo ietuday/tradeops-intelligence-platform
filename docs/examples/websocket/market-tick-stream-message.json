@@ -1,0 +1,12 @@
+{
+  "type": "market.ticks",
+  "topic": "market.ticks",
+  "correlationId": "demo-websocket-market-001",
+  "timestamp": "2026-06-09T10:00:00Z",
+  "payload": {
+    "symbol": "AAPL",
+    "price": 190.25,
+    "volume": 1000,
+    "correlationId": "demo-websocket-market-001"
+  }
+}

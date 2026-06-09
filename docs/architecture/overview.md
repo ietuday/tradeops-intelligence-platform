@@ -1,6 +1,6 @@
 # TradeOps Architecture Overview
 
-TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, API Gateway hardening, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, correlation visibility, observability, and Docker Compose operations.
+TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, API Gateway hardening, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, real-time WebSocket streaming, correlation visibility, observability, and Docker Compose operations.
 
 The platform is designed for portfolio and interview demonstration. It is not yet a real production deployment, but the service boundaries, messaging patterns, health checks, metrics, and runbooks mirror production concerns.
 
@@ -94,6 +94,13 @@ flowchart LR
 4. The gateway forwards the authorization and correlation headers to the target service.
 5. Services validate JWT/RBAC locally, use PostgreSQL for service data, and return JSON responses.
 6. Long-running side effects are represented as Kafka events when applicable.
+
+## Real-Time Streaming Flow
+
+- The API Gateway exposes `/ws`, `/ws/market`, `/ws/orders`, `/ws/alerts`, `/ws/notifications`, and `/ws/audit`.
+- WebSocket clients authenticate with a JWT query token or upgrade `Authorization` header when `WS_REQUIRE_AUTH=true`.
+- The gateway consumes selected Redpanda/Kafka topics and broadcasts normalized messages with `type`, `topic`, `correlationId`, `timestamp`, and `payload`.
+- Heartbeats keep local clients aware of connection health.
 
 ## Event-Driven Flow
 

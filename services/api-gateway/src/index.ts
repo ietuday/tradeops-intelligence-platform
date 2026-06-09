@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import { createServer } from 'http';
 import helmet from 'helmet';
 import pino from 'pino';
 import pinoHttp from 'pino-http';
@@ -17,6 +18,8 @@ import { portfolioProxyRouter } from './routes/portfolio-proxy';
 import { riskProxyRouter } from './routes/risk-proxy';
 import { strategyProxyRouter } from './routes/strategy-proxy';
 import { surveillanceProxyRouter } from './routes/surveillance-proxy';
+import { startWebSocketKafkaConsumer } from './realtime/kafka-consumer';
+import { attachWebSocketServer } from './realtime/websocket-server';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -92,8 +95,14 @@ function parseCorsOrigins(value: string | undefined): string[] {
 if (require.main === module) {
   const port = Number(process.env.PORT || 8080);
   const app = createApp();
+  const server = createServer(app);
 
-  app.listen(port, '0.0.0.0', () => {
+  if ((process.env.WS_ENABLED || 'true').toLowerCase() === 'true') {
+    const websocket = attachWebSocketServer(server, logger);
+    void startWebSocketKafkaConsumer(websocket.hub, logger);
+  }
+
+  server.listen(port, '0.0.0.0', () => {
     logger.info({ port }, 'API Gateway started');
   });
 }

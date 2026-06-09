@@ -61,6 +61,11 @@
 - [Structured logging](tracing/structured-logging.md)
 - [Tracing runbook](tracing/tracing-runbook.md)
 
+## Real-Time Streaming
+
+- [WebSocket streaming](realtime/websocket-streaming.md)
+- [Real-time runbook](realtime/realtime-runbook.md)
+
 ## Audit
 
 - [Audit trail](audit/audit-trail.md)
@@ -81,5 +86,6 @@
 
 ## Release Notes
 
+- [v2.1.0 Real-Time WebSocket Streaming Layer](release-notes/v2.1.0.md)
 - [v2.0.0 Final Portfolio Release](release-notes/v2.0.0.md)
 - [Release notes directory](release-notes/)

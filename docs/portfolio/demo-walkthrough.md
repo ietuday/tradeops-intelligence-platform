@@ -32,6 +32,7 @@ Use this to tell the full story: gateway health, auth/token requirements, sample
 | Reliability/DLQ | `./scripts/demo-reliability.sh` | Shows defensive handling, retry/DLQ guidance, and safe replay posture. |
 | Observability | `./scripts/demo-observability.sh` | Shows dashboards, Prometheus queries, and alert docs. |
 | Correlation tracing | `./scripts/demo-correlation-tracing.sh` | Follows one `correlationId` through HTTP/events/logs/audit. |
+| WebSocket streams | `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` | Shows live event streaming from Kafka topics through the API Gateway. |
 | Backup/replay | `./scripts/db-backup.sh`, `./scripts/replay-sample-events.sh --all` | Demonstrates operational safety and sample event replay. |
 | Performance | `./scripts/perf-smoke.sh`, `./scripts/run-load-tests.sh --gateway` | Shows local-safe timing and optional k6 scenarios. |
 

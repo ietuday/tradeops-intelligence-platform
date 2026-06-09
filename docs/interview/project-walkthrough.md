@@ -2,7 +2,7 @@
 
 ## 60-Second Explanation
 
-TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, and audit-service records a compliance-style event trail.
+TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
 
 ## 2-Minute Explanation
 
@@ -43,6 +43,10 @@ The order service accepts an `Idempotency-Key` header during order creation. Rep
 ## How Observability Is Handled
 
 Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs, events, DLQ records, and audit logs can be connected across services.
+
+## How Real-Time Streaming Works
+
+The API Gateway attaches a WebSocket server to the existing HTTP server. It exposes `/ws` plus domain streams for market, orders, alerts, notifications, and audit. A lightweight Kafka consumer maps selected topics to streams, normalizes messages, preserves `correlationId`, sends heartbeat messages, and records WebSocket metrics.
 
 ## How Security Hardening Is Handled
 
@@ -86,8 +90,9 @@ The audit service consumes important platform events, maps them to normalized ac
 8. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
 9. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
 10. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-11. Run `./scripts/security-check.sh` to show safe repository security validation.
-12. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+11. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
+12. Run `./scripts/security-check.sh` to show safe repository security validation.
+13. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 

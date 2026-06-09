@@ -12,6 +12,12 @@ Metrics are complemented by correlation IDs. Use `X-Correlation-ID` for HTTP, `c
 | `tradeops_api_gateway_http_request_duration_seconds_bucket` | Histogram | Gateway latency distribution for p95/p99 queries. |
 | `tradeops_api_gateway_proxy_upstream_errors_total` | Counter | Proxy errors returned by backend service calls. |
 | `tradeops_api_gateway_proxy_upstream_timeouts_total` | Counter | Gateway upstream timeout events. |
+| `tradeops_api_gateway_websocket_connections_active` | Gauge | Active WebSocket connections by stream. |
+| `tradeops_api_gateway_websocket_connections_total` | Counter | Accepted WebSocket connections by stream. |
+| `tradeops_api_gateway_websocket_messages_sent_total` | Counter | WebSocket messages sent by stream and topic. |
+| `tradeops_api_gateway_websocket_messages_failed_total` | Counter | WebSocket message send failures. |
+| `tradeops_api_gateway_websocket_auth_failures_total` | Counter | WebSocket authentication failures by stream. |
+| `tradeops_api_gateway_websocket_kafka_events_consumed_total` | Counter | Kafka events consumed by the WebSocket stream layer. |
 
 ## Identity
 
