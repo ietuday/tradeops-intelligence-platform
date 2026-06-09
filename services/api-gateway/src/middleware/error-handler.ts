@@ -23,6 +23,17 @@ export function notFoundHandler(req: Request, res: Response): void {
 export function errorHandler(error: Error, req: Request, res: Response, _next: NextFunction): void {
   req.log?.error({ err: error }, 'Unhandled API Gateway error');
 
+  if ('type' in error && error.type === 'entity.too.large') {
+    res.status(413).json({
+      error: {
+        code: 'REQUEST_BODY_TOO_LARGE',
+        message: 'Request body exceeds the configured size limit.',
+        correlationId: req.headers[CORRELATION_ID_HEADER]
+      }
+    });
+    return;
+  }
+
   if (isProxyError(error)) {
     res.status(error.status).json({
       error: {

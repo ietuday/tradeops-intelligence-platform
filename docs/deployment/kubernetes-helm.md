@@ -95,6 +95,22 @@ JWT_SECRET=replace-me
 
 Do not use placeholder secrets for real deployments. Production should use Kubernetes Secrets managed by a secure process, External Secrets, Vault, or a cloud secret manager.
 
+See [secrets management](../security/secrets-management.md) and [security checklist](../security/security-checklist.md) before using the chart outside local experiments.
+
+## API Gateway Security Settings
+
+The chart should pass the same gateway settings used by Compose:
+
+```text
+CORS_ORIGIN=<exact UI origins>
+REQUEST_BODY_LIMIT=1mb
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=300
+PROXY_TIMEOUT_MS=10000
+```
+
+For a real cluster, pair these lightweight application controls with TLS ingress, network policies, managed secrets, and ingress/controller-level rate limiting or WAF rules.
+
 ## Local Cluster Usage
 
 With kind or minikube, build/tag images for the cluster, then render or install:
@@ -113,6 +129,7 @@ Docker Compose remains easier for the full local demo because it already include
 - Use managed PostgreSQL/Redis/Kafka or separately operated stateful services.
 - Configure real secrets and secret rotation.
 - Configure TLS ingress.
+- Configure production CORS, request body limits, and distributed abuse protection.
 - Add migration strategy and backup/restore workflow.
 - Add autoscaling, pod disruption budgets, network policies, and rollout strategy.
 - Add log aggregation, tracing, and Alertmanager routing.
@@ -122,5 +139,5 @@ Docker Compose remains easier for the full local demo because it already include
 - The chart does not install full stateful infrastructure.
 - The chart does not provision Kafka topics.
 - The chart does not include production TLS, cloud ingress, or managed secrets.
+- The chart does not include production WAF, mTLS, OIDC, or network policies.
 - The default image tags are local placeholders.
-

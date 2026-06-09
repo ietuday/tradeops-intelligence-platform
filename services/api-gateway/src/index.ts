@@ -5,6 +5,7 @@ import pino from 'pino';
 import pinoHttp from 'pino-http';
 import { correlationIdMiddleware, CORRELATION_ID_HEADER } from './middleware/correlation-id';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
+import { createRateLimitMiddleware } from './middleware/rate-limit';
 import { metricsHandler, metricsMiddleware } from './observability/metrics';
 import { authProxyRouter } from './routes/auth-proxy';
 import { auditProxyRouter } from './routes/audit-proxy';
@@ -27,11 +28,16 @@ const logger = pino({
 
 export function createApp() {
   const app = express();
+  const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '1mb';
+  const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
+  const rateLimitMaxRequests = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 300);
+  const corsOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
 
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors());
-  app.use(express.json({ limit: '1mb' }));
+  app.use(cors({
+    origin: corsOrigins.length > 0 ? corsOrigins : true
+  }));
   app.use(correlationIdMiddleware);
   app.use(pinoHttp({
     logger,
@@ -40,6 +46,11 @@ export function createApp() {
     })
   }));
   app.use(metricsMiddleware);
+  app.use(createRateLimitMiddleware({
+    windowMs: Number.isFinite(rateLimitWindowMs) && rateLimitWindowMs > 0 ? rateLimitWindowMs : 60000,
+    maxRequests: Number.isFinite(rateLimitMaxRequests) && rateLimitMaxRequests > 0 ? rateLimitMaxRequests : 300
+  }));
+  app.use(express.json({ limit: requestBodyLimit }));
 
   app.use(healthRouter);
   app.get('/metrics', metricsHandler);
@@ -65,6 +76,17 @@ export function createApp() {
   app.use(errorHandler);
 
   return app;
+}
+
+function parseCorsOrigins(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
 }
 
 if (require.main === module) {

@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.7.0` Distributed Tracing & Correlation Visibility.
+Latest release: `v1.8.0` Security Hardening & Threat Modeling.
 
 ## Architecture Summary
 
@@ -22,6 +22,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Observability | Prometheus, Grafana, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
+| Security | JWT/RBAC, Helmet, CORS config, request size limits, rate limiting, security checklist |
 | Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
 
 ## Services
@@ -161,6 +162,28 @@ curl "http://localhost:8080/api/audit/logs?correlationId=demo-correlation-123" \
 
 See [correlation standard](docs/tracing/correlation-standard.md), [structured logging](docs/tracing/structured-logging.md), and [tracing runbook](docs/tracing/tracing-runbook.md). OpenTelemetry tracing is a future enhancement.
 
+## Security Hardening
+
+TradeOps keeps security practical and local-demo friendly: JWT/RBAC remains enforced by backend services where implemented, the API Gateway uses Helmet security headers, configurable CORS, request body limits, in-memory rate limiting, proxy timeout handling, and consistent error responses with `correlationId`.
+
+Key gateway settings:
+
+```bash
+CORS_ORIGIN=http://localhost:4200,http://localhost:4300
+REQUEST_BODY_LIMIT=1mb
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=300
+```
+
+Run the read-only security check:
+
+```bash
+./scripts/security-check.sh
+make security-check
+```
+
+Security references: [threat model](docs/security/threat-model.md), [RBAC matrix](docs/security/rbac-matrix.md), [API security](docs/security/api-security.md), [secrets management](docs/security/secrets-management.md), and [security checklist](docs/security/security-checklist.md).
+
 ## Data Retention, Backup & Replay
 
 TradeOps includes local data lifecycle guidance and safe helper scripts for backups, archival exports, sample replay, and DLQ replay. Destructive operations are not automatic.
@@ -211,6 +234,11 @@ make validate-helm
 - [Correlation ID standard](docs/tracing/correlation-standard.md)
 - [Structured logging guidance](docs/tracing/structured-logging.md)
 - [Tracing runbook](docs/tracing/tracing-runbook.md)
+- [Threat model](docs/security/threat-model.md)
+- [RBAC matrix](docs/security/rbac-matrix.md)
+- [API security guide](docs/security/api-security.md)
+- [Secrets management guide](docs/security/secrets-management.md)
+- [Security checklist](docs/security/security-checklist.md)
 - [Data retention policy](docs/data-lifecycle/retention-policy.md)
 - [Archival strategy](docs/data-lifecycle/archival-strategy.md)
 - [Backup and restore guide](docs/data-lifecycle/backup-restore.md)
@@ -232,6 +260,7 @@ make validate-helm
 
 ## Release Notes
 
+- [v1.8.0 Security Hardening & Threat Modeling](docs/release-notes/v1.8.0.md)
 - [v1.7.0 Distributed Tracing & Correlation Visibility](docs/release-notes/v1.7.0.md)
 - [v1.6.0 Deployment Readiness: Kubernetes / Helm Optional Layer](docs/release-notes/v1.6.0.md)
 - [v1.5.0 Data Retention, Archival & Event Replay](docs/release-notes/v1.5.0.md)
@@ -259,6 +288,7 @@ Common local commands:
 ```bash
 make help
 make validate-scripts
+make security-check
 make compose-config
 make test-node
 make test-go
@@ -270,7 +300,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, idempotency, event-driven integration, audit trails, correlation IDs, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, API Gateway hardening, threat modeling, idempotency, event-driven integration, audit trails, correlation IDs, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -282,15 +312,17 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Data lifecycle scripts are local operational helpers, not regulated production retention automation.
 - Helm manifests are deployment-readiness artifacts, not a fully managed production cluster setup.
 - Correlation IDs are lightweight tracing aids, not full distributed tracing spans.
+- API Gateway rate limiting is in-memory and intended for local/demo use, not distributed production abuse protection.
 - Notification email delivery is mock/log-only.
 - Frontend apps are placeholders/foundations, not complete trading UIs.
-- No Kubernetes, Helm, cloud deployment, TLS ingress, or managed secret store is included yet.
+- No cloud deployment, TLS ingress, OAuth/OIDC provider, mTLS, WAF, or managed secret store is included yet.
 
 ## Future Roadmap
 
 - Add CI/CD pipeline documentation and automated release checks.
 - Add OpenAPI specs for gateway routes.
 - Add OpenTelemetry tracing when span-level visibility is worth the added infrastructure.
+- Add production identity provider integration, TLS ingress, WAF/rate-limit integration, and managed secrets.
 - Add schema validation or schema registry for Kafka events.
 - Add richer portfolio screenshots.
 - Add production-grade Kubernetes hardening after the optional Helm layer is validated against a real cluster.
@@ -313,6 +345,7 @@ bash -n scripts/demo-e2e-tradeops.sh
 bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
+bash -n scripts/security-check.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh
@@ -320,4 +353,5 @@ bash -n scripts/replay-sample-events.sh
 bash -n scripts/replay-dlq-events.sh
 bash -n scripts/validate-helm.sh
 ./scripts/validate-helm.sh
+./scripts/security-check.sh
 ```

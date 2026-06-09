@@ -203,6 +203,64 @@ curl http://localhost:8080/metrics | grep tradeops_api_gateway_proxy_upstream_ti
 
 Fix: Check the upstream service logs and tune `PROXY_TIMEOUT_MS` only after confirming the service is healthy. The default is `10000` milliseconds.
 
+## API Gateway Rate Limited
+
+Symptom: A gateway route returns `429` with `RATE_LIMIT_EXCEEDED`.
+
+Possible cause: The local in-memory gateway limiter exceeded `RATE_LIMIT_MAX_REQUESTS` within `RATE_LIMIT_WINDOW_MS`.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway
+curl -i http://localhost:8080/health -H "x-correlation-id: demo-rate-limit"
+```
+
+Fix: For demos, slow the request loop or raise `RATE_LIMIT_MAX_REQUESTS` in `infrastructure/docker/.env`. For production, use a distributed gateway/WAF limit instead of the local in-memory limiter.
+
+## API Gateway Request Body Too Large
+
+Symptom: A gateway route returns `413` with `REQUEST_BODY_TOO_LARGE`.
+
+Possible cause: The JSON payload exceeds `REQUEST_BODY_LIMIT`.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway
+```
+
+Fix: Reduce the payload size or adjust `REQUEST_BODY_LIMIT` for the target environment. Keep high limits behind authentication and abuse controls.
+
+## CORS Origin Blocked
+
+Symptom: Browser requests fail CORS checks while curl works.
+
+Possible cause: `CORS_ORIGIN` does not include the browser application's origin.
+
+Useful command:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml exec api-gateway env | grep CORS_ORIGIN
+```
+
+Fix: Set `CORS_ORIGIN` to a comma-separated allowlist such as `http://localhost:4200,http://localhost:4300` for local demos and the exact production UI origins for deployment.
+
+## Security Check Warns About Secrets
+
+Symptom: `./scripts/security-check.sh` prints `WARN` lines for secret-like strings.
+
+Possible cause: The repository contains placeholder docs, shell variable references, or accidental credentials.
+
+Useful command:
+
+```bash
+./scripts/security-check.sh
+git ls-files | grep -E '(^|/)(\.env|.*\.pem|.*\.key|id_rsa|private_key)$'
+```
+
+Fix: Placeholder docs are expected. Remove real secrets, local `.env` files, private keys, and generated credentials before publishing.
+
 ## JWT Missing Or Invalid
 
 Symptom: Protected API returns `401`.

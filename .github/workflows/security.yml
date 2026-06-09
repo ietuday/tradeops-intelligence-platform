@@ -39,6 +39,9 @@ jobs:
             echo "No suspicious secret-like assignments found."
           fi
 
+      - name: TradeOps security check
+        run: ./scripts/security-check.sh
+
   go-security:
     name: Go vet and govulncheck (${{ matrix.service }})
     runs-on: ubuntu-latest

@@ -5,7 +5,7 @@ HELM_CHART := infrastructure/helm/tradeops-platform
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
 PYTHON_SERVICES := strategy-service risk-engine-service
 
-.PHONY: help test test-go test-node test-python compose-config validate-scripts helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+.PHONY: help test test-go test-node test-python compose-config validate-scripts security-check helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
 
 help:
 	@echo "TradeOps local commands"
@@ -16,6 +16,7 @@ help:
 	@echo "  make test-python          Run Python service tests when tests exist"
 	@echo "  make compose-config       Validate Docker Compose config"
 	@echo "  make validate-scripts     Validate Bash script syntax"
+	@echo "  make security-check       Run read-only local security checks"
 	@echo "  make validate-helm        Validate optional Helm chart when Helm is installed"
 	@echo "  make smoke                Run smoke test against a running stack"
 	@echo "  make demo-surveillance    Run surveillance demo"
@@ -52,6 +53,7 @@ compose-config:
 	docker compose -f $(DOCKER_COMPOSE_FILE) config
 
 validate-scripts:
+	bash -n scripts/security-check.sh
 	bash -n scripts/smoke-test.sh
 	bash -n scripts/demo-surveillance.sh
 	bash -n scripts/demo-notifications.sh
@@ -66,6 +68,9 @@ validate-scripts:
 	bash -n scripts/replay-sample-events.sh
 	bash -n scripts/replay-dlq-events.sh
 	bash -n scripts/validate-helm.sh
+
+security-check:
+	./scripts/security-check.sh
 
 helm-lint:
 	helm lint $(HELM_CHART)

@@ -2,7 +2,7 @@
 
 ## 60-Second Explanation
 
-TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, and audit-service records a compliance-style event trail.
+TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, and audit-service records a compliance-style event trail.
 
 ## 2-Minute Explanation
 
@@ -15,6 +15,8 @@ Correlation IDs provide lightweight tracing without a full tracing stack: the ga
 The repository also includes data lifecycle support: retention policy docs, local PostgreSQL backup/restore scripts, old-data archival exports, sample event replay, and conservative DLQ replay guidance.
 
 For deployment readiness, the repository includes an optional Helm chart with Deployments, Services, ConfigMap/Secret separation, probes, resource limits, and optional ingress. Docker Compose remains the recommended local demo runtime.
+
+For security readiness, the repository includes a STRIDE-style threat model, RBAC matrix, API security guide, secrets-management guidance, security checklist, and a read-only security validation script. The gateway uses Helmet, configurable CORS, request size limits, local rate limiting, and consistent error responses with correlation IDs.
 
 ## Architecture Explanation
 
@@ -41,6 +43,10 @@ The order service accepts an `Idempotency-Key` header during order creation. Rep
 ## How Observability Is Handled
 
 Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs, events, DLQ records, and audit logs can be connected across services.
+
+## How Security Hardening Is Handled
+
+The platform keeps security practical for a portfolio system. The API Gateway disables `x-powered-by`, applies Helmet headers, supports `CORS_ORIGIN`, enforces `REQUEST_BODY_LIMIT`, applies a generous in-memory rate limit, and returns security errors with `correlationId`. Backend services validate JWTs and enforce RBAC where implemented. Security docs are explicit about current controls and production gaps such as OAuth/OIDC, mTLS, external secret managers, TLS ingress, and WAF.
 
 ## How Kafka/Redpanda Is Used
 
@@ -80,7 +86,8 @@ The audit service consumes important platform events, maps them to normalized ac
 8. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
 9. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
 10. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-11. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+11. Run `./scripts/security-check.sh` to show safe repository security validation.
+12. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
@@ -89,6 +96,8 @@ The audit service consumes important platform events, maps them to normalized ac
 - Services own their persistence and expose health/readiness/metrics consistently.
 - Observability is treated as a first-class platform capability with dashboards, alert rules, SLO docs, and runbooks.
 - Correlation IDs make request/event tracing possible without adding a heavy tracing stack.
+- API Gateway hardening covers headers, CORS, body limits, rate limiting, and consistent security error shape.
+- Threat modeling and RBAC documentation show how the system is reviewed, not just coded.
 - Data lifecycle is treated operationally with retention docs, backups, archival exports, replay guidance, and explicit confirmation for destructive actions.
 - Deployment readiness is represented with a simple Helm chart while keeping Compose as the primary local runtime.
 - Event consumers are defensive so bad demo payloads do not crash the process.
@@ -105,4 +114,4 @@ The audit service consumes important platform events, maps them to normalized ac
 - Retention and archival scripts are local portfolio helpers, not regulated production archival automation.
 - Helm is an optional readiness layer and does not install production-grade stateful infrastructure.
 - Email delivery is mock-only.
-- CI/CD hardening, managed secrets, TLS ingress, production database isolation, and OpenTelemetry tracing are future work.
+- Managed secrets, TLS ingress, production database isolation, production-grade distributed abuse protection, and OpenTelemetry tracing are future work.

@@ -7,6 +7,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Services load configuration from environment variables.
 - [x] Docker Compose has local defaults for non-secret values.
 - [x] Required secrets are documented in `infrastructure/docker/.env.example`.
+- [x] Security hardening controls are documented under `docs/security/`.
 - [ ] Add environment-specific config validation for staging/production.
 - [ ] Split local, staging, and production configuration profiles.
 
@@ -14,6 +15,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 
 - [x] Local secrets are kept out of git through `.env`.
 - [x] JWT secrets are shared consistently across services in local Compose.
+- [x] Read-only security check flags risky tracked secret files and secret-like strings.
 - [ ] Move real deployments to a secret manager.
 - [ ] Add secret rotation procedures.
 - [ ] Avoid default local secrets outside development.
@@ -31,7 +33,8 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Identity service issues JWT access tokens.
 - [x] Services validate JWTs locally.
 - [x] RBAC middleware exists for protected service APIs.
-- [ ] Formalize role matrix per endpoint.
+- [x] Document target role matrix in `docs/security/rbac-matrix.md`.
+- [ ] Normalize RBAC enforcement depth across every endpoint.
 - [ ] Add token revocation strategy for access tokens if required.
 - [ ] Add SSO/OIDC integration for real enterprise deployment.
 
@@ -40,8 +43,9 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Gateway centralizes client HTTP access.
 - [x] Gateway propagates authorization and correlation headers.
 - [x] Gateway exposes health, readiness, and metrics.
+- [x] Gateway applies Helmet security headers, configurable CORS, request body limits, and local-demo rate limiting.
 - [ ] Add explicit request timeout, retry, and circuit-breaker policies per upstream.
-- [ ] Add production-grade rate limiting and abuse protection.
+- [ ] Add production-grade distributed rate limiting and abuse protection.
 - [ ] Generate OpenAPI specs for gateway routes.
 
 ## Messaging
@@ -117,10 +121,13 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] JWT validation protects sensitive APIs.
 - [x] Password auth is isolated in identity-service.
 - [x] Local secrets are documented and ignored.
+- [x] Threat model, RBAC matrix, API security guide, secrets guide, and security checklist are documented.
+- [x] API Gateway has security headers, CORS config, request body limits, and rate limiting.
+- [x] `scripts/security-check.sh` provides safe local security validation.
 - [ ] Add TLS termination for production.
-- [ ] Add dependency scanning in CI.
+- [x] Add dependency scanning in CI.
 - [ ] Add container image scanning.
-- [ ] Review CORS, headers, and rate-limit policies for production.
+- [ ] Review CORS, headers, and rate-limit policies against production traffic patterns.
 
 ## Docker Compose
 

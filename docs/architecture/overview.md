@@ -1,6 +1,6 @@
 # TradeOps Architecture Overview
 
-TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, correlation visibility, observability, and Docker Compose operations.
+TradeOps Intelligence Platform is a local, enterprise-style trading intelligence system built from small services. It demonstrates authentication, API Gateway hardening, market data ingestion, order flow, portfolio updates, strategy/risk analytics, surveillance alerts, notifications, audit trails, correlation visibility, observability, and Docker Compose operations.
 
 The platform is designed for portfolio and interview demonstration. It is not yet a real production deployment, but the service boundaries, messaging patterns, health checks, metrics, and runbooks mirror production concerns.
 
@@ -170,7 +170,9 @@ flowchart LR
 - `identity-service` issues JWT access tokens.
 - Services verify JWT signatures using the shared local identity secret configured in Compose.
 - Services enforce role-based access where implemented.
+- The API Gateway applies Helmet headers, configurable CORS, request body limits, rate limiting, proxy timeout handling, and consistent error responses with `correlationId`.
 - Secrets are provided through `infrastructure/docker/.env` and should not be committed.
+- Security docs cover the [threat model](../security/threat-model.md), [RBAC matrix](../security/rbac-matrix.md), [API security](../security/api-security.md), [secrets management](../security/secrets-management.md), and [security checklist](../security/security-checklist.md).
 
 ## Database Usage
 
