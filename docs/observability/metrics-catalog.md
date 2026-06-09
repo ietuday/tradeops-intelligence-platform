@@ -84,3 +84,23 @@ Metrics are complemented by correlation IDs. Use `X-Correlation-ID` for HTTP, `c
 ## Dashboard Query Pattern
 
 Dashboards use `or vector(0)` for optional metrics so an empty local demo does not render broken panels before events have been generated. This is a demo-friendly fallback, not a substitute for production cardinality and scrape health reviews.
+
+## Performance Testing Metrics
+
+During `./scripts/perf-smoke.sh` and optional k6 scenarios, prioritize:
+
+| Area | Metrics |
+| --- | --- |
+| Gateway latency | `tradeops_api_gateway_http_request_duration_seconds_bucket` for p95/p99. |
+| Gateway error rate | `tradeops_api_gateway_http_requests_total{status_code=~"5.."}`. |
+| Upstream health | `tradeops_api_gateway_proxy_upstream_errors_total`, `tradeops_api_gateway_proxy_upstream_timeouts_total`. |
+| Event failures | `surveillance_event_processing_attempts_total`, `notification_event_processing_attempts_total`, `audit_event_processing_attempts_total`. |
+| Retry/DLQ health | `*_events_retried_total`, `*_events_deadlettered_total`, `*_duplicate_events_skipped_total`. |
+| Notification delivery | `notification_delivery_attempts_total`, `notification_delivery_failures_total`, `notification_delivery_duration_seconds_bucket`. |
+| Audit export pressure | `audit_export_requests_total` plus gateway p95 latency. |
+
+Example p95 gateway query:
+
+```promql
+histogram_quantile(0.95, sum by (le) (rate(tradeops_api_gateway_http_request_duration_seconds_bucket[5m])))
+```

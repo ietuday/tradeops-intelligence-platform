@@ -33,6 +33,18 @@ Use the local credentials from `infrastructure/docker/.env` or Compose defaults.
 
 - Run `./scripts/demo-observability.sh` to print dashboard links and safe Prometheus queries.
 - Run focused demos first if the dashboards are empty: `./scripts/demo-surveillance.sh`, `./scripts/demo-notifications.sh`, and `./scripts/demo-audit.sh`.
+- During performance tests, watch the Platform Overview and API Gateway dashboards for p95 latency, 5xx rate, request volume, upstream errors, and timeouts.
+- During event replay or event-driven load tests, watch the Event Processing dashboard for retries, failures, duplicate skips, and DLQ events.
 - Some panels may show zero until a workflow produces matching events.
 - Dashboard queries use local demo thresholds and are not tuned for a real production trading workload.
 
+## Performance Testing Queries
+
+Use these Prometheus starters while running `./scripts/perf-smoke.sh` or `./scripts/run-load-tests.sh --gateway`:
+
+```promql
+histogram_quantile(0.95, sum by (le) (rate(tradeops_api_gateway_http_request_duration_seconds_bucket[5m])))
+sum(rate(tradeops_api_gateway_http_requests_total{status_code=~"5.."}[5m]))
+sum(rate(tradeops_api_gateway_proxy_upstream_errors_total[5m]))
+sum(rate(surveillance_events_deadlettered_total[5m])) + sum(rate(notification_events_deadlettered_total[5m])) + sum(rate(audit_events_deadlettered_total[5m]))
+```

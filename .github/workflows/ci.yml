@@ -127,6 +127,9 @@ jobs:
 
       - name: Bash syntax checks
         run: |
+          bash -n scripts/run-load-tests.sh
+          bash -n scripts/perf-smoke.sh
+          bash -n scripts/security-check.sh
           bash -n scripts/smoke-test.sh
           bash -n scripts/demo-surveillance.sh
           bash -n scripts/demo-notifications.sh

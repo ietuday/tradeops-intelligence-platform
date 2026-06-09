@@ -5,7 +5,7 @@ HELM_CHART := infrastructure/helm/tradeops-platform
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
 PYTHON_SERVICES := strategy-service risk-engine-service
 
-.PHONY: help test test-go test-node test-python compose-config validate-scripts security-check helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+.PHONY: help test test-go test-node test-python compose-config validate-scripts security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
 
 help:
 	@echo "TradeOps local commands"
@@ -17,6 +17,9 @@ help:
 	@echo "  make compose-config       Validate Docker Compose config"
 	@echo "  make validate-scripts     Validate Bash script syntax"
 	@echo "  make security-check       Run read-only local security checks"
+	@echo "  make perf-smoke           Run lightweight curl timing checks"
+	@echo "  make load-test-gateway    Run optional k6 gateway load test"
+	@echo "  make load-test-all        Run all optional k6 load tests with low defaults"
 	@echo "  make validate-helm        Validate optional Helm chart when Helm is installed"
 	@echo "  make smoke                Run smoke test against a running stack"
 	@echo "  make demo-surveillance    Run surveillance demo"
@@ -54,6 +57,8 @@ compose-config:
 
 validate-scripts:
 	bash -n scripts/security-check.sh
+	bash -n scripts/run-load-tests.sh
+	bash -n scripts/perf-smoke.sh
 	bash -n scripts/smoke-test.sh
 	bash -n scripts/demo-surveillance.sh
 	bash -n scripts/demo-notifications.sh
@@ -71,6 +76,15 @@ validate-scripts:
 
 security-check:
 	./scripts/security-check.sh
+
+perf-smoke:
+	./scripts/perf-smoke.sh
+
+load-test-gateway:
+	./scripts/run-load-tests.sh --gateway
+
+load-test-all:
+	./scripts/run-load-tests.sh --all
 
 helm-lint:
 	helm lint $(HELM_CHART)

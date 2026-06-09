@@ -25,6 +25,14 @@ This guide defines practical local SLO-style targets for explaining TradeOps obs
 | Notifications | In-app and mock email delivery should succeed; webhook failures should be explainable by endpoint availability. |
 | Audit | Known-good sample events create audit logs without DLQ entries. |
 
+## Load Test Interpretation
+
+- Use `./scripts/perf-smoke.sh` for a lightweight timing check before demos.
+- Use k6 scenarios as local baseline tools, not production SLO proof.
+- During k6 runs, p95 latency and 5xx rate are the first two gateway indicators to watch.
+- For event-driven tests, retries, failures, and DLQ counters are more useful than raw request throughput.
+- Keep local p95 under 1000ms for low default k6 scenarios unless the host machine is resource constrained.
+
 ## Production Follow-Ups
 
 - Add per-route and per-service ownership for SLOs.
@@ -32,4 +40,3 @@ This guide defines practical local SLO-style targets for explaining TradeOps obs
 - Add consumer lag metrics when Kafka lag instrumentation is introduced.
 - Add distributed tracing for cross-service latency attribution.
 - Replace local thresholds with baselines from real traffic.
-

@@ -4,7 +4,7 @@ Enterprise-style local trading intelligence platform with microservices, event-d
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Latest release: `v1.8.0` Security Hardening & Threat Modeling.
+Latest release: `v1.9.0` Performance Testing, Load Testing & Capacity Planning.
 
 ## Architecture Summary
 
@@ -23,6 +23,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Observability | Prometheus, Grafana, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Security | JWT/RBAC, Helmet, CORS config, request size limits, rate limiting, security checklist |
+| Performance | Lightweight curl timing checks, optional k6 scenarios, capacity-planning docs |
 | Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
 
 ## Services
@@ -90,6 +91,8 @@ Validate scripts without running the platform:
 
 ```bash
 bash -n scripts/smoke-test.sh
+bash -n scripts/run-load-tests.sh
+bash -n scripts/perf-smoke.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-audit.sh
@@ -135,6 +138,20 @@ Run the read-only observability demo:
 ```bash
 ./scripts/demo-observability.sh
 ```
+
+## Performance Testing & Capacity Planning
+
+TradeOps includes safe local performance checks and optional k6 scenarios. These are demo baselines for one machine, not production capacity numbers.
+
+```bash
+./scripts/perf-smoke.sh
+./scripts/run-load-tests.sh --gateway
+BASE_URL=http://localhost:8080 TOKEN=<jwt> ./scripts/run-load-tests.sh --surveillance
+```
+
+If k6 is not installed, the load-test runner skips gracefully and prints install guidance. During tests, watch API Gateway p95 latency, 5xx rate, upstream errors/timeouts, event failures, retries, DLQ metrics, and notification delivery failures.
+
+Performance references: [load testing](docs/performance/load-testing.md), [benchmark plan](docs/performance/benchmark-plan.md), [capacity planning](docs/performance/capacity-planning.md), [performance runbook](docs/performance/performance-runbook.md), and [results template](docs/performance/performance-results-template.md).
 
 ## Distributed Tracing & Correlation Visibility
 
@@ -239,6 +256,11 @@ make validate-helm
 - [API security guide](docs/security/api-security.md)
 - [Secrets management guide](docs/security/secrets-management.md)
 - [Security checklist](docs/security/security-checklist.md)
+- [Performance load testing](docs/performance/load-testing.md)
+- [Benchmark plan](docs/performance/benchmark-plan.md)
+- [Capacity planning](docs/performance/capacity-planning.md)
+- [Performance runbook](docs/performance/performance-runbook.md)
+- [Performance results template](docs/performance/performance-results-template.md)
 - [Data retention policy](docs/data-lifecycle/retention-policy.md)
 - [Archival strategy](docs/data-lifecycle/archival-strategy.md)
 - [Backup and restore guide](docs/data-lifecycle/backup-restore.md)
@@ -260,6 +282,7 @@ make validate-helm
 
 ## Release Notes
 
+- [v1.9.0 Performance Testing, Load Testing & Capacity Planning](docs/release-notes/v1.9.0.md)
 - [v1.8.0 Security Hardening & Threat Modeling](docs/release-notes/v1.8.0.md)
 - [v1.7.0 Distributed Tracing & Correlation Visibility](docs/release-notes/v1.7.0.md)
 - [v1.6.0 Deployment Readiness: Kubernetes / Helm Optional Layer](docs/release-notes/v1.6.0.md)
@@ -289,6 +312,8 @@ Common local commands:
 make help
 make validate-scripts
 make security-check
+make perf-smoke
+make load-test-gateway
 make compose-config
 make test-node
 make test-go
@@ -300,7 +325,7 @@ See [CI/CD quality gates](docs/ci-cd/quality-gates.md) for workflow details, sec
 
 ## Production-Readiness Note
 
-TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, API Gateway hardening, threat modeling, idempotency, event-driven integration, audit trails, correlation IDs, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
+TradeOps demonstrates production-oriented backend practices: service boundaries, JWT/RBAC, API Gateway hardening, threat modeling, idempotency, event-driven integration, audit trails, correlation IDs, health/readiness checks, metrics, Prometheus alerts, SLO dashboards, performance baselines, capacity-planning guidance, data retention guidance, backup/replay scripts, optional Helm deployment manifests, smoke tests, demo scripts, release notes, troubleshooting docs, and Grafana dashboards.
 
 It is still a local portfolio platform, not a real production deployment. See the [production-readiness checklist](docs/production-readiness/checklist.md) for honest gaps and future hardening work.
 
@@ -313,6 +338,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Helm manifests are deployment-readiness artifacts, not a fully managed production cluster setup.
 - Correlation IDs are lightweight tracing aids, not full distributed tracing spans.
 - API Gateway rate limiting is in-memory and intended for local/demo use, not distributed production abuse protection.
+- Local performance tests are not production capacity benchmarks.
 - Notification email delivery is mock/log-only.
 - Frontend apps are placeholders/foundations, not complete trading UIs.
 - No cloud deployment, TLS ingress, OAuth/OIDC provider, mTLS, WAF, or managed secret store is included yet.
@@ -323,6 +349,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 - Add OpenAPI specs for gateway routes.
 - Add OpenTelemetry tracing when span-level visibility is worth the added infrastructure.
 - Add production identity provider integration, TLS ingress, WAF/rate-limit integration, and managed secrets.
+- Add automated performance regression gates after stable baselines exist.
 - Add schema validation or schema registry for Kafka events.
 - Add richer portfolio screenshots.
 - Add production-grade Kubernetes hardening after the optional Helm layer is validated against a real cluster.
@@ -337,6 +364,8 @@ Recommended release validation:
 (cd services/audit-service && go test ./...)
 (cd services/api-gateway && npm test -- --runInBand)
 docker compose -f infrastructure/docker/docker-compose.yml config
+bash -n scripts/run-load-tests.sh
+bash -n scripts/perf-smoke.sh
 bash -n scripts/smoke-test.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-notifications.sh

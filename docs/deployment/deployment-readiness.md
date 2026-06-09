@@ -39,8 +39,17 @@ Use this checklist before trying the optional Helm chart in a local Kubernetes c
 - [ ] Deployments render successfully with `helm template`.
 - [ ] Probes are enabled and mapped to `/health` and `/ready`.
 - [ ] Resource requests and limits are set.
+- [ ] Resource requests/limits are compared against local benchmark observations.
 - [ ] Ingress is configured only when needed.
 - [ ] Logs are checked after startup.
+
+## Performance And Scaling
+
+- [ ] Local perf smoke has been run with `./scripts/perf-smoke.sh`.
+- [ ] Optional k6 scenario has been run for the API Gateway before scaling changes.
+- [ ] Stateful bottlenecks are reviewed before increasing application replicas.
+- [ ] PostgreSQL, Redpanda/Kafka, and Redis capacity plans are documented.
+- [ ] SLO targets are used to decide whether scaling is needed.
 
 ## Rollback And Safety
 
@@ -48,4 +57,3 @@ Use this checklist before trying the optional Helm chart in a local Kubernetes c
 - [ ] Helm uninstall command is known.
 - [ ] Database backup exists before risky deployment tests.
 - [ ] Rollback plan is documented.
-

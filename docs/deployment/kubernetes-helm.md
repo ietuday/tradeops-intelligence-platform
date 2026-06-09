@@ -85,6 +85,8 @@ limits:
 
 Tune these after load testing; they are local readiness defaults, not production sizing.
 
+Before raising replicas or resource limits, run the local performance plan in [capacity planning](../performance/capacity-planning.md) and identify whether the bottleneck is stateless service CPU, PostgreSQL, Redpanda/Kafka, Redis, or Docker host pressure.
+
 ## Secret Handling
 
 The chart uses an example placeholder:
@@ -130,6 +132,7 @@ Docker Compose remains easier for the full local demo because it already include
 - Configure real secrets and secret rotation.
 - Configure TLS ingress.
 - Configure production CORS, request body limits, and distributed abuse protection.
+- Run load tests before increasing replicas so stateful dependency bottlenecks are visible.
 - Add migration strategy and backup/restore workflow.
 - Add autoscaling, pod disruption budgets, network policies, and rollout strategy.
 - Add log aggregation, tracing, and Alertmanager routing.
