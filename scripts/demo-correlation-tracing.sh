@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${COMPOSE_FILE:-${ROOT_DIR}/infrastructure/docker/docker-compose.yml}"
 API_URL="${API_URL:-http://localhost:8080}"
 EXAMPLE_FILE="${ROOT_DIR}/docs/examples/surveillance/order-created-large-order.json"
+TENANT_ID="${TENANT_ID:-default-tenant}"
 CORRELATION_ID="${CORRELATION_ID:-}"
 PUBLISH_SAMPLE="false"
 
@@ -35,6 +36,7 @@ if [ -z "${CORRELATION_ID}" ]; then
 fi
 
 echo "TradeOps correlation tracing demo"
+echo "Tenant ID: ${TENANT_ID}"
 echo "Correlation ID: ${CORRELATION_ID}"
 echo "API Gateway: ${API_URL}"
 echo
@@ -46,7 +48,7 @@ echo
 
 publish_sample() {
   if command -v docker >/dev/null 2>&1 && docker compose -f "${COMPOSE_FILE}" ps redpanda >/dev/null 2>&1; then
-    node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); data.correlationId = process.argv[2]; process.stdout.write(JSON.stringify(data) + "\n");' "${EXAMPLE_FILE}" "${CORRELATION_ID}" |
+    node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); data.correlationId = process.argv[2]; data.tenantId = process.argv[3]; process.stdout.write(JSON.stringify(data) + "\n");' "${EXAMPLE_FILE}" "${CORRELATION_ID}" "${TENANT_ID}" |
       docker compose -f "${COMPOSE_FILE}" exec -T redpanda rpk topic produce order.created >/dev/null
     echo "Published sample order.created with correlationId=${CORRELATION_ID}"
   else
@@ -57,7 +59,7 @@ publish_sample() {
 print_manual_publish() {
   cat <<EOF
 Manual sample publish:
-CORRELATION_ID=${CORRELATION_ID} node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync("docs/examples/surveillance/order-created-large-order.json", "utf8")); data.correlationId = process.env.CORRELATION_ID; process.stdout.write(JSON.stringify(data) + "\\n");' | \\
+CORRELATION_ID=${CORRELATION_ID} TENANT_ID=${TENANT_ID} node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync("docs/examples/surveillance/order-created-large-order.json", "utf8")); data.correlationId = process.env.CORRELATION_ID; data.tenantId = process.env.TENANT_ID; process.stdout.write(JSON.stringify(data) + "\\n");' | \\
   docker compose -f infrastructure/docker/docker-compose.yml exec -T redpanda rpk topic produce order.created
 EOF
 }

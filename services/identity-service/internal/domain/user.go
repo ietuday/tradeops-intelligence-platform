@@ -4,6 +4,7 @@ import "time"
 
 type User struct {
 	ID           string
+	TenantID     string
 	Email        string
 	PasswordHash string
 	FullName     string

@@ -37,14 +37,14 @@ func (r *PortfolioRepository) ApplyFilledOrder(ctx context.Context, event domain
 	defer tx.Rollback(ctx)
 
 	var exists bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM processed_order_events WHERE event_id = $1)`, event.EventID).Scan(&exists); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM processed_order_events WHERE tenant_id = $1 AND event_id = $2)`, defaultTenant(event.TenantID), event.EventID).Scan(&exists); err != nil {
 		return UpdateResult{}, err
 	}
 	if exists {
 		return UpdateResult{Duplicate: true}, tx.Commit(ctx)
 	}
 
-	portfolioID, err := ensurePortfolio(ctx, tx, event.UserID, initialCash)
+	portfolioID, err := ensurePortfolio(ctx, tx, defaultTenant(event.TenantID), event.UserID, initialCash)
 	if err != nil {
 		return UpdateResult{}, err
 	}
@@ -70,17 +70,17 @@ func (r *PortfolioRepository) ApplyFilledOrder(ctx context.Context, event domain
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO processed_order_events (event_id, order_id, user_id)
-		VALUES ($1, $2, $3)
-	`, event.EventID, event.OrderID, event.UserID); err != nil {
+		INSERT INTO processed_order_events (event_id, tenant_id, order_id, user_id)
+		VALUES ($1, $2, $3, $4)
+	`, event.EventID, defaultTenant(event.TenantID), event.OrderID, event.UserID); err != nil {
 		return UpdateResult{}, err
 	}
 
-	portfolio, err := readPortfolio(ctx, tx, event.UserID)
+	portfolio, err := readPortfolio(ctx, tx, defaultTenant(event.TenantID), event.UserID)
 	if err != nil {
 		return UpdateResult{}, err
 	}
-	holdings, err := readHoldings(ctx, tx, event.UserID)
+	holdings, err := readHoldings(ctx, tx, defaultTenant(event.TenantID), event.UserID)
 	if err != nil {
 		return UpdateResult{}, err
 	}
@@ -95,29 +95,29 @@ func (r *PortfolioRepository) ApplyFilledOrder(ctx context.Context, event domain
 	return UpdateResult{Portfolio: portfolio, Holdings: holdings, Snapshot: snapshot}, nil
 }
 
-func (r *PortfolioRepository) GetPortfolio(ctx context.Context, userID string, initialCash float64) (domain.Portfolio, error) {
+func (r *PortfolioRepository) GetPortfolio(ctx context.Context, tenantID, userID string, initialCash float64) (domain.Portfolio, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return domain.Portfolio{}, err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := ensurePortfolio(ctx, tx, userID, initialCash); err != nil {
+	if _, err := ensurePortfolio(ctx, tx, defaultTenant(tenantID), userID, initialCash); err != nil {
 		return domain.Portfolio{}, err
 	}
-	portfolio, err := readPortfolio(ctx, tx, userID)
+	portfolio, err := readPortfolio(ctx, tx, defaultTenant(tenantID), userID)
 	if err != nil {
 		return domain.Portfolio{}, err
 	}
 	return portfolio, tx.Commit(ctx)
 }
 
-func (r *PortfolioRepository) GetHoldings(ctx context.Context, userID string) ([]domain.Holding, error) {
+func (r *PortfolioRepository) GetHoldings(ctx context.Context, tenantID, userID string) ([]domain.Holding, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id::text, portfolio_id::text, user_id, symbol, quantity::float8, average_buy_price::float8, updated_at
 		FROM portfolio_holdings
-		WHERE user_id = $1 AND quantity > 0
+		WHERE COALESCE(tenant_id, 'default-tenant') = $1 AND user_id = $2 AND quantity > 0
 		ORDER BY symbol
-	`, userID)
+	`, defaultTenant(tenantID), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,14 +125,14 @@ func (r *PortfolioRepository) GetHoldings(ctx context.Context, userID string) ([
 	return scanHoldings(rows)
 }
 
-func (r *PortfolioRepository) GetSnapshots(ctx context.Context, userID string) ([]domain.Snapshot, error) {
+func (r *PortfolioRepository) GetSnapshots(ctx context.Context, tenantID, userID string) ([]domain.Snapshot, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id::text, portfolio_id::text, user_id, cash_balance::float8, holdings_value::float8, total_value::float8, realized_pnl::float8, created_at
+		SELECT id::text, portfolio_id::text, COALESCE(tenant_id, 'default-tenant'), user_id, cash_balance::float8, holdings_value::float8, total_value::float8, realized_pnl::float8, created_at
 		FROM portfolio_snapshots
-		WHERE user_id = $1
+		WHERE COALESCE(tenant_id, 'default-tenant') = $1 AND user_id = $2
 		ORDER BY created_at DESC
 		LIMIT 50
-	`, userID)
+	`, defaultTenant(tenantID), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (r *PortfolioRepository) GetSnapshots(ctx context.Context, userID string) (
 	var snapshots []domain.Snapshot
 	for rows.Next() {
 		var snapshot domain.Snapshot
-		if err := rows.Scan(&snapshot.ID, &snapshot.PortfolioID, &snapshot.UserID, &snapshot.CashBalance, &snapshot.HoldingsValue, &snapshot.TotalValue, &snapshot.RealizedPnL, &snapshot.CreatedAt); err != nil {
+		if err := rows.Scan(&snapshot.ID, &snapshot.PortfolioID, &snapshot.TenantID, &snapshot.UserID, &snapshot.CashBalance, &snapshot.HoldingsValue, &snapshot.TotalValue, &snapshot.RealizedPnL, &snapshot.CreatedAt); err != nil {
 			return nil, err
 		}
 		snapshots = append(snapshots, snapshot)
@@ -149,14 +149,14 @@ func (r *PortfolioRepository) GetSnapshots(ctx context.Context, userID string) (
 	return snapshots, rows.Err()
 }
 
-func (r *PortfolioRepository) GetRealizedPnL(ctx context.Context, userID string) (float64, []map[string]any, error) {
+func (r *PortfolioRepository) GetRealizedPnL(ctx context.Context, tenantID, userID string) (float64, []map[string]any, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT order_id, symbol, quantity::float8, fill_price::float8, average_buy_price::float8, realized_pnl::float8, occurred_at
 		FROM realized_pnl_events
-		WHERE user_id = $1
+		WHERE COALESCE(tenant_id, 'default-tenant') = $1 AND user_id = $2
 		ORDER BY occurred_at DESC
 		LIMIT 100
-	`, userID)
+	`, defaultTenant(tenantID), userID)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -180,14 +180,14 @@ func (r *PortfolioRepository) GetRealizedPnL(ctx context.Context, userID string)
 	return total, events, rows.Err()
 }
 
-func ensurePortfolio(ctx context.Context, tx pgx.Tx, userID string, initialCash float64) (string, error) {
+func ensurePortfolio(ctx context.Context, tx pgx.Tx, tenantID, userID string, initialCash float64) (string, error) {
 	var portfolioID string
 	err := tx.QueryRow(ctx, `
-		INSERT INTO portfolios (user_id)
-		VALUES ($1)
+		INSERT INTO portfolios (tenant_id, user_id)
+		VALUES ($1, $2)
 		ON CONFLICT (user_id) DO UPDATE SET updated_at = portfolios.updated_at
 		RETURNING id::text
-	`, userID).Scan(&portfolioID)
+	`, defaultTenant(tenantID), userID).Scan(&portfolioID)
 	if err != nil {
 		return "", err
 	}
@@ -209,13 +209,13 @@ func applyBuy(ctx context.Context, tx pgx.Tx, portfolioID string, event domain.O
 		return err
 	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO portfolio_holdings (portfolio_id, user_id, symbol, quantity, average_buy_price)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO portfolio_holdings (tenant_id, portfolio_id, user_id, symbol, quantity, average_buy_price)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (portfolio_id, symbol) DO UPDATE
-		SET average_buy_price = ((portfolio_holdings.quantity * portfolio_holdings.average_buy_price) + ($4 * $5)) / NULLIF(portfolio_holdings.quantity + $4, 0),
-		    quantity = portfolio_holdings.quantity + $4,
+		SET average_buy_price = ((portfolio_holdings.quantity * portfolio_holdings.average_buy_price) + ($5 * $6)) / NULLIF(portfolio_holdings.quantity + $5, 0),
+		    quantity = portfolio_holdings.quantity + $5,
 		    updated_at = now()
-	`, portfolioID, event.UserID, event.Symbol, event.Quantity, fillPrice)
+	`, defaultTenant(event.TenantID), portfolioID, event.UserID, event.Symbol, event.Quantity, fillPrice)
 	return err
 }
 
@@ -252,26 +252,26 @@ func applySell(ctx context.Context, tx pgx.Tx, portfolioID string, event domain.
 		return err
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO realized_pnl_events (portfolio_id, user_id, order_id, symbol, quantity, fill_price, average_buy_price, realized_pnl, occurred_at, correlation_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-	`, portfolioID, event.UserID, event.OrderID, event.Symbol, event.Quantity, fillPrice, averageBuyPrice, realized, event.OccurredAt, event.CorrelationID)
+		INSERT INTO realized_pnl_events (tenant_id, portfolio_id, user_id, order_id, symbol, quantity, fill_price, average_buy_price, realized_pnl, occurred_at, correlation_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`, defaultTenant(event.TenantID), portfolioID, event.UserID, event.OrderID, event.Symbol, event.Quantity, fillPrice, averageBuyPrice, realized, event.OccurredAt, event.CorrelationID)
 	return err
 }
 
 func readPortfolio(ctx context.Context, q interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
-}, userID string) (domain.Portfolio, error) {
+}, tenantID, userID string) (domain.Portfolio, error) {
 	var portfolio domain.Portfolio
 	err := q.QueryRow(ctx, `
-		SELECT p.id::text, p.user_id, cb.cash_balance::float8, cb.realized_pnl::float8,
+		SELECT p.id::text, COALESCE(p.tenant_id, 'default-tenant'), p.user_id, cb.cash_balance::float8, cb.realized_pnl::float8,
 		       cb.cash_balance::float8 + COALESCE(SUM(ph.quantity * ph.average_buy_price), 0)::float8 AS total_value,
 		       p.created_at, p.updated_at
 		FROM portfolios p
 		JOIN cash_balances cb ON cb.portfolio_id = p.id
 		LEFT JOIN portfolio_holdings ph ON ph.portfolio_id = p.id
-		WHERE p.user_id = $1
+		WHERE COALESCE(p.tenant_id, 'default-tenant') = $1 AND p.user_id = $2
 		GROUP BY p.id, p.user_id, cb.cash_balance, cb.realized_pnl, p.created_at, p.updated_at
-	`, userID).Scan(&portfolio.ID, &portfolio.UserID, &portfolio.CashBalance, &portfolio.RealizedPnL, &portfolio.TotalValue, &portfolio.CreatedAt, &portfolio.UpdatedAt)
+	`, defaultTenant(tenantID), userID).Scan(&portfolio.ID, &portfolio.TenantID, &portfolio.UserID, &portfolio.CashBalance, &portfolio.RealizedPnL, &portfolio.TotalValue, &portfolio.CreatedAt, &portfolio.UpdatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Portfolio{}, ErrNotFound
@@ -281,13 +281,13 @@ func readPortfolio(ctx context.Context, q interface {
 	return portfolio, nil
 }
 
-func readHoldings(ctx context.Context, tx pgx.Tx, userID string) ([]domain.Holding, error) {
+func readHoldings(ctx context.Context, tx pgx.Tx, tenantID, userID string) ([]domain.Holding, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT id::text, portfolio_id::text, user_id, symbol, quantity::float8, average_buy_price::float8, updated_at
 		FROM portfolio_holdings
-		WHERE user_id = $1 AND quantity > 0
+		WHERE COALESCE(tenant_id, 'default-tenant') = $1 AND user_id = $2 AND quantity > 0
 		ORDER BY symbol
-	`, userID)
+	`, defaultTenant(tenantID), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -314,10 +314,17 @@ func createSnapshot(ctx context.Context, tx pgx.Tx, portfolio domain.Portfolio, 
 	}
 	var snapshot domain.Snapshot
 	err := tx.QueryRow(ctx, `
-		INSERT INTO portfolio_snapshots (portfolio_id, user_id, cash_balance, holdings_value, total_value, realized_pnl)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id::text, portfolio_id::text, user_id, cash_balance::float8, holdings_value::float8, total_value::float8, realized_pnl::float8, created_at
-	`, portfolio.ID, portfolio.UserID, portfolio.CashBalance, holdingsValue, portfolio.CashBalance+holdingsValue, portfolio.RealizedPnL).
-		Scan(&snapshot.ID, &snapshot.PortfolioID, &snapshot.UserID, &snapshot.CashBalance, &snapshot.HoldingsValue, &snapshot.TotalValue, &snapshot.RealizedPnL, &snapshot.CreatedAt)
+		INSERT INTO portfolio_snapshots (tenant_id, portfolio_id, user_id, cash_balance, holdings_value, total_value, realized_pnl)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id::text, portfolio_id::text, COALESCE(tenant_id, 'default-tenant'), user_id, cash_balance::float8, holdings_value::float8, total_value::float8, realized_pnl::float8, created_at
+	`, defaultTenant(portfolio.TenantID), portfolio.ID, portfolio.UserID, portfolio.CashBalance, holdingsValue, portfolio.CashBalance+holdingsValue, portfolio.RealizedPnL).
+		Scan(&snapshot.ID, &snapshot.PortfolioID, &snapshot.TenantID, &snapshot.UserID, &snapshot.CashBalance, &snapshot.HoldingsValue, &snapshot.TotalValue, &snapshot.RealizedPnL, &snapshot.CreatedAt)
 	return snapshot, err
+}
+
+func defaultTenant(value string) string {
+	if value == "" {
+		return "default-tenant"
+	}
+	return value
 }

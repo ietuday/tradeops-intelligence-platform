@@ -55,6 +55,8 @@ export function attachWebSocketServer(
       return;
     }
 
+    let tenantId = 'default-tenant';
+    let roles: string[] = [];
     if (config.requireAuth) {
       try {
         const token = extractToken(req, url);
@@ -65,6 +67,8 @@ export function attachWebSocketServer(
         if (!canAccessStream(principal.roles, stream)) {
           throw new Error('role not allowed for stream');
         }
+        tenantId = principal.tenantId;
+        roles = principal.roles;
       } catch (error) {
         recordWebSocketAuthFailure(stream);
         logger.warn({ err: error, stream, correlationId }, 'WebSocket authentication failed');
@@ -74,18 +78,19 @@ export function attachWebSocketServer(
     }
 
     wsServer.handleUpgrade(req, socket, head, (ws) => {
-      wsServer.emit('connection', ws, req, stream, correlationId);
+      wsServer.emit('connection', ws, req, stream, correlationId, tenantId, roles);
     });
   });
 
-  wsServer.on('connection', (socket: WebSocket, _req: IncomingMessage, stream: WebSocketStream, correlationId: string) => {
-    logger.info({ stream, correlationId }, 'WebSocket client connected');
+  wsServer.on('connection', (socket: WebSocket, _req: IncomingMessage, stream: WebSocketStream, correlationId: string, tenantId: string, roles: string[]) => {
+    logger.info({ stream, correlationId, tenantId }, 'WebSocket client connected');
     recordWebSocketConnectionOpened(stream);
-    const unsubscribe = hub.subscribe(socket, stream);
+    const unsubscribe = hub.subscribe(socket, stream, tenantId, roles);
 
     sendJson(socket, {
       type: 'connection.ready',
       stream,
+      tenantId,
       correlationId,
       timestamp: new Date().toISOString()
     });
@@ -97,6 +102,7 @@ export function attachWebSocketServer(
       sendJson(socket, {
         type: 'heartbeat',
         stream,
+        tenantId,
         correlationId,
         timestamp: new Date().toISOString()
       });
@@ -107,7 +113,7 @@ export function attachWebSocketServer(
       clearInterval(heartbeat);
       unsubscribe();
       recordWebSocketConnectionClosed(stream);
-      logger.info({ stream, correlationId }, 'WebSocket client disconnected');
+      logger.info({ stream, correlationId, tenantId }, 'WebSocket client disconnected');
     });
 
     socket.on('error', (error) => {

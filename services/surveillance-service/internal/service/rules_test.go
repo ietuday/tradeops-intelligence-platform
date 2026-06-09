@@ -129,6 +129,26 @@ func TestProcessEventSkipsDuplicateAlert(t *testing.T) {
 	}
 }
 
+func TestProcessEventAppliesTenantID(t *testing.T) {
+	store := &fakeAlertStore{}
+	svc := NewSurveillanceService(store, nil, observability.NewMetrics(), NewRuleEngine(testRuleConfig()))
+
+	err := svc.ProcessEvent(context.Background(), sourceEvent("order.filled", map[string]any{
+		"tenantId":  "tenant-a",
+		"orderId":   "order-1",
+		"userId":    "11111111-1111-1111-1111-111111111111",
+		"symbol":    "AAPL",
+		"quantity":  1000,
+		"fillPrice": 150,
+	}))
+	if err != nil {
+		t.Fatalf("process event failed: %v", err)
+	}
+	if store.alert.TenantID != "tenant-a" {
+		t.Fatalf("expected tenant-a, got %q", store.alert.TenantID)
+	}
+}
+
 func testRuleConfig() RuleConfig {
 	return RuleConfig{
 		LargeOrderThreshold:          100000,
@@ -172,15 +192,15 @@ func (s *fakeAlertStore) ListAlerts(context.Context, repository.AlertFilters) ([
 	return []domain.Alert{s.alert}, nil
 }
 
-func (s *fakeAlertStore) GetAlert(context.Context, string) (domain.Alert, error) {
+func (s *fakeAlertStore) GetAlert(context.Context, string, string) (domain.Alert, error) {
 	return s.alert, nil
 }
 
-func (s *fakeAlertStore) UpdateStatus(_ context.Context, _ string, status string) (domain.Alert, error) {
+func (s *fakeAlertStore) UpdateStatus(_ context.Context, _, _ string, status string) (domain.Alert, error) {
 	s.alert.Status = status
 	return s.alert, nil
 }
 
-func (s *fakeAlertStore) Summary(context.Context) (repository.Summary, error) {
+func (s *fakeAlertStore) Summary(context.Context, string) (repository.Summary, error) {
 	return repository.Summary{}, nil
 }

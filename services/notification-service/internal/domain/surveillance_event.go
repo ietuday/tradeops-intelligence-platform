@@ -12,6 +12,7 @@ type SourceEvent struct {
 type SurveillanceAlertEvent struct {
 	EventID       string         `json:"eventId"`
 	EventType     string         `json:"eventType"`
+	TenantID      string         `json:"tenantId"`
 	AlertID       string         `json:"alertId"`
 	AlertType     string         `json:"alertType"`
 	Severity      string         `json:"severity"`

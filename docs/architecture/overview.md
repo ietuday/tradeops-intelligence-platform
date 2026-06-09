@@ -4,6 +4,8 @@ TradeOps Intelligence Platform is a local, enterprise-style trading intelligence
 
 The platform is designed for portfolio and interview demonstration. It is not yet a real production deployment, but the service boundaries, messaging patterns, health checks, metrics, and runbooks mirror production concerns.
 
+v2.2.0 adds shared-database multitenancy. Tenant-owned tables use `tenant_id`, JWTs include `tenantId`, API Gateway propagates `X-Tenant-ID`, events include `tenantId`, audit logs store tenant context, and WebSocket streams filter tenant events by connection tenant.
+
 ## Service List
 
 | Service | Purpose |
@@ -91,7 +93,7 @@ flowchart LR
 1. A client sends HTTP requests to the API Gateway.
 2. Public auth endpoints are proxied to `identity-service`.
 3. Protected service APIs require a JWT issued by identity.
-4. The gateway forwards the authorization and correlation headers to the target service.
+4. The gateway forwards authorization, tenant, and correlation headers to the target service.
 5. Services validate JWT/RBAC locally, use PostgreSQL for service data, and return JSON responses.
 6. Long-running side effects are represented as Kafka events when applicable.
 

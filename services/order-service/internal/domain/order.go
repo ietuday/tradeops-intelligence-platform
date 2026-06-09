@@ -20,6 +20,7 @@ const (
 
 type Order struct {
 	ID            string     `json:"id"`
+	TenantID      string     `json:"tenantId"`
 	UserID        string     `json:"userId"`
 	Symbol        string     `json:"symbol"`
 	Side          string     `json:"side"`

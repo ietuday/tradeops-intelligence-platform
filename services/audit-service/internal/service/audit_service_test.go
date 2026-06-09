@@ -175,7 +175,7 @@ func (s *fakeStore) CreateAuditLog(_ context.Context, log domain.AuditLog) (doma
 	return log, nil
 }
 
-func (s *fakeStore) GetAuditLogByID(context.Context, string) (domain.AuditLog, error) {
+func (s *fakeStore) GetAuditLogByID(context.Context, string, string) (domain.AuditLog, error) {
 	if len(s.logs) == 0 {
 		return domain.AuditLog{}, repository.ErrNotFound
 	}

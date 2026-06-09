@@ -52,6 +52,10 @@ The API Gateway attaches a WebSocket server to the existing HTTP server. It expo
 
 The platform keeps security practical for a portfolio system. The API Gateway disables `x-powered-by`, applies Helmet headers, supports `CORS_ORIGIN`, enforces `REQUEST_BODY_LIMIT`, applies a generous in-memory rate limit, and returns security errors with `correlationId`. Backend services validate JWTs and enforce RBAC where implemented. Security docs are explicit about current controls and production gaps such as OAuth/OIDC, mTLS, external secret managers, TLS ingress, and WAF.
 
+## How Multitenancy Is Handled
+
+TradeOps uses shared-database multitenancy for interview-friendly simplicity. Tenant-owned tables carry `tenant_id`, JWTs include `tenantId`, API Gateway forwards `X-Tenant-ID`, tenant-owned events include `tenantId`, audit logs persist tenant context, and WebSocket streams filter tenant events by connection tenant. Existing demo data falls back to `default-tenant`; stronger schema/database-per-tenant isolation is documented as future production hardening.
+
 ## How Kafka/Redpanda Is Used
 
 Redpanda is the local Kafka-compatible broker. Services publish domain events after important state changes. Consumers process events asynchronously and defensively handle malformed payloads. Events use `correlationId` where available so one workflow can be followed across producers, consumers, DLQ records, and audit logs. The platform currently uses example payloads and documented topics instead of a full schema registry.
@@ -103,6 +107,7 @@ The audit service consumes important platform events, maps them to normalized ac
 - Correlation IDs make request/event tracing possible without adding a heavy tracing stack.
 - API Gateway hardening covers headers, CORS, body limits, rate limiting, and consistent security error shape.
 - Threat modeling and RBAC documentation show how the system is reviewed, not just coded.
+- Multitenancy demonstrates practical tenant isolation without adding operational complexity such as database-per-tenant.
 - Data lifecycle is treated operationally with retention docs, backups, archival exports, replay guidance, and explicit confirmation for destructive actions.
 - Deployment readiness is represented with a simple Helm chart while keeping Compose as the primary local runtime.
 - Event consumers are defensive so bad demo payloads do not crash the process.
@@ -120,3 +125,4 @@ The audit service consumes important platform events, maps them to normalized ac
 - Helm is an optional readiness layer and does not install production-grade stateful infrastructure.
 - Email delivery is mock-only.
 - Managed secrets, TLS ingress, production database isolation, production-grade distributed abuse protection, and OpenTelemetry tracing are future work.
+- Tenant-specific partitions, encryption keys, rate limits, schemas, or databases are future hardening options.

@@ -4,13 +4,15 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.0.0` Final Portfolio Release.
+Current release: `v2.2.0` Multi-Tenant Architecture.
 
 ## Architecture Summary
 
 The platform exposes a single API Gateway for client traffic and uses service-owned backend domains for identity, market data, orders, portfolio, strategy, risk, surveillance, notifications, and audit. Synchronous HTTP APIs handle commands and queries. Redpanda/Kafka connects asynchronous workflows such as order lifecycle events, portfolio updates, surveillance alerts, notification delivery, and audit logging.
 
 Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus, Grafana, and Docker Compose.
+
+v2.2.0 adds tenant-aware architecture using shared PostgreSQL tables with `tenant_id` columns, a standard JWT `tenantId` claim, `X-Tenant-ID` service propagation, tenant-aware events, audit records, and WebSocket filtering. See [tenant model](docs/multitenancy/tenant-model.md).
 
 ## Tech Stack
 
@@ -23,6 +25,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Observability | Prometheus, Grafana, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Security | JWT/RBAC, Helmet, CORS config, request size limits, rate limiting, security checklist |
+| Multitenancy | Shared database tenant isolation, JWT `tenantId`, `X-Tenant-ID`, tenant-aware events |
 | Real-time | API Gateway WebSocket streams for market, order, alert, notification, and audit events |
 | Performance | Lightweight curl timing checks, optional k6 scenarios, capacity-planning docs |
 | Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
@@ -47,6 +50,7 @@ Core infrastructure includes PostgreSQL, Redis, Mosquitto, Redpanda, Prometheus,
 - Event-driven trading workflow across orders, portfolio, risk, surveillance, notifications, and audit.
 - Go microservices for transactional domains, Python services for analytics-oriented domains, and a Node.js API Gateway.
 - Real-time WebSocket streams for market ticks, order events, alerts, notifications, and audit events.
+- Tenant-aware APIs, events, audit logs, and WebSocket streams using `default-tenant` for local demos.
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
 - Docker Compose local runtime with optional Helm/Kubernetes deployment-readiness artifacts.
@@ -190,6 +194,18 @@ TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts --publish-sample
 ```
 
 See [WebSocket streaming](docs/realtime/websocket-streaming.md) and the [real-time runbook](docs/realtime/realtime-runbook.md).
+
+## Multitenancy
+
+TradeOps uses shared database multitenancy with additive `tenant_id` columns and application-level tenant filtering. JWTs include `tenantId`, API Gateway forwards `X-Tenant-ID`, tenant-owned Kafka events include `tenantId`, and WebSocket streams filter tenant events by connection tenant.
+
+Local demos default to:
+
+```bash
+TENANT_ID=default-tenant
+```
+
+Start here: [tenant model](docs/multitenancy/tenant-model.md), [tenant isolation](docs/multitenancy/tenant-isolation.md), [migration guide](docs/multitenancy/migration-guide.md), and [runbook](docs/multitenancy/runbook.md).
 
 ## Performance Testing & Capacity Planning
 

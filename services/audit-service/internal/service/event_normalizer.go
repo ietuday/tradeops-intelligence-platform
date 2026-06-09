@@ -90,6 +90,7 @@ func baseEvent(topic string, data map[string]any, correlationID string) domain.A
 	}
 	createdAt := parseTime(firstString(data, "occurredAt", "createdAt", "timestamp"))
 	return domain.AuditEvent{
+		TenantID:      defaultTenant(firstString(data, "tenantId", "tenant_id")),
 		EventType:     topic,
 		CorrelationID: stringPtr(correlationID),
 		Metadata: map[string]any{

@@ -25,6 +25,7 @@ const (
 
 type Notification struct {
 	ID        string         `json:"id"`
+	TenantID  string         `json:"tenantId"`
 	UserID    *string        `json:"userId,omitempty"`
 	Channel   string         `json:"channel"`
 	Priority  string         `json:"priority"`
@@ -41,6 +42,7 @@ type Notification struct {
 type NotificationEvent struct {
 	EventID        string         `json:"eventId"`
 	EventType      string         `json:"eventType"`
+	TenantID       string         `json:"tenantId"`
 	NotificationID string         `json:"notificationId"`
 	UserID         *string        `json:"userId,omitempty"`
 	Channel        string         `json:"channel"`
@@ -54,6 +56,7 @@ type NotificationEvent struct {
 
 type DeliveryAttempt struct {
 	ID             string    `json:"id"`
+	TenantID       string    `json:"tenantId"`
 	NotificationID string    `json:"notificationId"`
 	Channel        string    `json:"channel"`
 	Status         string    `json:"status"`
@@ -63,6 +66,7 @@ type DeliveryAttempt struct {
 }
 
 type Preferences struct {
+	TenantID       string    `json:"tenantId"`
 	UserID         string    `json:"userId"`
 	InAppEnabled   bool      `json:"inAppEnabled"`
 	WebhookEnabled bool      `json:"webhookEnabled"`

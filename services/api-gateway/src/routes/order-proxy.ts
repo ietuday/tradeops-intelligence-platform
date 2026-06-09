@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { tenantHeaders } from '../middleware/tenant';
 import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_ORDER_SERVICE_URL = 'http://order-service:8080';
@@ -94,7 +95,7 @@ function buildProxyHeaders(req: Request): HeadersInit {
   if (idempotencyKey) {
     headers['idempotency-key'] = idempotencyKey;
   }
-  return headers;
+  return { ...headers, ...tenantHeaders(req) };
 }
 
 function shouldForwardBody(method: string): boolean {

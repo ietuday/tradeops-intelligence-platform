@@ -18,13 +18,15 @@ export interface StreamMessage {
 interface Subscriber {
   socket: WebSocket;
   stream: WebSocketStream;
+  tenantId: string;
+  roles: string[];
 }
 
 export class WebSocketEventHub {
   private readonly subscribers = new Set<Subscriber>();
 
-  subscribe(socket: WebSocket, stream: WebSocketStream): () => void {
-    const subscriber = { socket, stream };
+  subscribe(socket: WebSocket, stream: WebSocketStream, tenantId = 'default-tenant', roles: string[] = []): () => void {
+    const subscriber = { socket, stream, tenantId, roles };
     this.subscribers.add(subscriber);
     return () => {
       this.subscribers.delete(subscriber);
@@ -62,6 +64,9 @@ export class WebSocketEventHub {
       if (!targetStreams.includes(subscriber.stream)) {
         continue;
       }
+      if (!canReceiveTenantEvent(subscriber, message.payload)) {
+        continue;
+      }
 
       try {
         subscriber.socket.send(JSON.stringify(message));
@@ -71,6 +76,23 @@ export class WebSocketEventHub {
       }
     }
   }
+}
+
+function canReceiveTenantEvent(subscriber: Subscriber, payload: unknown): boolean {
+  const eventTenantId = extractTenantId(payload);
+  if (!eventTenantId) {
+    return true;
+  }
+  return subscriber.tenantId === eventTenantId || subscriber.roles.includes('trading_admin');
+}
+
+function extractTenantId(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+
+  const value = (payload as Record<string, unknown>).tenantId;
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
 function extractCorrelationId(payload: unknown): string | undefined {

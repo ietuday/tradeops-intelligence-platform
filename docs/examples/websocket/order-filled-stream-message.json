@@ -4,6 +4,7 @@
   "correlationId": "demo-websocket-order-001",
   "timestamp": "2026-06-09T10:01:00Z",
   "payload": {
+    "tenantId": "default-tenant",
     "orderId": "order-demo-001",
     "symbol": "AAPL",
     "side": "BUY",

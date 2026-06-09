@@ -21,22 +21,23 @@ var ErrForbidden = errors.New("forbidden")
 var ErrInvalidPreference = errors.New("invalid notification preference")
 
 type UserContext struct {
-	UserID string
-	Roles  []string
+	UserID   string
+	TenantID string
+	Roles    []string
 }
 
 type Store interface {
 	Create(context.Context, domain.Notification) (domain.Notification, error)
-	DuplicateExists(context.Context, string, string, string) (bool, error)
+	DuplicateExists(context.Context, string, string, string, string) (bool, error)
 	List(context.Context, repository.ListFilters) ([]domain.Notification, error)
-	Get(context.Context, string) (domain.Notification, error)
-	MarkRead(context.Context, string) (domain.Notification, error)
-	Retry(context.Context, string) (domain.Notification, error)
-	UpdateStatus(context.Context, string, string) (domain.Notification, error)
+	Get(context.Context, string, string) (domain.Notification, error)
+	MarkRead(context.Context, string, string) (domain.Notification, error)
+	Retry(context.Context, string, string) (domain.Notification, error)
+	UpdateStatus(context.Context, string, string, string) (domain.Notification, error)
 	RecordAttempt(context.Context, domain.DeliveryAttempt) (domain.DeliveryAttempt, error)
 	NextAttemptNumber(context.Context, string) (int, error)
-	Summary(context.Context, string) (repository.Summary, error)
-	Preferences(context.Context, string) (domain.Preferences, error)
+	Summary(context.Context, string, string) (repository.Summary, error)
+	Preferences(context.Context, string, string) (domain.Preferences, error)
 	UpdatePreferences(context.Context, domain.Preferences) (domain.Preferences, error)
 }
 
@@ -93,6 +94,9 @@ func (s *NotificationService) ProcessEvent(ctx context.Context, event domain.Sou
 	if alert.CorrelationID == "" {
 		alert.CorrelationID = event.CorrelationID
 	}
+	if alert.TenantID == "" {
+		alert.TenantID = "default-tenant"
+	}
 	if alert.UserID == nil || *alert.UserID == "" {
 		s.metrics.EventsProcessed.Inc()
 		return nil
@@ -117,7 +121,7 @@ func ParseSurveillanceAlertEvent(payload []byte) (domain.SurveillanceAlertEvent,
 }
 
 func (s *NotificationService) createFromAlert(ctx context.Context, alert domain.SurveillanceAlertEvent) error {
-	prefs, err := s.store.Preferences(ctx, *alert.UserID)
+	prefs, err := s.store.Preferences(ctx, defaultTenant(alert.TenantID), *alert.UserID)
 	if err != nil {
 		return err
 	}
@@ -181,6 +185,7 @@ func notificationFromAlert(alert domain.SurveillanceAlertEvent) domain.Notificat
 	}
 	return domain.Notification{
 		ID:        uuid.NewString(),
+		TenantID:  defaultTenant(alert.TenantID),
 		UserID:    alert.UserID,
 		Channel:   domain.ChannelInApp,
 		Priority:  SeverityToPriority(alert.Severity),
@@ -291,7 +296,7 @@ func (s *NotificationService) sendWebhook(ctx context.Context, notification doma
 			if recErr := s.recordAttempt(ctx, created.ID, domain.ChannelWebhook, domain.StatusSent, nil); recErr != nil {
 				return recErr
 			}
-			sent, err := s.store.UpdateStatus(ctx, created.ID, domain.StatusSent)
+			sent, err := s.store.UpdateStatus(ctx, defaultTenant(created.TenantID), created.ID, domain.StatusSent)
 			if err != nil {
 				return err
 			}
@@ -313,7 +318,7 @@ func (s *NotificationService) sendWebhook(ctx context.Context, notification doma
 			time.Sleep(time.Duration(attempt) * 50 * time.Millisecond)
 		}
 	}
-	failed, err := s.store.UpdateStatus(ctx, created.ID, domain.StatusFailed)
+	failed, err := s.store.UpdateStatus(ctx, defaultTenant(created.TenantID), created.ID, domain.StatusFailed)
 	if err != nil {
 		return err
 	}
@@ -331,6 +336,7 @@ func (s *NotificationService) List(ctx context.Context, user UserContext, filter
 	if !canViewAll(user.Roles) || filters.UserID == "" {
 		filters.UserID = user.UserID
 	}
+	filters.TenantID = defaultTenant(user.TenantID)
 	return s.store.List(ctx, filters)
 }
 
@@ -338,7 +344,7 @@ func (s *NotificationService) Get(ctx context.Context, user UserContext, id stri
 	if !canView(user.Roles) {
 		return domain.Notification{}, ErrForbidden
 	}
-	notification, err := s.store.Get(ctx, id)
+	notification, err := s.store.Get(ctx, defaultTenant(user.TenantID), id)
 	if err != nil {
 		return domain.Notification{}, err
 	}
@@ -352,7 +358,7 @@ func (s *NotificationService) MarkRead(ctx context.Context, user UserContext, id
 	if _, err := s.Get(ctx, user, id); err != nil {
 		return domain.Notification{}, err
 	}
-	notification, err := s.store.MarkRead(ctx, id)
+	notification, err := s.store.MarkRead(ctx, defaultTenant(user.TenantID), id)
 	if err != nil {
 		return domain.Notification{}, err
 	}
@@ -366,10 +372,10 @@ func (s *NotificationService) Retry(ctx context.Context, user UserContext, id st
 	if !canManage(user.Roles) {
 		return domain.Notification{}, ErrForbidden
 	}
-	if _, err := s.store.Get(ctx, id); err != nil {
+	if _, err := s.store.Get(ctx, defaultTenant(user.TenantID), id); err != nil {
 		return domain.Notification{}, err
 	}
-	notification, err := s.store.Retry(ctx, id)
+	notification, err := s.store.Retry(ctx, defaultTenant(user.TenantID), id)
 	if err != nil {
 		return domain.Notification{}, err
 	}
@@ -405,13 +411,14 @@ func (s *NotificationService) duplicateNotification(ctx context.Context, notific
 	if sourceEventID == "" || eventType == "" {
 		return false, nil
 	}
-	return s.store.DuplicateExists(ctx, sourceEventID, eventType, notification.Channel)
+	return s.store.DuplicateExists(ctx, defaultTenant(notification.TenantID), sourceEventID, eventType, notification.Channel)
 }
 
 func (s *NotificationService) publish(ctx context.Context, eventType string, notification domain.Notification, correlationID string) {
 	_ = s.publisher.Publish(ctx, domain.NotificationEvent{
 		EventID:        uuid.NewString(),
 		EventType:      eventType,
+		TenantID:       defaultTenant(notification.TenantID),
 		NotificationID: notification.ID,
 		UserID:         notification.UserID,
 		Channel:        notification.Channel,
@@ -445,14 +452,14 @@ func (s *NotificationService) Summary(ctx context.Context, user UserContext) (re
 	if !canView(user.Roles) {
 		return repository.Summary{}, ErrForbidden
 	}
-	return s.store.Summary(ctx, user.UserID)
+	return s.store.Summary(ctx, defaultTenant(user.TenantID), user.UserID)
 }
 
 func (s *NotificationService) Preferences(ctx context.Context, user UserContext) (domain.Preferences, error) {
 	if user.UserID == "" {
 		return domain.Preferences{}, ErrForbidden
 	}
-	return s.store.Preferences(ctx, user.UserID)
+	return s.store.Preferences(ctx, defaultTenant(user.TenantID), user.UserID)
 }
 
 func (s *NotificationService) UpdatePreferences(ctx context.Context, user UserContext, prefs domain.Preferences) (domain.Preferences, error) {
@@ -460,6 +467,7 @@ func (s *NotificationService) UpdatePreferences(ctx context.Context, user UserCo
 		return domain.Preferences{}, ErrForbidden
 	}
 	prefs.UserID = user.UserID
+	prefs.TenantID = defaultTenant(user.TenantID)
 	prefs.MinPriority = strings.ToUpper(strings.TrimSpace(prefs.MinPriority))
 	if prefs.MinPriority == "" {
 		prefs.MinPriority = domain.PriorityLow
@@ -476,10 +484,20 @@ func (s *NotificationService) UpdatePreferences(ctx context.Context, user UserCo
 }
 
 func canAccess(user UserContext, notification domain.Notification) bool {
+	if defaultTenant(user.TenantID) != defaultTenant(notification.TenantID) && !canViewAll(user.Roles) {
+		return false
+	}
 	if canViewAll(user.Roles) {
 		return true
 	}
 	return notification.UserID != nil && *notification.UserID == user.UserID
+}
+
+func defaultTenant(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "default-tenant"
+	}
+	return value
 }
 
 func canView(roles []string) bool {

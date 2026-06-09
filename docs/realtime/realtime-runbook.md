@@ -41,9 +41,15 @@ docker compose -f infrastructure/docker/docker-compose.yml exec redpanda rpk top
 curl http://localhost:8080/metrics | grep websocket_kafka_events_consumed
 ```
 
-Likely cause: Topic has no new events, Kafka consumer is not connected, or client subscribed to the wrong stream.
+Likely cause: Topic has no new events, Kafka consumer is not connected, client subscribed to the wrong stream, or event `tenantId` does not match the WebSocket token `tenantId`.
 
-Mitigation: Publish a sample event with `./scripts/demo-websocket-streams.sh --alerts --publish-sample`.
+Mitigation: Publish a sample event with `TENANT_ID=default-tenant ./scripts/demo-websocket-streams.sh --alerts --publish-sample`.
+
+## Tenant Filter Dropped Event
+
+Symptom: Gateway consumes Kafka events but a specific client receives none.
+
+Check the JWT `tenantId` and the Kafka payload `tenantId`. Non-admin clients only receive matching tenant events. `trading_admin` can receive cross-tenant events for support workflows.
 
 ## Kafka Topic Has No Events
 

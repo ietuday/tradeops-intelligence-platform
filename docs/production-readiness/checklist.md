@@ -119,6 +119,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 ## Security
 
 - [x] JWT validation protects sensitive APIs.
+- [x] JWT `tenantId` and `X-Tenant-ID` propagation support shared-database tenant isolation.
 - [x] Password auth is isolated in identity-service.
 - [x] Local secrets are documented and ignored.
 - [x] Threat model, RBAC matrix, API security guide, secrets guide, and security checklist are documented.
@@ -163,6 +164,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 ## Known Limitations
 
 - Local Compose uses a shared PostgreSQL database for convenience.
+- Multitenancy is shared-database/application-enforced; future production hardening may require tenant-specific partitions, encryption keys, rate limits, schemas, or databases.
 - Event payload schemas are documented by examples, not enforced by a schema registry.
 - Notification email delivery is mock/log-only.
 - Webhook delivery is intentionally simple.

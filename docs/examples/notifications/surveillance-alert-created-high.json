@@ -1,6 +1,7 @@
 {
   "eventId": "66666666-6666-4666-8666-666666666661",
   "eventType": "surveillance.alert.created",
+  "tenantId": "default-tenant",
   "alertId": "77777777-7777-4777-8777-777777777771",
   "alertType": "LargeOrderRule",
   "severity": "HIGH",

@@ -2,6 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS strategies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT,
   user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   symbol TEXT NOT NULL,
@@ -13,6 +14,7 @@ CREATE TABLE IF NOT EXISTS strategies (
 
 CREATE TABLE IF NOT EXISTS backtest_runs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT,
   strategy_id UUID NOT NULL REFERENCES strategies(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL,
   start_time TIMESTAMPTZ NOT NULL,
@@ -28,6 +30,7 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
 
 CREATE TABLE IF NOT EXISTS strategy_signals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT,
   strategy_id UUID NOT NULL REFERENCES strategies(id) ON DELETE CASCADE,
   backtest_run_id UUID REFERENCES backtest_runs(id) ON DELETE SET NULL,
   user_id TEXT NOT NULL,
@@ -42,6 +45,7 @@ CREATE TABLE IF NOT EXISTS strategy_signals (
 
 CREATE TABLE IF NOT EXISTS strategy_performance (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT,
   strategy_id UUID NOT NULL UNIQUE REFERENCES strategies(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL,
   total_return DOUBLE PRECISION NOT NULL,
@@ -52,8 +56,20 @@ CREATE TABLE IF NOT EXISTS strategy_performance (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE strategies ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+ALTER TABLE backtest_runs ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+ALTER TABLE strategy_signals ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+ALTER TABLE strategy_performance ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+UPDATE strategies SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+UPDATE backtest_runs SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+UPDATE strategy_signals SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+UPDATE strategy_performance SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_strategies_user_id ON strategies(user_id);
+CREATE INDEX IF NOT EXISTS idx_strategies_tenant_user_id ON strategies(tenant_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_strategies_symbol ON strategies(symbol);
 CREATE INDEX IF NOT EXISTS idx_backtest_runs_strategy_id ON backtest_runs(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_backtest_runs_tenant_user_id ON backtest_runs(tenant_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_strategy_signals_strategy_id ON strategy_signals(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_strategy_signals_tenant_user_id ON strategy_signals(tenant_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_strategy_signals_symbol_time ON strategy_signals(symbol, event_time DESC);

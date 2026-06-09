@@ -4,6 +4,7 @@
   "correlationId": "demo-websocket-alert-001",
   "timestamp": "2026-06-09T10:02:00Z",
   "payload": {
+    "tenantId": "default-tenant",
     "alertId": "alert-demo-001",
     "ruleName": "LargeOrderRule",
     "severity": "HIGH",

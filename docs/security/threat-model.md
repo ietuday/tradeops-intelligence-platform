@@ -10,8 +10,8 @@ TradeOps exposes client traffic through the API Gateway. Backend services own id
 
 | Boundary | Notes |
 | --- | --- |
-| External client to API Gateway | Public HTTP entry point, CORS, request size limits, rate limiting, security headers, correlation IDs. |
-| API Gateway to internal services | Internal Compose/Kubernetes service URLs; authorization and correlation headers are forwarded. |
+| External client to API Gateway | Public HTTP entry point, CORS, request size limits, rate limiting, security headers, tenant context, correlation IDs. |
+| API Gateway to internal services | Internal Compose/Kubernetes service URLs; authorization, tenant, and correlation headers are forwarded. |
 | Services to PostgreSQL | Service-owned tables share local PostgreSQL for convenience; production should isolate credentials/schemas. |
 | Services to Redis | Identity refresh/session state uses Redis in local Compose. |
 | Services to Redpanda/Kafka | Events cross service boundaries; consumers validate payloads defensively. |
@@ -37,6 +37,7 @@ TradeOps exposes client traffic through the API Gateway. Backend services own id
 | Information Disclosure | Unauthorized audit export, leaked `.env` secrets, overly broad CORS. | RBAC middleware where implemented, ignored local env files, env-driven CORS, secrets examples only. |
 | Denial Of Service | Request flooding, oversized payloads, webhook abuse. | API Gateway rate limiting, request body limit, proxy timeouts, webhook timeout/retry controls. |
 | Elevation Of Privilege | Role bypass, weak demo tokens, admin action misuse. | JWT/RBAC checks where implemented, RBAC matrix documentation, production gap documentation. |
+| Tenant Isolation | Cross-tenant reads, forged `X-Tenant-ID`, tenantless events. | JWT `tenantId`, gateway override rules, service tenant filters, default tenant fallback, tenant-aware audit. |
 
 ## Known Gaps
 
@@ -45,6 +46,7 @@ TradeOps exposes client traffic through the API Gateway. Backend services own id
 - Local Docker Compose is the default runtime.
 - Kafka schemas are example-based, not schema-registry enforced.
 - Notification email delivery is mock/log-only.
+- Tenant isolation is shared-database/application-enforced; production may require schema/database-per-tenant for stricter contractual isolation.
 
 ## Future Improvements
 

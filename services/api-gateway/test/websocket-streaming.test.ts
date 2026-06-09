@@ -72,6 +72,7 @@ describe('API Gateway WebSocket streaming', () => {
 
     expect(ready.type).toBe('connection.ready');
     expect(ready.stream).toBe('orders');
+    expect(ready.tenantId).toBe('default-tenant');
 
     ws.close();
   });
@@ -100,6 +101,26 @@ describe('API Gateway WebSocket streaming', () => {
     });
 
     ws.close();
+  });
+
+  it('filters WebSocket events by tenantId', async () => {
+    await startGateway(true);
+    const tenantAToken = signToken(['trader'], 'tenant-a');
+    const tenantBToken = signToken(['trader'], 'tenant-b');
+    const tenantA = await connectAndReady(`/ws/orders?token=${tenantAToken}`);
+    const tenantB = await connectAndReady(`/ws/orders?token=${tenantBToken}`);
+
+    const tenantBMessages: Record<string, unknown>[] = [];
+    tenantB.ws.on('message', (data) => {
+      tenantBMessages.push(JSON.parse(data.toString()) as Record<string, unknown>);
+    });
+
+    hub.handleKafkaMessage('order.filled', JSON.stringify({ tenantId: 'tenant-a', correlationId: 'ws-corr-tenant', orderId: 'order-1' }));
+    const event = await nextMessage(tenantA.ws);
+
+    expect(event.payload).toEqual({ tenantId: 'tenant-a', correlationId: 'ws-corr-tenant', orderId: 'order-1' });
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    expect(tenantBMessages).toHaveLength(0);
   });
 
   it('ignores malformed Kafka payloads without throwing', async () => {
@@ -173,10 +194,11 @@ function nextMessage(ws: WebSocket): Promise<Record<string, unknown>> {
   });
 }
 
-function signToken(roles: string[]): string {
+function signToken(roles: string[], tenantId = 'default-tenant'): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(JSON.stringify({
     sub: 'user-1',
+    tenantId,
     email: 'demo@example.com',
     roles,
     iss: 'tradeops-identity-service',

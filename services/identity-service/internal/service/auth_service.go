@@ -68,7 +68,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string, auditCtx
 	if err != nil {
 		return domain.TokenPair{}, ErrInvalidToken
 	}
-	access, err := s.tokenManager.CreateAccessToken(user.ID, user.Email, user.Roles)
+	access, err := s.tokenManager.CreateAccessToken(user.ID, user.TenantID, user.Email, user.Roles)
 	if err != nil {
 		return domain.TokenPair{}, err
 	}
@@ -94,7 +94,7 @@ func (s *AuthService) Me(ctx context.Context, userID string) (domain.User, error
 }
 
 func (s *AuthService) issueTokens(ctx context.Context, user domain.User) (domain.TokenPair, error) {
-	access, err := s.tokenManager.CreateAccessToken(user.ID, user.Email, user.Roles)
+	access, err := s.tokenManager.CreateAccessToken(user.ID, user.TenantID, user.Email, user.Roles)
 	if err != nil {
 		return domain.TokenPair{}, err
 	}

@@ -3,12 +3,14 @@ import { IncomingMessage } from 'http';
 
 export interface WebSocketPrincipal {
   userId?: string;
+  tenantId: string;
   email?: string;
   roles: string[];
 }
 
 interface JwtPayload {
   sub?: string;
+  tenantId?: string;
   email?: string;
   roles?: string[];
   iss?: string;
@@ -69,6 +71,7 @@ export function verifyJwt(token: string, secret = process.env.IDENTITY_JWT_SECRE
 
   return {
     userId: payload.sub,
+    tenantId: payload.tenantId || 'default-tenant',
     email: payload.email,
     roles: payload.roles
   };

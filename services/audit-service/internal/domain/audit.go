@@ -11,6 +11,7 @@ const (
 
 type AuditLog struct {
 	ID             string         `json:"id"`
+	TenantID       string         `json:"tenantId"`
 	EventType      string         `json:"eventType"`
 	ServiceName    string         `json:"serviceName"`
 	ActorUserID    *string        `json:"actorUserId,omitempty"`
@@ -29,6 +30,7 @@ type AuditLog struct {
 }
 
 type AuditEvent struct {
+	TenantID       string
 	EventType      string
 	ServiceName    string
 	ActorUserID    *string
@@ -48,6 +50,7 @@ type AuditEvent struct {
 
 type ExportRequest struct {
 	ID          string         `json:"id"`
+	TenantID    string         `json:"tenantId"`
 	RequestedBy *string        `json:"requestedBy,omitempty"`
 	Filters     map[string]any `json:"filters"`
 	Status      string         `json:"status"`

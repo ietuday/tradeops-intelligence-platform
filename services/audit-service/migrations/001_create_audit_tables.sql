@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY,
+    tenant_id VARCHAR(100) NULL,
     event_type VARCHAR(150) NOT NULL,
     service_name VARCHAR(100) NOT NULL,
     actor_user_id UUID NULL,
@@ -18,6 +19,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_created_at ON audit_logs(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_actor_user_id ON audit_logs(tenant_id, actor_user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_service_name ON audit_logs(service_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_user_id ON audit_logs(actor_user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_type ON audit_logs(entity_type);
@@ -30,6 +33,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_logs_source_event_key ON audit_logs(
 
 CREATE TABLE IF NOT EXISTS audit_export_requests (
     id UUID PRIMARY KEY,
+    tenant_id VARCHAR(100) NULL,
     requested_by UUID NULL,
     filters JSONB NOT NULL DEFAULT '{}'::jsonb,
     status VARCHAR(30) NOT NULL DEFAULT 'COMPLETED',
@@ -37,3 +41,9 @@ CREATE TABLE IF NOT EXISTS audit_export_requests (
     record_count INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+UPDATE audit_logs SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+UPDATE audit_export_requests SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+CREATE INDEX IF NOT EXISTS idx_audit_export_requests_tenant_created_at ON audit_export_requests(tenant_id, created_at DESC);

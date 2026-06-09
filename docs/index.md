@@ -25,6 +25,13 @@
 - [Secrets management](security/secrets-management.md)
 - [Security checklist](security/security-checklist.md)
 
+## Multitenancy
+
+- [Tenant model](multitenancy/tenant-model.md)
+- [Tenant isolation](multitenancy/tenant-isolation.md)
+- [Migration guide](multitenancy/migration-guide.md)
+- [Multitenancy runbook](multitenancy/runbook.md)
+
 ## Observability
 
 - [Metrics catalog](observability/metrics-catalog.md)
@@ -86,6 +93,7 @@
 
 ## Release Notes
 
+- [v2.2.0 Multi-Tenant Architecture](release-notes/v2.2.0.md)
 - [v2.1.0 Real-Time WebSocket Streaming Layer](release-notes/v2.1.0.md)
 - [v2.0.0 Final Portfolio Release](release-notes/v2.0.0.md)
 - [Release notes directory](release-notes/)

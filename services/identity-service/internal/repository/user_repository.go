@@ -29,10 +29,10 @@ func (r *UserRepository) Create(ctx context.Context, email, passwordHash, fullNa
 
 	var user domain.User
 	err = tx.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, full_name)
-		VALUES ($1, $2, $3)
-		RETURNING id::text, email, password_hash, full_name, created_at, updated_at
-	`, email, passwordHash, fullName).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.FullName, &user.CreatedAt, &user.UpdatedAt)
+		INSERT INTO users (email, password_hash, full_name, tenant_id)
+		VALUES ($1, $2, $3, 'default-tenant')
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), email, password_hash, full_name, created_at, updated_at
+	`, email, passwordHash, fullName).Scan(&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &user.FullName, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domain.User{}, ErrConflict
@@ -68,7 +68,7 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (domain.User, 
 func (r *UserRepository) findOne(ctx context.Context, predicate string, arg string) (domain.User, error) {
 	var user domain.User
 	rows, err := r.db.Query(ctx, `
-		SELECT u.id::text, u.email, u.password_hash, u.full_name, u.created_at, u.updated_at, r.name
+		SELECT u.id::text, COALESCE(u.tenant_id, 'default-tenant'), u.email, u.password_hash, u.full_name, u.created_at, u.updated_at, r.name
 		FROM users u
 		LEFT JOIN user_roles ur ON ur.user_id = u.id
 		LEFT JOIN roles r ON r.id = ur.role_id
@@ -83,7 +83,7 @@ func (r *UserRepository) findOne(ctx context.Context, predicate string, arg stri
 	found := false
 	for rows.Next() {
 		var role *string
-		if err := rows.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.FullName, &user.CreatedAt, &user.UpdatedAt, &role); err != nil {
+		if err := rows.Scan(&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &user.FullName, &user.CreatedAt, &user.UpdatedAt, &role); err != nil {
 			return domain.User{}, err
 		}
 		found = true

@@ -4,6 +4,7 @@
   "correlationId": "demo-websocket-notification-001",
   "timestamp": "2026-06-09T10:03:00Z",
   "payload": {
+    "tenantId": "default-tenant",
     "notificationId": "notification-demo-001",
     "channel": "IN_APP",
     "priority": "HIGH",

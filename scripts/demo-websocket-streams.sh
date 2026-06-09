@@ -5,6 +5,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-infrastructure/docker/docker-compose.yml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-infrastructure/docker/.env.example}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
 WS_BASE_URL="${WS_BASE_URL:-ws://localhost:8080}"
+TENANT_ID="${TENANT_ID:-default-tenant}"
 CORRELATION_ID="${CORRELATION_ID:-demo-websocket-$(date +%s)}"
 TOKEN="${TOKEN:-}"
 STREAM="all"
@@ -18,6 +19,7 @@ Environment:
   GATEWAY_URL=http://localhost:8080
   WS_BASE_URL=ws://localhost:8080
   COMPOSE_ENV_FILE=infrastructure/docker/.env.example
+  TENANT_ID=default-tenant
   TOKEN=<jwt required when WS_REQUIRE_AUTH=true>
   CORRELATION_ID=demo-websocket-123
 
@@ -102,6 +104,7 @@ echo "  ${WS_BASE_URL}/ws/notifications"
 echo "  ${WS_BASE_URL}/ws/audit"
 echo
 echo "Selected stream: ${STREAM}"
+echo "Tenant ID: ${TENANT_ID}"
 echo "Correlation ID: ${CORRELATION_ID}"
 echo "Connect URL: ${ws_url}"
 

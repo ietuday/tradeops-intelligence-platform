@@ -21,13 +21,13 @@ func NewOrderRepository(db *pgxpool.Pool) *OrderRepository {
 	return &OrderRepository{db: db}
 }
 
-func (r *OrderRepository) FindIdempotency(ctx context.Context, userID, key string) (domain.IdempotencyRecord, error) {
+func (r *OrderRepository) FindIdempotency(ctx context.Context, tenantID, userID, key string) (domain.IdempotencyRecord, error) {
 	var record domain.IdempotencyRecord
 	err := r.db.QueryRow(ctx, `
-		SELECT user_id, key, request_hash, order_id::text, created_at
+		SELECT COALESCE(tenant_id, 'default-tenant'), user_id, key, request_hash, order_id::text, created_at
 		FROM idempotency_keys
-		WHERE user_id = $1 AND key = $2
-	`, userID, key).Scan(&record.UserID, &record.Key, &record.RequestHash, &record.OrderID, &record.CreatedAt)
+		WHERE COALESCE(tenant_id, 'default-tenant') = $1 AND user_id = $2 AND key = $3
+	`, tenantID, userID, key).Scan(&record.TenantID, &record.UserID, &record.Key, &record.RequestHash, &record.OrderID, &record.CreatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.IdempotencyRecord{}, ErrNotFound
@@ -45,10 +45,10 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order domain.Order, e
 	defer tx.Rollback(ctx)
 
 	err = tx.QueryRow(ctx, `
-		INSERT INTO orders (user_id, symbol, side, order_type, quantity, limit_price, stop_price, status, fill_price, reject_reason, correlation_id, cancelled_at, filled_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		INSERT INTO orders (tenant_id, user_id, symbol, side, order_type, quantity, limit_price, stop_price, status, fill_price, reject_reason, correlation_id, cancelled_at, filled_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id::text, created_at, updated_at
-	`, order.UserID, order.Symbol, order.Side, order.OrderType, order.Quantity, order.LimitPrice, order.StopPrice, order.Status, order.FillPrice, order.RejectReason, order.CorrelationID, order.CancelledAt, order.FilledAt).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+	`, order.TenantID, order.UserID, order.Symbol, order.Side, order.OrderType, order.Quantity, order.LimitPrice, order.StopPrice, order.Status, order.FillPrice, order.RejectReason, order.CorrelationID, order.CancelledAt, order.FilledAt).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
 		return domain.Order{}, err
 	}
@@ -61,9 +61,9 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order domain.Order, e
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO idempotency_keys (user_id, key, request_hash, order_id)
-		VALUES ($1, $2, $3, $4)
-	`, order.UserID, idempotencyKey, requestHash, order.ID); err != nil {
+		INSERT INTO idempotency_keys (tenant_id, user_id, key, request_hash, order_id)
+		VALUES ($1, $2, $3, $4, $5)
+	`, order.TenantID, order.UserID, idempotencyKey, requestHash, order.ID); err != nil {
 		return domain.Order{}, err
 	}
 
@@ -73,13 +73,13 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order domain.Order, e
 	return order, nil
 }
 
-func (r *OrderRepository) GetOrder(ctx context.Context, id string) (domain.Order, error) {
+func (r *OrderRepository) GetOrder(ctx context.Context, tenantID, id string) (domain.Order, error) {
 	var order domain.Order
 	err := r.db.QueryRow(ctx, `
-		SELECT id::text, user_id, symbol, side, order_type, quantity::float8, limit_price::float8, stop_price::float8, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, limit_price::float8, stop_price::float8, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
 		FROM orders
-		WHERE id = $1
-	`, id).Scan(&order.ID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.LimitPrice, &order.StopPrice, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
+		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
+	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.LimitPrice, &order.StopPrice, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -89,14 +89,15 @@ func (r *OrderRepository) GetOrder(ctx context.Context, id string) (domain.Order
 	return order, nil
 }
 
-func (r *OrderRepository) ListOrders(ctx context.Context, userID string, includeAll bool) ([]domain.Order, error) {
+func (r *OrderRepository) ListOrders(ctx context.Context, tenantID, userID string, includeAll bool) ([]domain.Order, error) {
 	query := `
-		SELECT id::text, user_id, symbol, side, order_type, quantity::float8, limit_price::float8, stop_price::float8, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, limit_price::float8, stop_price::float8, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
 		FROM orders
 	`
-	args := []any{}
+	args := []any{tenantID}
+	query += ` WHERE COALESCE(tenant_id, 'default-tenant') = $1`
 	if !includeAll {
-		query += ` WHERE user_id = $1`
+		query += ` AND user_id = $2`
 		args = append(args, userID)
 	}
 	query += ` ORDER BY created_at DESC LIMIT 100`
@@ -109,7 +110,7 @@ func (r *OrderRepository) ListOrders(ctx context.Context, userID string, include
 	var orders []domain.Order
 	for rows.Next() {
 		var order domain.Order
-		if err := rows.Scan(&order.ID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.LimitPrice, &order.StopPrice, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt); err != nil {
+		if err := rows.Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.LimitPrice, &order.StopPrice, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt); err != nil {
 			return nil, err
 		}
 		orders = append(orders, order)
@@ -117,7 +118,7 @@ func (r *OrderRepository) ListOrders(ctx context.Context, userID string, include
 	return orders, rows.Err()
 }
 
-func (r *OrderRepository) CancelOrder(ctx context.Context, id, correlationID string, event domain.OrderEvent) (domain.Order, error) {
+func (r *OrderRepository) CancelOrder(ctx context.Context, tenantID, id, correlationID string, event domain.OrderEvent) (domain.Order, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return domain.Order{}, err
@@ -128,9 +129,9 @@ func (r *OrderRepository) CancelOrder(ctx context.Context, id, correlationID str
 	err = tx.QueryRow(ctx, `
 		UPDATE orders
 		SET status = $2, cancelled_at = now(), updated_at = now(), correlation_id = $3
-		WHERE id = $1 AND status = $4
-		RETURNING id::text, user_id, symbol, side, order_type, quantity::float8, limit_price::float8, stop_price::float8, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
-	`, id, domain.StatusCancelled, correlationID, domain.StatusAccepted).Scan(&order.ID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.LimitPrice, &order.StopPrice, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
+		WHERE id = $1 AND status = $4 AND COALESCE(tenant_id, 'default-tenant') = $5
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, limit_price::float8, stop_price::float8, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
+	`, id, domain.StatusCancelled, correlationID, domain.StatusAccepted, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.LimitPrice, &order.StopPrice, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -157,8 +158,8 @@ func insertEvent(ctx context.Context, tx pgx.Tx, event domain.OrderEvent) error 
 		return err
 	}
 	_, err = tx.Exec(ctx, `
-		INSERT INTO order_events (event_id, event_type, order_id, user_id, payload, correlation_id, occurred_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, event.EventID, event.EventType, event.OrderID, event.UserID, payload, event.CorrelationID, event.OccurredAt)
+		INSERT INTO order_events (event_id, event_type, tenant_id, order_id, user_id, payload, correlation_id, occurred_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, event.EventID, event.EventType, event.TenantID, event.OrderID, event.UserID, payload, event.CorrelationID, event.OccurredAt)
 	return err
 }

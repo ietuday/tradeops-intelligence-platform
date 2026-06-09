@@ -1,4 +1,5 @@
 {
+  "tenantId": "default-tenant",
   "inAppEnabled": true,
   "webhookEnabled": true,
   "emailEnabled": false,

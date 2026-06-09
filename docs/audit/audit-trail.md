@@ -6,6 +6,7 @@
 
 - Consumes user, order, portfolio, risk, surveillance, and notification events from Redpanda/Kafka.
 - Normalizes each event into an `audit_logs` PostgreSQL row.
+- Stores `tenant_id` from event `tenantId` or `default-tenant`.
 - Publishes `audit.log.created` after a log is stored.
 - Exposes searchable list, detail, summary, and export APIs.
 - Uses retry/backoff and `audit.dlq` for failed event processing.
@@ -16,7 +17,7 @@
 
 ## Audit Log Schema
 
-Key fields: `event_type`, `service_name`, `actor_user_id`, `actor_role`, `entity_type`, `entity_id`, `action`, `description`, `severity`, `correlation_id`, `ip_address`, `user_agent`, `metadata`, `source_event_key`, and `created_at`.
+Key fields: `tenant_id`, `event_type`, `service_name`, `actor_user_id`, `actor_role`, `entity_type`, `entity_id`, `action`, `description`, `severity`, `correlation_id`, `ip_address`, `user_agent`, `metadata`, `source_event_key`, and `created_at`.
 
 Severity values: `INFO`, `WARNING`, `HIGH`, `CRITICAL`.
 
@@ -69,6 +70,8 @@ EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER=2
 After retry exhaustion, the event is published to `audit.dlq` with original topic, original payload, error message, service name, failure timestamp, correlation ID, and retry count.
 
 The normalizer reads both `correlationId` and `correlation_id` from source payloads when Kafka headers do not provide a correlation ID.
+
+The normalizer reads `tenantId` or `tenant_id`; exports include `tenant_id`.
 
 ## Limitations
 

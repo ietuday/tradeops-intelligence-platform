@@ -9,6 +9,7 @@ type SourceEvent struct {
 
 type RuleExecution struct {
 	ID              string
+	TenantID        string
 	RuleName        string
 	SourceTopic     string
 	EntityID        *string

@@ -11,6 +11,7 @@ import (
 	httpmiddleware "github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/http/middleware"
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/repository"
 	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/service"
+	"github.com/ietuday/tradeops-intelligence-platform/services/notification-service/internal/tenant"
 )
 
 type NotificationHandler struct {
@@ -156,7 +157,11 @@ func userContext(r *http.Request) (service.UserContext, bool) {
 	if !ok {
 		return service.UserContext{}, false
 	}
-	return service.UserContext{UserID: claims.UserID, Roles: claims.Roles}, true
+	tenantID := claims.TenantID
+	if tenantID == "" {
+		tenantID = tenant.FromHeader(r)
+	}
+	return service.UserContext{UserID: claims.UserID, TenantID: tenant.Normalize(tenantID), Roles: claims.Roles}, true
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {

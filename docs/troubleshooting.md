@@ -533,3 +533,17 @@ kubectl logs -n tradeops <pod-name>
 ```
 
 Fix: Confirm local images are loaded into kind/minikube, replace `JWT_SECRET=replace-me`, configure dependency endpoints in `values.yaml`, and remember that Docker Compose remains the recommended local demo runtime.
+
+## Tenant Data Missing
+
+Symptom: APIs return no orders, alerts, notifications, or audit logs even though data exists.
+
+Possible cause: JWT `tenantId`, `X-Tenant-ID`, and event `tenantId` do not match, or older data was not backfilled to `default-tenant`.
+
+Useful command:
+
+```bash
+TENANT_ID=default-tenant ./scripts/replay-sample-events.sh --all
+```
+
+Fix: Decode the JWT payload, confirm `tenantId`, check API Gateway forwarded `X-Tenant-ID`, and verify tenant migrations have run.

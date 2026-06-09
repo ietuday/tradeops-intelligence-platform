@@ -29,6 +29,7 @@ func (p *Producer) PublishSnapshotCreated(ctx context.Context, snapshot domain.S
 	payload := map[string]any{
 		"eventId":       correlationID,
 		"eventType":     "portfolio.snapshot.created",
+		"tenantId":      snapshot.TenantID,
 		"snapshot":      snapshot,
 		"occurredAt":    snapshot.CreatedAt,
 		"correlationId": correlationID,

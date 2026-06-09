@@ -4,6 +4,7 @@ import "time"
 
 type Portfolio struct {
 	ID          string    `json:"id"`
+	TenantID    string    `json:"tenantId"`
 	UserID      string    `json:"userId"`
 	CashBalance float64   `json:"cashBalance"`
 	RealizedPnL float64   `json:"realizedPnl"`

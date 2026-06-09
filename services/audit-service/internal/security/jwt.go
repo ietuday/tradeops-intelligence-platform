@@ -7,9 +7,10 @@ import (
 )
 
 type Claims struct {
-	UserID string   `json:"sub"`
-	Email  string   `json:"email"`
-	Roles  []string `json:"roles"`
+	UserID   string   `json:"sub"`
+	TenantID string   `json:"tenantId"`
+	Email    string   `json:"email"`
+	Roles    []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -40,6 +41,9 @@ func (v *Validator) Validate(tokenString string) (*Claims, error) {
 	}
 	if claims.UserID == "" {
 		return nil, errors.New("invalid token subject")
+	}
+	if claims.TenantID == "" {
+		claims.TenantID = "default-tenant"
 	}
 	return claims, nil
 }

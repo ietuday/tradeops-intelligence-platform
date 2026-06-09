@@ -20,6 +20,7 @@ type AlertRepository struct {
 }
 
 type AlertFilters struct {
+	TenantID  string
 	Status    string
 	Severity  string
 	AlertType string
@@ -46,11 +47,11 @@ func (r *AlertRepository) CreateAlert(ctx context.Context, alert domain.Alert) (
 		return domain.Alert{}, err
 	}
 	err = r.db.QueryRow(ctx, `
-		INSERT INTO surveillance_alerts (id, alert_type, severity, entity_type, entity_id, user_id, symbol, description, status, metadata, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
-		RETURNING id::text, alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
-	`, alert.ID, alert.AlertType, alert.Severity, alert.EntityType, alert.EntityID, alert.UserID, alert.Symbol, alert.Description, alert.Status, string(metadata), alert.CreatedAt).Scan(
-		&alert.ID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt,
+		INSERT INTO surveillance_alerts (id, tenant_id, alert_type, severity, entity_type, entity_id, user_id, symbol, description, status, metadata, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12)
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
+	`, alert.ID, defaultTenant(alert.TenantID), alert.AlertType, alert.Severity, alert.EntityType, alert.EntityID, alert.UserID, alert.Symbol, alert.Description, alert.Status, string(metadata), alert.CreatedAt).Scan(
+		&alert.ID, &alert.TenantID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt,
 	)
 	if err != nil {
 		return domain.Alert{}, err
@@ -69,11 +70,12 @@ func (r *AlertRepository) DuplicateAlertExists(ctx context.Context, alert domain
 		SELECT EXISTS (
 			SELECT 1
 			FROM surveillance_alerts
-			WHERE alert_type = $1
-			  AND entity_id = $2
-			  AND COALESCE(metadata->>'sourceTopic', '') = $3
+			WHERE COALESCE(tenant_id, 'default-tenant') = $1
+			  AND alert_type = $2
+			  AND entity_id = $3
+			  AND COALESCE(metadata->>'sourceTopic', '') = $4
 		)
-	`, alert.AlertType, alert.EntityID, sourceTopic).Scan(&exists)
+	`, defaultTenant(alert.TenantID), alert.AlertType, alert.EntityID, sourceTopic).Scan(&exists)
 	return exists, err
 }
 
@@ -81,7 +83,7 @@ func (r *AlertRepository) ListAlerts(ctx context.Context, filters AlertFilters) 
 	where, args := buildAlertFilters(filters)
 	args = append(args, filters.Limit, filters.Offset)
 	query := fmt.Sprintf(`
-		SELECT id::text, alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
 		FROM surveillance_alerts
 		%s
 		ORDER BY created_at DESC
@@ -95,14 +97,14 @@ func (r *AlertRepository) ListAlerts(ctx context.Context, filters AlertFilters) 
 	return scanAlerts(rows)
 }
 
-func (r *AlertRepository) GetAlert(ctx context.Context, id string) (domain.Alert, error) {
+func (r *AlertRepository) GetAlert(ctx context.Context, tenantID, id string) (domain.Alert, error) {
 	var alert domain.Alert
 	var metadata []byte
 	err := r.db.QueryRow(ctx, `
-		SELECT id::text, alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
 		FROM surveillance_alerts
-		WHERE id = $1
-	`, id).Scan(&alert.ID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt)
+		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
+	`, id, defaultTenant(tenantID)).Scan(&alert.ID, &alert.TenantID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Alert{}, ErrNotFound
 	}
@@ -113,7 +115,7 @@ func (r *AlertRepository) GetAlert(ctx context.Context, id string) (domain.Alert
 	return alert, nil
 }
 
-func (r *AlertRepository) UpdateStatus(ctx context.Context, id, status string) (domain.Alert, error) {
+func (r *AlertRepository) UpdateStatus(ctx context.Context, tenantID, id, status string) (domain.Alert, error) {
 	column := map[string]string{
 		domain.StatusAcknowledged: "acknowledged_at",
 		domain.StatusResolved:     "resolved_at",
@@ -131,12 +133,12 @@ func (r *AlertRepository) UpdateStatus(ctx context.Context, id, status string) (
 	query := fmt.Sprintf(`
 		UPDATE surveillance_alerts
 		SET status = $2, %s = now()
-		WHERE id = $1 %s
-		RETURNING id::text, alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
+		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $3 %s
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), alert_type, severity, entity_type, entity_id, user_id::text, symbol, description, status, metadata, created_at, acknowledged_at, resolved_at, dismissed_at
 	`, column, guard)
-	err := r.db.QueryRow(ctx, query, id, status).Scan(&alert.ID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt)
+	err := r.db.QueryRow(ctx, query, id, status, defaultTenant(tenantID)).Scan(&alert.ID, &alert.TenantID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		if _, getErr := r.GetAlert(ctx, id); errors.Is(getErr, ErrNotFound) {
+		if _, getErr := r.GetAlert(ctx, tenantID, id); errors.Is(getErr, ErrNotFound) {
 			return domain.Alert{}, ErrNotFound
 		}
 		return domain.Alert{}, ErrInvalidTransition
@@ -150,24 +152,25 @@ func (r *AlertRepository) UpdateStatus(ctx context.Context, id, status string) (
 
 func (r *AlertRepository) SaveExecution(ctx context.Context, execution domain.RuleExecution) error {
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO surveillance_rule_executions (id, rule_name, source_topic, entity_id, matched, execution_time_ms, error_message)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, execution.ID, execution.RuleName, execution.SourceTopic, execution.EntityID, execution.Matched, execution.ExecutionTimeMS, execution.ErrorMessage)
+		INSERT INTO surveillance_rule_executions (id, tenant_id, rule_name, source_topic, entity_id, matched, execution_time_ms, error_message)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, execution.ID, defaultTenant(execution.TenantID), execution.RuleName, execution.SourceTopic, execution.EntityID, execution.Matched, execution.ExecutionTimeMS, execution.ErrorMessage)
 	return err
 }
 
-func (r *AlertRepository) Summary(ctx context.Context) (Summary, error) {
+func (r *AlertRepository) Summary(ctx context.Context, tenantID string) (Summary, error) {
 	summary := Summary{AlertsBySeverity: map[string]int64{}, AlertsByType: map[string]int64{}}
-	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM surveillance_alerts WHERE status = 'OPEN'`).Scan(&summary.OpenAlerts); err != nil {
+	tenantID = defaultTenant(tenantID)
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM surveillance_alerts WHERE status = 'OPEN' AND COALESCE(tenant_id, 'default-tenant') = $1`, tenantID).Scan(&summary.OpenAlerts); err != nil {
 		return summary, err
 	}
-	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM surveillance_alerts WHERE created_at >= now() - interval '24 hours'`).Scan(&summary.CreatedLast24Hours); err != nil {
+	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM surveillance_alerts WHERE created_at >= now() - interval '24 hours' AND COALESCE(tenant_id, 'default-tenant') = $1`, tenantID).Scan(&summary.CreatedLast24Hours); err != nil {
 		return summary, err
 	}
-	if err := scanCounts(ctx, r.db, `SELECT severity, COUNT(*) FROM surveillance_alerts GROUP BY severity`, summary.AlertsBySeverity); err != nil {
+	if err := scanCounts(ctx, r.db, `SELECT severity, COUNT(*) FROM surveillance_alerts WHERE COALESCE(tenant_id, 'default-tenant') = $1 GROUP BY severity`, tenantID, summary.AlertsBySeverity); err != nil {
 		return summary, err
 	}
-	if err := scanCounts(ctx, r.db, `SELECT alert_type, COUNT(*) FROM surveillance_alerts GROUP BY alert_type`, summary.AlertsByType); err != nil {
+	if err := scanCounts(ctx, r.db, `SELECT alert_type, COUNT(*) FROM surveillance_alerts WHERE COALESCE(tenant_id, 'default-tenant') = $1 GROUP BY alert_type`, tenantID, summary.AlertsByType); err != nil {
 		return summary, err
 	}
 	return summary, nil
@@ -184,6 +187,7 @@ func buildAlertFilters(filters AlertFilters) (string, []any) {
 		clauses = append(clauses, fmt.Sprintf("%s = $%d", column, len(args)))
 	}
 	add("status", strings.ToUpper(filters.Status))
+	add("COALESCE(tenant_id, 'default-tenant')", defaultTenant(filters.TenantID))
 	add("severity", strings.ToUpper(filters.Severity))
 	add("alert_type", filters.AlertType)
 	add("user_id::text", filters.UserID)
@@ -199,7 +203,7 @@ func scanAlerts(rows pgx.Rows) ([]domain.Alert, error) {
 	for rows.Next() {
 		var alert domain.Alert
 		var metadata []byte
-		if err := rows.Scan(&alert.ID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt); err != nil {
+		if err := rows.Scan(&alert.ID, &alert.TenantID, &alert.AlertType, &alert.Severity, &alert.EntityType, &alert.EntityID, &alert.UserID, &alert.Symbol, &alert.Description, &alert.Status, &metadata, &alert.CreatedAt, &alert.AcknowledgedAt, &alert.ResolvedAt, &alert.DismissedAt); err != nil {
 			return nil, err
 		}
 		alert.Metadata = decodeMetadata(metadata)
@@ -216,8 +220,8 @@ func decodeMetadata(data []byte) map[string]any {
 	return metadata
 }
 
-func scanCounts(ctx context.Context, db *pgxpool.Pool, query string, counts map[string]int64) error {
-	rows, err := db.Query(ctx, query)
+func scanCounts(ctx context.Context, db *pgxpool.Pool, query string, tenantID string, counts map[string]int64) error {
+	rows, err := db.Query(ctx, query, tenantID)
 	if err != nil {
 		return err
 	}
@@ -231,4 +235,11 @@ func scanCounts(ctx context.Context, db *pgxpool.Pool, query string, counts map[
 		counts[key] = count
 	}
 	return rows.Err()
+}
+
+func defaultTenant(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "default-tenant"
+	}
+	return value
 }

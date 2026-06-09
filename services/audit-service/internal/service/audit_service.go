@@ -21,13 +21,14 @@ var ErrForbidden = errors.New("forbidden")
 var ErrInvalidExportFormat = errors.New("invalid export format")
 
 type UserContext struct {
-	UserID string
-	Roles  []string
+	UserID   string
+	TenantID string
+	Roles    []string
 }
 
 type Store interface {
 	CreateAuditLog(context.Context, domain.AuditLog) (domain.AuditLog, error)
-	GetAuditLogByID(context.Context, string) (domain.AuditLog, error)
+	GetAuditLogByID(context.Context, string, string) (domain.AuditLog, error)
 	ListAuditLogs(context.Context, repository.ListFilters) ([]domain.AuditLog, error)
 	GetAuditSummary(context.Context, repository.ListFilters) (repository.Summary, error)
 	ExportAuditLogs(context.Context, repository.ListFilters) ([]domain.AuditLog, error)
@@ -98,6 +99,7 @@ func (s *AuditService) NormalizeEvent(topic string, payload []byte, correlationI
 func (s *AuditService) CreateAuditLog(ctx context.Context, event domain.AuditEvent) (domain.AuditLog, error) {
 	log := domain.AuditLog{
 		ID:             uuid.NewString(),
+		TenantID:       defaultTenant(event.TenantID),
 		EventType:      event.EventType,
 		ServiceName:    event.ServiceName,
 		ActorUserID:    event.ActorUserID,
@@ -121,6 +123,7 @@ func (s *AuditService) CreateAuditLog(ctx context.Context, event domain.AuditEve
 	if err := s.publisher.Publish(ctx, domain.AuditLogEvent{
 		EventID:       uuid.NewString(),
 		EventType:     "audit.log.created",
+		TenantID:      defaultTenant(created.TenantID),
 		AuditLogID:    created.ID,
 		ServiceName:   created.ServiceName,
 		Action:        created.Action,
@@ -142,6 +145,7 @@ func (s *AuditService) ListAuditLogs(ctx context.Context, user UserContext, filt
 	if !canRead(user.Roles) {
 		return nil, ErrForbidden
 	}
+	filters.TenantID = defaultTenant(user.TenantID)
 	return s.store.ListAuditLogs(ctx, filters)
 }
 
@@ -149,13 +153,14 @@ func (s *AuditService) GetAuditLog(ctx context.Context, user UserContext, id str
 	if !canRead(user.Roles) {
 		return domain.AuditLog{}, ErrForbidden
 	}
-	return s.store.GetAuditLogByID(ctx, id)
+	return s.store.GetAuditLogByID(ctx, defaultTenant(user.TenantID), id)
 }
 
 func (s *AuditService) Summary(ctx context.Context, user UserContext, filters repository.ListFilters) (repository.Summary, error) {
 	if !canRead(user.Roles) {
 		return repository.Summary{}, ErrForbidden
 	}
+	filters.TenantID = defaultTenant(user.TenantID)
 	return s.store.GetAuditSummary(ctx, filters)
 }
 
@@ -163,6 +168,7 @@ func (s *AuditService) Export(ctx context.Context, user UserContext, filters rep
 	if !canExport(user.Roles) {
 		return ExportResult{}, ErrForbidden
 	}
+	filters.TenantID = defaultTenant(user.TenantID)
 	format = strings.ToLower(strings.TrimSpace(format))
 	if format == "" {
 		format = "json"
@@ -173,6 +179,7 @@ func (s *AuditService) Export(ctx context.Context, user UserContext, filters rep
 	}
 	requestedBy := nullableUser(user.UserID)
 	_, _ = s.store.CreateExportRequest(ctx, domain.ExportRequest{
+		TenantID:    defaultTenant(user.TenantID),
 		RequestedBy: requestedBy,
 		Filters:     filtersMap(filters, format),
 		Status:      "COMPLETED",
@@ -201,12 +208,13 @@ func (s *AuditService) Export(ctx context.Context, user UserContext, filters rep
 func csvExport(logs []domain.AuditLog) ([]byte, error) {
 	var buffer bytes.Buffer
 	writer := csv.NewWriter(&buffer)
-	if err := writer.Write([]string{"id", "event_type", "service_name", "actor_user_id", "entity_type", "entity_id", "action", "severity", "correlation_id", "created_at", "description"}); err != nil {
+	if err := writer.Write([]string{"id", "tenant_id", "event_type", "service_name", "actor_user_id", "entity_type", "entity_id", "action", "severity", "correlation_id", "created_at", "description"}); err != nil {
 		return nil, err
 	}
 	for _, log := range logs {
 		if err := writer.Write([]string{
 			log.ID,
+			defaultTenant(log.TenantID),
 			log.EventType,
 			log.ServiceName,
 			ptrValue(log.ActorUserID),
@@ -223,6 +231,13 @@ func csvExport(logs []domain.AuditLog) ([]byte, error) {
 	}
 	writer.Flush()
 	return buffer.Bytes(), writer.Error()
+}
+
+func defaultTenant(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "default-tenant"
+	}
+	return value
 }
 
 func canRead(roles []string) bool {

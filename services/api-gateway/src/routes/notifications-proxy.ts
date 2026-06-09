@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { tenantHeaders } from '../middleware/tenant';
 import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_NOTIFICATION_SERVICE_URL = 'http://notification-service:8091';
@@ -93,7 +94,7 @@ function buildProxyHeaders(req: Request): HeadersInit {
   if (correlationId) {
     headers['x-correlation-id'] = correlationId;
   }
-  return headers;
+  return { ...headers, ...tenantHeaders(req) };
 }
 
 function shouldForwardBody(method: string): boolean {

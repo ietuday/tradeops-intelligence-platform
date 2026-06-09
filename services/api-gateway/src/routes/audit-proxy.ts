@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { tenantHeaders } from '../middleware/tenant';
 import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_AUDIT_SERVICE_URL = 'http://audit-service:8092';
@@ -83,7 +84,7 @@ function buildProxyHeaders(req: Request): HeadersInit {
   if (correlationId) {
     headers['x-correlation-id'] = correlationId;
   }
-  return headers;
+  return { ...headers, ...tenantHeaders(req) };
 }
 
 async function forwardToAuditService(

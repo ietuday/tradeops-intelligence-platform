@@ -8,6 +8,12 @@ Most business APIs require a JWT access token from `/api/auth/login`.
 TOKEN="<access token from /api/auth/login>"
 ```
 
+## Tenant Context
+
+Tenant-owned APIs use the JWT `tenantId` claim. API Gateway forwards the resolved tenant to services as `X-Tenant-ID`. External `X-Tenant-ID` cannot override a JWT tenant unless the caller has `trading_admin`; local demos default to `default-tenant`.
+
+Tenant-owned resources such as orders, portfolios, surveillance alerts, notifications, and audit logs are filtered by tenant where implemented. Market data remains global by default.
+
 ## Auth APIs
 
 Base gateway path: `/api/auth`

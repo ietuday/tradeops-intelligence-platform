@@ -30,6 +30,8 @@ This matrix documents the target role model for TradeOps and the current impleme
 ## Documented Target RBAC Vs Current Implementation
 
 - The target posture is least privilege by domain and action.
+- Tenant isolation is applied before role interpretation: the JWT `tenantId` determines the tenant scope, and `X-Tenant-ID` is propagated internally by API Gateway.
+- External `X-Tenant-ID` override is ignored for non-admin JWTs; `trading_admin` can override for local support workflows.
 - Current services implement JWT/RBAC at different depths; this is acceptable for the local portfolio scope but should be normalized before production.
 - The API Gateway forwards authorization headers and keeps a single external routing boundary, but backend services remain responsible for final authorization decisions.
 - Only `trading_admin` and `risk_manager` should resolve surveillance alerts.

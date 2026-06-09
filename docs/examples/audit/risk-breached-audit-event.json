@@ -1,6 +1,7 @@
 {
   "eventId": "audit-demo-risk-breached-001",
   "eventType": "risk.breached",
+  "tenantId": "default-tenant",
   "portfolioId": "55555555-5555-4555-8555-555555555555",
   "userId": "33333333-3333-4333-8333-333333333333",
   "score": 92,

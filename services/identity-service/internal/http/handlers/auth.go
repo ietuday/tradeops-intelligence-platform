@@ -37,6 +37,7 @@ type refreshRequest struct {
 
 type userResponse struct {
 	ID       string   `json:"id"`
+	TenantID string   `json:"tenantId"`
 	Email    string   `json:"email"`
 	FullName string   `json:"fullName"`
 	Roles    []string `json:"roles"`
@@ -67,7 +68,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		httpmiddleware.WriteError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	httpmiddleware.WriteJSON(w, http.StatusCreated, userResponse{ID: user.ID, Email: user.Email, FullName: user.FullName, Roles: user.Roles})
+	httpmiddleware.WriteJSON(w, http.StatusCreated, userResponse{ID: user.ID, TenantID: user.TenantID, Email: user.Email, FullName: user.FullName, Roles: user.Roles})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +121,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		httpmiddleware.WriteError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	httpmiddleware.WriteJSON(w, http.StatusOK, userResponse{ID: user.ID, Email: user.Email, FullName: user.FullName, Roles: user.Roles})
+	httpmiddleware.WriteJSON(w, http.StatusOK, userResponse{ID: user.ID, TenantID: user.TenantID, Email: user.Email, FullName: user.FullName, Roles: user.Roles})
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {

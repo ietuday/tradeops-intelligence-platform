@@ -292,7 +292,7 @@ func (s *fakeStore) Create(_ context.Context, notification domain.Notification) 
 	return notification, nil
 }
 
-func (s *fakeStore) DuplicateExists(context.Context, string, string, string) (bool, error) {
+func (s *fakeStore) DuplicateExists(context.Context, string, string, string, string) (bool, error) {
 	return s.duplicate, nil
 }
 
@@ -301,14 +301,14 @@ func (s *fakeStore) List(_ context.Context, filters repository.ListFilters) ([]d
 	return []domain.Notification{s.notification}, nil
 }
 
-func (s *fakeStore) Get(_ context.Context, _ string) (domain.Notification, error) {
+func (s *fakeStore) Get(_ context.Context, _, _ string) (domain.Notification, error) {
 	if s.notification.ID == "" {
 		return domain.Notification{}, repository.ErrNotFound
 	}
 	return s.notification, nil
 }
 
-func (s *fakeStore) MarkRead(_ context.Context, _ string) (domain.Notification, error) {
+func (s *fakeStore) MarkRead(_ context.Context, _, _ string) (domain.Notification, error) {
 	s.markedRead = true
 	s.notification.Status = domain.StatusRead
 	now := time.Now().UTC()
@@ -316,13 +316,13 @@ func (s *fakeStore) MarkRead(_ context.Context, _ string) (domain.Notification, 
 	return s.notification, nil
 }
 
-func (s *fakeStore) Retry(_ context.Context, _ string) (domain.Notification, error) {
+func (s *fakeStore) Retry(_ context.Context, _, _ string) (domain.Notification, error) {
 	s.retried = true
 	s.notification.Status = domain.StatusRetrying
 	return s.notification, nil
 }
 
-func (s *fakeStore) UpdateStatus(_ context.Context, id string, status string) (domain.Notification, error) {
+func (s *fakeStore) UpdateStatus(_ context.Context, _ string, id string, status string) (domain.Notification, error) {
 	if s.statusByID == nil {
 		s.statusByID = map[string]string{}
 	}
@@ -346,11 +346,11 @@ func (s *fakeStore) NextAttemptNumber(context.Context, string) (int, error) {
 	return len(s.attempts) + 1, nil
 }
 
-func (s *fakeStore) Summary(context.Context, string) (repository.Summary, error) {
+func (s *fakeStore) Summary(context.Context, string, string) (repository.Summary, error) {
 	return repository.Summary{Unread: 1}, nil
 }
 
-func (s *fakeStore) Preferences(context.Context, string) (domain.Preferences, error) {
+func (s *fakeStore) Preferences(context.Context, string, string) (domain.Preferences, error) {
 	if s.preferences.UserID == "" {
 		s.preferences = defaultPrefs("user-1")
 	}
@@ -363,15 +363,15 @@ func (s *fakeStore) UpdatePreferences(_ context.Context, prefs domain.Preference
 }
 
 func traderUser() UserContext {
-	return UserContext{UserID: "user-1", Roles: []string{"trader"}}
+	return UserContext{UserID: "user-1", TenantID: "default-tenant", Roles: []string{"trader"}}
 }
 
 func managerUser() UserContext {
-	return UserContext{UserID: "manager-1", Roles: []string{"risk_manager"}}
+	return UserContext{UserID: "manager-1", TenantID: "default-tenant", Roles: []string{"risk_manager"}}
 }
 
 func defaultPrefs(userID string) domain.Preferences {
-	return domain.Preferences{UserID: userID, InAppEnabled: true, MinPriority: domain.PriorityLow}
+	return domain.Preferences{TenantID: "default-tenant", UserID: userID, InAppEnabled: true, MinPriority: domain.PriorityLow}
 }
 
 func alertPayload(t *testing.T, eventType, severity string) []byte {
@@ -380,6 +380,7 @@ func alertPayload(t *testing.T, eventType, severity string) []byte {
 	symbol := "AAPL"
 	payload, err := json.Marshal(domain.SurveillanceAlertEvent{
 		EventID: "event-1", EventType: eventType, AlertID: "alert-1", AlertType: "LargeOrderRule",
+		TenantID: "default-tenant",
 		Severity: severity, EntityType: "ORDER", EntityID: "order-1", UserID: &userID, Symbol: &symbol,
 		Status: "OPEN", Metadata: map[string]any{"notional": 150000}, OccurredAt: time.Now().UTC(),
 	})

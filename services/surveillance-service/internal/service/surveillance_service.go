@@ -16,8 +16,9 @@ import (
 var ErrForbidden = errors.New("forbidden")
 
 type UserContext struct {
-	UserID string
-	Roles  []string
+	UserID   string
+	TenantID string
+	Roles    []string
 }
 
 type alertStore interface {
@@ -25,9 +26,9 @@ type alertStore interface {
 	DuplicateAlertExists(context.Context, domain.Alert) (bool, error)
 	CreateAlert(context.Context, domain.Alert) (domain.Alert, error)
 	ListAlerts(context.Context, repository.AlertFilters) ([]domain.Alert, error)
-	GetAlert(context.Context, string) (domain.Alert, error)
-	UpdateStatus(context.Context, string, string) (domain.Alert, error)
-	Summary(context.Context) (repository.Summary, error)
+	GetAlert(context.Context, string, string) (domain.Alert, error)
+	UpdateStatus(context.Context, string, string, string) (domain.Alert, error)
+	Summary(context.Context, string) (repository.Summary, error)
 }
 
 type SurveillanceService struct {
@@ -47,8 +48,10 @@ func (s *SurveillanceService) ProcessEvent(ctx context.Context, event domain.Sou
 		return errors.New("invalid source event JSON")
 	}
 	now := time.Now().UTC()
+	tenantID := tenantIDFromEvent(event.Value)
 	alerts, executions := s.engine.Evaluate(event, now)
 	for _, execution := range executions {
+		execution.TenantID = tenantID
 		s.metrics.RuleExecutions.WithLabelValues(execution.RuleName, execution.SourceTopic).Inc()
 		s.metrics.RuleDuration.Observe(float64(execution.ExecutionTimeMS) / 1000)
 		if execution.Matched {
@@ -59,6 +62,7 @@ func (s *SurveillanceService) ProcessEvent(ctx context.Context, event domain.Sou
 		}
 	}
 	for _, alert := range alerts {
+		alert.TenantID = tenantID
 		exists, err := s.repo.DuplicateAlertExists(ctx, alert)
 		if err != nil {
 			return err
@@ -83,6 +87,7 @@ func (s *SurveillanceService) ListAlerts(ctx context.Context, user UserContext, 
 	if !canView(user.Roles) {
 		return nil, ErrForbidden
 	}
+	filters.TenantID = defaultTenant(user.TenantID)
 	return s.repo.ListAlerts(ctx, filters)
 }
 
@@ -90,7 +95,7 @@ func (s *SurveillanceService) GetAlert(ctx context.Context, user UserContext, id
 	if !canView(user.Roles) {
 		return domain.Alert{}, ErrForbidden
 	}
-	return s.repo.GetAlert(ctx, id)
+	return s.repo.GetAlert(ctx, defaultTenant(user.TenantID), id)
 }
 
 func (s *SurveillanceService) Acknowledge(ctx context.Context, user UserContext, id, correlationID string) (domain.Alert, error) {
@@ -109,14 +114,14 @@ func (s *SurveillanceService) Summary(ctx context.Context, user UserContext) (re
 	if !canView(user.Roles) {
 		return repository.Summary{}, ErrForbidden
 	}
-	return s.repo.Summary(ctx)
+	return s.repo.Summary(ctx, defaultTenant(user.TenantID))
 }
 
 func (s *SurveillanceService) transition(ctx context.Context, user UserContext, id, status, eventType, correlationID string) (domain.Alert, error) {
 	if !canManage(user.Roles) {
 		return domain.Alert{}, ErrForbidden
 	}
-	alert, err := s.repo.UpdateStatus(ctx, id, status)
+	alert, err := s.repo.UpdateStatus(ctx, defaultTenant(user.TenantID), id, status)
 	if err != nil {
 		return domain.Alert{}, err
 	}
@@ -141,6 +146,7 @@ func (s *SurveillanceService) publishAlertEvent(ctx context.Context, eventType s
 	return s.producer.Publish(ctx, domain.AlertEvent{
 		EventID:       uuid.NewString(),
 		EventType:     eventType,
+		TenantID:      defaultTenant(alert.TenantID),
 		AlertID:       alert.ID,
 		AlertType:     alert.AlertType,
 		Severity:      alert.Severity,
@@ -153,6 +159,23 @@ func (s *SurveillanceService) publishAlertEvent(ctx context.Context, eventType s
 		OccurredAt:    time.Now().UTC(),
 		CorrelationID: correlationID,
 	})
+}
+
+func tenantIDFromEvent(value []byte) string {
+	var payload struct {
+		TenantID string `json:"tenantId"`
+	}
+	if len(value) > 0 && json.Unmarshal(value, &payload) == nil && payload.TenantID != "" {
+		return payload.TenantID
+	}
+	return "default-tenant"
+}
+
+func defaultTenant(value string) string {
+	if value == "" {
+		return "default-tenant"
+	}
+	return value
 }
 
 func canView(roles []string) bool {

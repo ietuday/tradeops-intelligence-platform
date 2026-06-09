@@ -4,6 +4,8 @@ TradeOps uses Redpanda/Kafka for cross-service domain events and Mosquitto/MQTT 
 
 Events should include `correlationId` when available. API Gateway accepts or generates `X-Correlation-ID`, services propagate it to Kafka events, consumers preserve it in downstream events and DLQ records, and audit-service stores it in `audit_logs.correlation_id`.
 
+Tenant-owned events should also include top-level `tenantId`. Consumers preserve it, audit-service stores it as `tenant_id`, and WebSocket streams use it for tenant filtering. Older demo payloads fall back to `default-tenant`.
+
 ## Topic Map
 
 | Topic | Producer | Consumers | Purpose |
@@ -76,6 +78,7 @@ sequenceDiagram
 - WebSocket stream message examples live under `docs/examples/websocket/`.
 - Demo scripts publish compact JSON to Redpanda with `rpk topic produce`.
 - Replay/demo scripts accept `CORRELATION_ID` to inject a traceable `correlationId`.
+- Replay/demo scripts default `TENANT_ID=default-tenant` and preserve `tenantId`.
 
 ## Current Limitations
 

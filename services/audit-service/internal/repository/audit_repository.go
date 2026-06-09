@@ -21,6 +21,7 @@ type AuditRepository struct {
 }
 
 type ListFilters struct {
+	TenantID      string
 	EventType     string
 	ServiceName   string
 	ActorUserID   string
@@ -64,11 +65,11 @@ func (r *AuditRepository) CreateAuditLog(ctx context.Context, log domain.AuditLo
 	}
 	_, err = r.db.Exec(ctx, `
 		INSERT INTO audit_logs (
-			id, event_type, service_name, actor_user_id, actor_role, entity_type, entity_id,
+			id, tenant_id, event_type, service_name, actor_user_id, actor_role, entity_type, entity_id,
 			action, description, severity, correlation_id, ip_address, user_agent, metadata,
 			source_event_key, created_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-	`, log.ID, log.EventType, log.ServiceName, log.ActorUserID, log.ActorRole, log.EntityType, log.EntityID,
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+	`, log.ID, defaultTenant(log.TenantID), log.EventType, log.ServiceName, log.ActorUserID, log.ActorRole, log.EntityType, log.EntityID,
 		log.Action, log.Description, log.Severity, log.CorrelationID, log.IPAddress, log.UserAgent, metadata,
 		log.SourceEventKey, log.CreatedAt)
 	if err != nil {
@@ -81,35 +82,36 @@ func (r *AuditRepository) CreateAuditLog(ctx context.Context, log domain.AuditLo
 	return log, nil
 }
 
-func (r *AuditRepository) GetAuditLogByID(ctx context.Context, id string) (domain.AuditLog, error) {
+func (r *AuditRepository) GetAuditLogByID(ctx context.Context, tenantID, id string) (domain.AuditLog, error) {
 	row := r.db.QueryRow(ctx, `
-		SELECT id, event_type, service_name, actor_user_id, actor_role, entity_type, entity_id,
+		SELECT id, COALESCE(tenant_id, 'default-tenant'), event_type, service_name, actor_user_id, actor_role, entity_type, entity_id,
 			action, description, severity, correlation_id, ip_address, user_agent, metadata,
 			source_event_key, created_at
-		FROM audit_logs WHERE id = $1
-	`, id)
+		FROM audit_logs WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
+	`, id, defaultTenant(tenantID))
 	return scanAuditLog(row)
 }
 
 func (r *AuditRepository) ListAuditLogs(ctx context.Context, filters ListFilters) ([]domain.AuditLog, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, event_type, service_name, actor_user_id, actor_role, entity_type, entity_id,
+		SELECT id, COALESCE(tenant_id, 'default-tenant'), event_type, service_name, actor_user_id, actor_role, entity_type, entity_id,
 			action, description, severity, correlation_id, ip_address, user_agent, metadata,
 			source_event_key, created_at
 		FROM audit_logs
-		WHERE ($1 = '' OR event_type = $1)
-		  AND ($2 = '' OR service_name = $2)
-		  AND ($3 = '' OR actor_user_id::text = $3)
-		  AND ($4 = '' OR entity_type = $4)
-		  AND ($5 = '' OR entity_id = $5)
-		  AND ($6 = '' OR action = $6)
-		  AND ($7 = '' OR severity = $7)
-		  AND ($8 = '' OR correlation_id = $8)
-		  AND ($9::timestamptz IS NULL OR created_at >= $9)
-		  AND ($10::timestamptz IS NULL OR created_at <= $10)
+		WHERE COALESCE(tenant_id, 'default-tenant') = $1
+		  AND ($2 = '' OR event_type = $2)
+		  AND ($3 = '' OR service_name = $3)
+		  AND ($4 = '' OR actor_user_id::text = $4)
+		  AND ($5 = '' OR entity_type = $5)
+		  AND ($6 = '' OR entity_id = $6)
+		  AND ($7 = '' OR action = $7)
+		  AND ($8 = '' OR severity = $8)
+		  AND ($9 = '' OR correlation_id = $9)
+		  AND ($10::timestamptz IS NULL OR created_at >= $10)
+		  AND ($11::timestamptz IS NULL OR created_at <= $11)
 		ORDER BY created_at DESC
-		LIMIT $11 OFFSET $12
-	`, filters.EventType, filters.ServiceName, filters.ActorUserID, filters.EntityType, filters.EntityID,
+		LIMIT $12 OFFSET $13
+	`, defaultTenant(filters.TenantID), filters.EventType, filters.ServiceName, filters.ActorUserID, filters.EntityType, filters.EntityID,
 		filters.Action, filters.Severity, filters.CorrelationID, filters.From, filters.To, filters.Limit, filters.Offset)
 	if err != nil {
 		return nil, err
@@ -133,22 +135,23 @@ func (r *AuditRepository) GetAuditSummary(ctx context.Context, filters ListFilte
 		BySeverity:  map[string]int64{},
 		ByAction:    map[string]int64{},
 	}
-	if err := r.db.QueryRow(ctx, `SELECT count(*) FROM audit_logs`).Scan(&summary.Total); err != nil {
+	tenantID := defaultTenant(filters.TenantID)
+	if err := r.db.QueryRow(ctx, `SELECT count(*) FROM audit_logs WHERE COALESCE(tenant_id, 'default-tenant') = $1`, tenantID).Scan(&summary.Total); err != nil {
 		return summary, err
 	}
-	if err := r.db.QueryRow(ctx, `SELECT count(*) FROM audit_logs WHERE created_at >= now() - interval '24 hours'`).Scan(&summary.Last24Hours); err != nil {
+	if err := r.db.QueryRow(ctx, `SELECT count(*) FROM audit_logs WHERE COALESCE(tenant_id, 'default-tenant') = $1 AND created_at >= now() - interval '24 hours'`, tenantID).Scan(&summary.Last24Hours); err != nil {
 		return summary, err
 	}
-	if err := r.fillCountMap(ctx, `SELECT service_name, count(*) FROM audit_logs GROUP BY service_name`, summary.ByService); err != nil {
+	if err := r.fillCountMap(ctx, `SELECT service_name, count(*) FROM audit_logs WHERE COALESCE(tenant_id, 'default-tenant') = $1 GROUP BY service_name`, tenantID, summary.ByService); err != nil {
 		return summary, err
 	}
-	if err := r.fillCountMap(ctx, `SELECT event_type, count(*) FROM audit_logs GROUP BY event_type`, summary.ByEventType); err != nil {
+	if err := r.fillCountMap(ctx, `SELECT event_type, count(*) FROM audit_logs WHERE COALESCE(tenant_id, 'default-tenant') = $1 GROUP BY event_type`, tenantID, summary.ByEventType); err != nil {
 		return summary, err
 	}
-	if err := r.fillCountMap(ctx, `SELECT severity, count(*) FROM audit_logs GROUP BY severity`, summary.BySeverity); err != nil {
+	if err := r.fillCountMap(ctx, `SELECT severity, count(*) FROM audit_logs WHERE COALESCE(tenant_id, 'default-tenant') = $1 GROUP BY severity`, tenantID, summary.BySeverity); err != nil {
 		return summary, err
 	}
-	if err := r.fillCountMap(ctx, `SELECT action, count(*) FROM audit_logs GROUP BY action`, summary.ByAction); err != nil {
+	if err := r.fillCountMap(ctx, `SELECT action, count(*) FROM audit_logs WHERE COALESCE(tenant_id, 'default-tenant') = $1 GROUP BY action`, tenantID, summary.ByAction); err != nil {
 		return summary, err
 	}
 	return summary, nil
@@ -176,14 +179,14 @@ func (r *AuditRepository) CreateExportRequest(ctx context.Context, request domai
 		return domain.ExportRequest{}, err
 	}
 	_, err = r.db.Exec(ctx, `
-		INSERT INTO audit_export_requests (id, requested_by, filters, status, file_name, record_count, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, request.ID, request.RequestedBy, filters, request.Status, request.FileName, request.RecordCount, request.CreatedAt)
+		INSERT INTO audit_export_requests (id, tenant_id, requested_by, filters, status, file_name, record_count, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+	`, request.ID, defaultTenant(request.TenantID), request.RequestedBy, filters, request.Status, request.FileName, request.RecordCount, request.CreatedAt)
 	return request, err
 }
 
-func (r *AuditRepository) fillCountMap(ctx context.Context, query string, target map[string]int64) error {
-	rows, err := r.db.Query(ctx, query)
+func (r *AuditRepository) fillCountMap(ctx context.Context, query, tenantID string, target map[string]int64) error {
+	rows, err := r.db.Query(ctx, query, tenantID)
 	if err != nil {
 		return err
 	}
@@ -206,7 +209,7 @@ type scanner interface {
 func scanAuditLog(row scanner) (domain.AuditLog, error) {
 	var log domain.AuditLog
 	var metadata []byte
-	err := row.Scan(&log.ID, &log.EventType, &log.ServiceName, &log.ActorUserID, &log.ActorRole,
+	err := row.Scan(&log.ID, &log.TenantID, &log.EventType, &log.ServiceName, &log.ActorUserID, &log.ActorRole,
 		&log.EntityType, &log.EntityID, &log.Action, &log.Description, &log.Severity,
 		&log.CorrelationID, &log.IPAddress, &log.UserAgent, &metadata, &log.SourceEventKey, &log.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -224,6 +227,13 @@ func scanAuditLog(row scanner) (domain.AuditLog, error) {
 		log.Metadata = map[string]any{}
 	}
 	return log, nil
+}
+
+func defaultTenant(value string) string {
+	if value == "" {
+		return "default-tenant"
+	}
+	return value
 }
 
 func nonNilMap(value map[string]any) map[string]any {

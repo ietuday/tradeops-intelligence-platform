@@ -10,6 +10,7 @@ type SourceEvent struct {
 type AuditLogEvent struct {
 	EventID       string         `json:"eventId"`
 	EventType     string         `json:"eventType"`
+	TenantID      string         `json:"tenantId"`
 	AuditLogID    string         `json:"auditLogId"`
 	ServiceName   string         `json:"serviceName"`
 	Action        string         `json:"action"`

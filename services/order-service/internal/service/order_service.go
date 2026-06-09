@@ -22,8 +22,9 @@ var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
 var ErrNotFound = errors.New("not found")
 
 type UserContext struct {
-	UserID string
-	Roles  []string
+	UserID   string
+	TenantID string
+	Roles    []string
 }
 
 type OrderService struct {
@@ -44,12 +45,15 @@ func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempo
 		return domain.Order{}, false, ErrForbidden
 	}
 	requestHash := hashRequest(requestBody)
-	if record, err := s.repo.FindIdempotency(ctx, user.UserID, idempotencyKey); err == nil {
+	if user.TenantID == "" {
+		user.TenantID = "default-tenant"
+	}
+	if record, err := s.repo.FindIdempotency(ctx, user.TenantID, user.UserID, idempotencyKey); err == nil {
 		if record.RequestHash != requestHash {
 			return domain.Order{}, false, ErrIdempotencyConflict
 		}
 		s.metrics.IdempotencyReplays.Inc()
-		order, err := s.repo.GetOrder(ctx, record.OrderID)
+		order, err := s.repo.GetOrder(ctx, user.TenantID, record.OrderID)
 		return order, true, err
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return domain.Order{}, false, err
@@ -60,7 +64,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempo
 		return domain.Order{}, false, err
 	}
 
-	order, events := s.buildOrder(user.UserID, req, correlationID)
+	order, events := s.buildOrder(user.UserID, user.TenantID, req, correlationID)
 	created, err := s.repo.CreateOrder(ctx, order, events, idempotencyKey, requestHash)
 	if err != nil {
 		return domain.Order{}, false, err
@@ -79,14 +83,14 @@ func (s *OrderService) ListOrders(ctx context.Context, user UserContext) ([]doma
 	if !hasAnyRole(user.Roles, "trader", "trading_admin", "risk_manager", "analyst", "viewer") {
 		return nil, ErrForbidden
 	}
-	return s.repo.ListOrders(ctx, user.UserID, hasAnyRole(user.Roles, "trading_admin", "risk_manager", "analyst", "viewer"))
+	return s.repo.ListOrders(ctx, user.TenantID, user.UserID, hasAnyRole(user.Roles, "trading_admin", "risk_manager", "analyst", "viewer"))
 }
 
 func (s *OrderService) GetOrder(ctx context.Context, user UserContext, id string) (domain.Order, error) {
 	if !hasAnyRole(user.Roles, "trader", "trading_admin", "risk_manager", "analyst", "viewer") {
 		return domain.Order{}, ErrForbidden
 	}
-	order, err := s.repo.GetOrder(ctx, id)
+	order, err := s.repo.GetOrder(ctx, user.TenantID, id)
 	if errors.Is(err, repository.ErrNotFound) {
 		return domain.Order{}, ErrNotFound
 	}
@@ -106,7 +110,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, user UserContext, id, co
 	if !hasAnyRole(user.Roles, "trader", "trading_admin") {
 		return domain.Order{}, ErrForbidden
 	}
-	existing, err := s.repo.GetOrder(ctx, id)
+	existing, err := s.repo.GetOrder(ctx, user.TenantID, id)
 	if errors.Is(err, repository.ErrNotFound) {
 		return domain.Order{}, ErrNotFound
 	}
@@ -120,7 +124,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, user UserContext, id, co
 		return domain.Order{}, ErrOrderNotCancellable
 	}
 	event := makeEvent(existing, "order.cancelled", domain.StatusCancelled, correlationID)
-	cancelled, err := s.repo.CancelOrder(ctx, id, correlationID, event)
+	cancelled, err := s.repo.CancelOrder(ctx, user.TenantID, id, correlationID, event)
 	if errors.Is(err, repository.ErrNotFound) {
 		return domain.Order{}, ErrOrderNotCancellable
 	}
@@ -135,10 +139,14 @@ func (s *OrderService) CancelOrder(ctx context.Context, user UserContext, id, co
 	return cancelled, nil
 }
 
-func (s *OrderService) buildOrder(userID string, req domain.CreateOrderRequest, correlationID string) (domain.Order, []domain.OrderEvent) {
+func (s *OrderService) buildOrder(userID, tenantID string, req domain.CreateOrderRequest, correlationID string) (domain.Order, []domain.OrderEvent) {
 	now := time.Now().UTC()
+	if tenantID == "" {
+		tenantID = "default-tenant"
+	}
 	order := domain.Order{
 		UserID:        userID,
+		TenantID:      tenantID,
 		Symbol:        strings.ToUpper(strings.TrimSpace(req.Symbol)),
 		Side:          strings.ToUpper(strings.TrimSpace(req.Side)),
 		OrderType:     strings.ToUpper(strings.TrimSpace(req.OrderType)),
@@ -208,9 +216,14 @@ func validateOrder(order domain.Order) string {
 }
 
 func makeEvent(order domain.Order, eventType, status, correlationID string) domain.OrderEvent {
+	tenantID := order.TenantID
+	if tenantID == "" {
+		tenantID = "default-tenant"
+	}
 	return domain.OrderEvent{
 		EventID:       uuid.NewString(),
 		EventType:     eventType,
+		TenantID:      tenantID,
 		OrderID:       order.ID,
 		UserID:        order.UserID,
 		Symbol:        order.Symbol,

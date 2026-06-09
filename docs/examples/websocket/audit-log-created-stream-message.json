@@ -4,6 +4,7 @@
   "correlationId": "demo-websocket-audit-001",
   "timestamp": "2026-06-09T10:04:00Z",
   "payload": {
+    "tenantId": "default-tenant",
     "auditLogId": "audit-demo-001",
     "serviceName": "order-service",
     "eventType": "ORDER_FILLED",

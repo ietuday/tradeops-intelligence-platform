@@ -1,6 +1,7 @@
 {
   "eventId": "audit-demo-surveillance-alert-created-001",
   "eventType": "surveillance.alert.created",
+  "tenantId": "default-tenant",
   "alertId": "22222222-2222-4222-8222-222222222222",
   "alertType": "LargeOrderRule",
   "severity": "HIGH",

@@ -8,6 +8,8 @@ TradeOps is an event-driven trading microservices platform I built to demonstrat
 
 TradeOps simulates a trading operations backend. The API Gateway exposes stable routes, identity issues JWTs, the order service handles idempotent order creation, portfolio consumes fills, surveillance detects alerts from order/market/risk events, notifications are created from alert lifecycle events, and audit records compliance-style logs. I added reliability patterns like retries and DLQ guidance, observability with Prometheus/Grafana/SLO docs, security docs and gateway hardening, backup/replay scripts, Helm deployment readiness, and local performance testing.
 
+v2.2.0 adds shared-database multitenancy: JWT `tenantId`, `X-Tenant-ID` propagation, tenant-aware database columns, tenant-aware events, audit logs, and WebSocket filtering.
+
 ## 2-Minute Pitch
 
 The project is intentionally built like a local version of a production backend platform. Synchronous HTTP handles commands and queries, while Kafka-compatible Redpanda handles asynchronous workflows. Services own their data and expose health, readiness, and metrics. The system includes realistic concerns: idempotency for order creation, defensive event consumers, retry/DLQ documentation, audit export, notification delivery attempts, correlation IDs across HTTP/events/logs, and dashboards for latency, errors, and event processing.
@@ -39,6 +41,10 @@ Each backend exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes ser
 ## Security Explanation
 
 Identity issues JWTs and services enforce RBAC where implemented. The gateway applies practical controls such as security headers, CORS config, body limits, and rate limiting. Security docs include a STRIDE threat model, RBAC matrix, API security notes, and secrets guidance.
+
+## Multitenancy Explanation
+
+The platform uses shared PostgreSQL tables with `tenant_id` for a simple portfolio-scale tenant model. It avoids database-per-tenant operational overhead while still showing tenant propagation, query filtering, tenant-aware audit, and real-time stream isolation.
 
 ## Deployment Explanation
 

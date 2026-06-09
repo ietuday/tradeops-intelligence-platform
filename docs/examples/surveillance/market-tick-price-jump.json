@@ -1,6 +1,7 @@
 {
   "eventId": "55555555-5555-4555-8555-555555555555",
   "eventType": "market.tick.normalized",
+  "tenantId": "default-tenant",
   "symbol": "AAPL",
   "price": 112,
   "volume": 2500,

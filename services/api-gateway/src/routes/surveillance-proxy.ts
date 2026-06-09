@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { tenantHeaders } from '../middleware/tenant';
 import { fetchUpstream } from './proxy-utils';
 
 const DEFAULT_SURVEILLANCE_SERVICE_URL = 'http://surveillance-service:8090';
@@ -87,7 +88,7 @@ function buildProxyHeaders(req: Request): HeadersInit {
   if (correlationId) {
     headers['x-correlation-id'] = correlationId;
   }
-  return headers;
+  return { ...headers, ...tenantHeaders(req) };
 }
 
 function shouldForwardBody(method: string): boolean {

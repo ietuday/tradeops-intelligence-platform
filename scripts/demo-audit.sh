@@ -8,6 +8,7 @@ API_URL="${API_URL:-http://localhost:8080}"
 AUDIT_URL="${AUDIT_URL:-http://localhost:8092}"
 EXAMPLES_DIR="${ROOT_DIR}/docs/examples/audit"
 DEMO_USER_ID="${DEMO_USER_ID:-33333333-3333-4333-8333-333333333333}"
+TENANT_ID="${TENANT_ID:-default-tenant}"
 CORRELATION_ID="${CORRELATION_ID:-demo-correlation-123}"
 
 if [ -f "${ENV_FILE}" ]; then
@@ -23,6 +24,7 @@ TOKEN="${AUDIT_DEMO_TOKEN:-}"
 echo "TradeOps audit demo"
 echo "API Gateway: ${API_URL}"
 echo "Audit service: ${AUDIT_URL}"
+echo "Tenant ID: ${TENANT_ID}"
 echo "Correlation ID: ${CORRELATION_ID}"
 
 check_contains() {
@@ -53,6 +55,7 @@ const header = { alg: "HS256", typ: "JWT" };
 const payload = {
   iss: "tradeops-identity-service",
   sub: userId,
+  tenantId: process.argv[3],
   email: "audit.demo@example.com",
   roles: ["risk_manager"],
   iat: now,
@@ -61,14 +64,14 @@ const payload = {
 const signingInput = `${b64url(header)}.${b64url(payload)}`;
 const signature = crypto.createHmac("sha256", secret).update(signingInput).digest("base64url");
 process.stdout.write(`${signingInput}.${signature}`);
-' "${JWT_SECRET}" "${DEMO_USER_ID}"
+' "${JWT_SECRET}" "${DEMO_USER_ID}" "${TENANT_ID}"
 }
 
 publish_event() {
   local topic="$1"
   local file="$2"
 
-  node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); data.correlationId = process.argv[2]; process.stdout.write(JSON.stringify(data) + "\n");' "${file}" "${CORRELATION_ID}" |
+  node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); data.correlationId = process.argv[2]; data.tenantId = process.argv[3]; process.stdout.write(JSON.stringify(data) + "\n");' "${file}" "${CORRELATION_ID}" "${TENANT_ID}" |
     docker compose -f "${COMPOSE_FILE}" exec -T redpanda rpk topic produce "${topic}" >/dev/null
 }
 
@@ -77,7 +80,7 @@ print_manual_publish_command() {
 
 Kafka publish was skipped or unavailable. To publish the audit demo event manually:
 
-CORRELATION_ID=${CORRELATION_ID} node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync("docs/examples/audit/order-created-audit-event.json", "utf8")); data.correlationId = process.env.CORRELATION_ID; process.stdout.write(JSON.stringify(data) + "\\n");' | \\
+CORRELATION_ID=${CORRELATION_ID} TENANT_ID=${TENANT_ID} node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync("docs/examples/audit/order-created-audit-event.json", "utf8")); data.correlationId = process.env.CORRELATION_ID; data.tenantId = process.env.TENANT_ID; process.stdout.write(JSON.stringify(data) + "\\n");' | \\
   docker compose -f infrastructure/docker/docker-compose.yml exec -T redpanda rpk topic produce order.created
 
 EOF

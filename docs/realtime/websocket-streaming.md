@@ -85,6 +85,12 @@ Heartbeat message:
 
 The gateway uses `X-Correlation-ID`, `correlationId` query parameter, or a generated UUID for the connection. Kafka payloads preserve `correlationId` or `correlation_id` when present.
 
+## Tenant Filtering
+
+WebSocket connections inherit `tenantId` from the JWT used during upgrade. Events with `payload.tenantId` are sent only to clients with the same tenant or to `trading_admin` clients. Events without `tenantId` are treated as global compatibility events.
+
+Tenant IDs are not used as metric labels to avoid high-cardinality Prometheus series.
+
 ## Metrics
 
 | Metric | Purpose |

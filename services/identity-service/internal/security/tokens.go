@@ -14,9 +14,10 @@ import (
 )
 
 type Claims struct {
-	UserID string   `json:"sub"`
-	Email  string   `json:"email"`
-	Roles  []string `json:"roles"`
+	UserID   string   `json:"sub"`
+	TenantID string   `json:"tenantId"`
+	Email    string   `json:"email"`
+	Roles    []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -33,12 +34,16 @@ func (m *TokenManager) AccessTokenTTL() time.Duration {
 	return m.ttl
 }
 
-func (m *TokenManager) CreateAccessToken(userID, email string, roles []string) (string, error) {
+func (m *TokenManager) CreateAccessToken(userID, tenantID, email string, roles []string) (string, error) {
 	now := time.Now().UTC()
+	if tenantID == "" {
+		tenantID = "default-tenant"
+	}
 	claims := Claims{
-		UserID: userID,
-		Email:  email,
-		Roles:  roles,
+		UserID:   userID,
+		TenantID: tenantID,
+		Email:    email,
+		Roles:    roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.NewString(),
 			Subject:   userID,

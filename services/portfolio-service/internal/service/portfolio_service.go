@@ -16,8 +16,9 @@ import (
 var ErrForbidden = errors.New("forbidden")
 
 type UserContext struct {
-	UserID string
-	Roles  []string
+	UserID   string
+	TenantID string
+	Roles    []string
 }
 
 type PortfolioService struct {
@@ -43,6 +44,9 @@ func (s *PortfolioService) ProcessOrderFilled(ctx context.Context, payload []byt
 	if event.EventType != "order.filled" {
 		return nil
 	}
+	if event.TenantID == "" {
+		event.TenantID = "default-tenant"
+	}
 	result, err := s.repo.ApplyFilledOrder(ctx, event, s.initialCash)
 	if err != nil {
 		s.metrics.UpdateFailures.Inc()
@@ -61,6 +65,7 @@ func (s *PortfolioService) ProcessOrderFilled(ctx context.Context, payload []byt
 	portfolioEvent := domain.PortfolioEvent{
 		EventID:       uuid.NewString(),
 		EventType:     "portfolio.updated",
+		TenantID:      event.TenantID,
 		PortfolioID:   result.Portfolio.ID,
 		UserID:        result.Portfolio.UserID,
 		CashBalance:   result.Portfolio.CashBalance,
@@ -82,28 +87,28 @@ func (s *PortfolioService) Portfolio(ctx context.Context, user UserContext) (dom
 	if !canView(user.Roles) {
 		return domain.Portfolio{}, ErrForbidden
 	}
-	return s.repo.GetPortfolio(ctx, user.UserID, s.initialCash)
+	return s.repo.GetPortfolio(ctx, defaultTenant(user.TenantID), user.UserID, s.initialCash)
 }
 
 func (s *PortfolioService) Holdings(ctx context.Context, user UserContext) ([]domain.Holding, error) {
 	if !canView(user.Roles) {
 		return nil, ErrForbidden
 	}
-	return s.repo.GetHoldings(ctx, user.UserID)
+	return s.repo.GetHoldings(ctx, defaultTenant(user.TenantID), user.UserID)
 }
 
 func (s *PortfolioService) Snapshots(ctx context.Context, user UserContext) ([]domain.Snapshot, error) {
 	if !canView(user.Roles) {
 		return nil, ErrForbidden
 	}
-	return s.repo.GetSnapshots(ctx, user.UserID)
+	return s.repo.GetSnapshots(ctx, defaultTenant(user.TenantID), user.UserID)
 }
 
 func (s *PortfolioService) PnL(ctx context.Context, user UserContext) (map[string]any, error) {
 	if !canView(user.Roles) {
 		return nil, ErrForbidden
 	}
-	total, events, err := s.repo.GetRealizedPnL(ctx, user.UserID)
+	total, events, err := s.repo.GetRealizedPnL(ctx, defaultTenant(user.TenantID), user.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +119,7 @@ func (s *PortfolioService) Exposure(ctx context.Context, user UserContext) (map[
 	if !canView(user.Roles) {
 		return nil, ErrForbidden
 	}
-	holdings, err := s.repo.GetHoldings(ctx, user.UserID)
+	holdings, err := s.repo.GetHoldings(ctx, defaultTenant(user.TenantID), user.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +131,13 @@ func (s *PortfolioService) Exposure(ctx context.Context, user UserContext) (map[
 		exposures = append(exposures, map[string]any{"symbol": holding.Symbol, "value": value, "quantity": holding.Quantity})
 	}
 	return map[string]any{"totalExposure": total, "exposures": exposures}, nil
+}
+
+func defaultTenant(value string) string {
+	if value == "" {
+		return "default-tenant"
+	}
+	return value
 }
 
 func canView(roles []string) bool {
