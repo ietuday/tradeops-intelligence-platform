@@ -9,21 +9,25 @@ import (
 )
 
 type Metrics struct {
-	Registry           *prometheus.Registry
-	AlertsCreated      prometheus.Counter
-	AlertsAcknowledged prometheus.Counter
-	AlertsResolved     prometheus.Counter
-	AlertsDismissed    prometheus.Counter
-	RuleMatches        prometheus.CounterVec
-	RuleExecutions     prometheus.CounterVec
-	KafkaMessages      prometheus.CounterVec
-	KafkaPublishErrors prometheus.Counter
-	RuleDuration       prometheus.Histogram
-	EventsRetried      prometheus.CounterVec
-	EventsDeadlettered prometheus.CounterVec
-	ProcessingAttempts prometheus.CounterVec
-	ProcessingDuration prometheus.HistogramVec
-	DuplicateSkipped   prometheus.CounterVec
+	Registry               *prometheus.Registry
+	AlertsCreated          prometheus.Counter
+	AlertsAcknowledged     prometheus.Counter
+	AlertsResolved         prometheus.Counter
+	AlertsDismissed        prometheus.Counter
+	RuleMatches            prometheus.CounterVec
+	RuleExecutions         prometheus.CounterVec
+	KafkaMessages          prometheus.CounterVec
+	KafkaPublishErrors     prometheus.Counter
+	RuleDuration           prometheus.Histogram
+	EventsRetried          prometheus.CounterVec
+	EventsDeadlettered     prometheus.CounterVec
+	ProcessingAttempts     prometheus.CounterVec
+	ProcessingDuration     prometheus.HistogramVec
+	DuplicateSkipped       prometheus.CounterVec
+	RuleConfigUpdates      prometheus.CounterVec
+	RuleConfigReloads      prometheus.CounterVec
+	RuleDisabledSkips      prometheus.CounterVec
+	RuleConfigCacheEntries prometheus.Gauge
 }
 
 func NewMetrics() *Metrics {
@@ -89,8 +93,24 @@ func NewMetrics() *Metrics {
 			Name: "surveillance_duplicate_events_skipped_total",
 			Help: "Total duplicate surveillance alerts skipped.",
 		}, []string{"topic"}),
+		RuleConfigUpdates: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_rule_config_updates_total",
+			Help: "Total surveillance rule config updates.",
+		}, []string{"rule_name", "action"}),
+		RuleConfigReloads: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_rule_config_reload_total",
+			Help: "Total surveillance rule config cache reloads.",
+		}, []string{"status"}),
+		RuleDisabledSkips: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_rule_disabled_skips_total",
+			Help: "Total surveillance rule evaluations skipped because the rule is disabled.",
+		}, []string{"rule_name"}),
+		RuleConfigCacheEntries: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "surveillance_rule_config_cache_entries",
+			Help: "Current number of surveillance rule config entries cached.",
+		}),
 	}
-	registry.MustRegister(metrics.AlertsCreated, metrics.AlertsAcknowledged, metrics.AlertsResolved, metrics.AlertsDismissed, &metrics.RuleMatches, &metrics.RuleExecutions, &metrics.KafkaMessages, metrics.KafkaPublishErrors, metrics.RuleDuration, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.ProcessingDuration, &metrics.DuplicateSkipped)
+	registry.MustRegister(metrics.AlertsCreated, metrics.AlertsAcknowledged, metrics.AlertsResolved, metrics.AlertsDismissed, &metrics.RuleMatches, &metrics.RuleExecutions, &metrics.KafkaMessages, metrics.KafkaPublishErrors, metrics.RuleDuration, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.ProcessingDuration, &metrics.DuplicateSkipped, &metrics.RuleConfigUpdates, &metrics.RuleConfigReloads, &metrics.RuleDisabledSkips, metrics.RuleConfigCacheEntries)
 	return metrics
 }
 

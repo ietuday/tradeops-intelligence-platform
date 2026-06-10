@@ -53,7 +53,7 @@ func main() {
 	producer := kafka.NewProducer(cfg.KafkaBrokers)
 	defer producer.Close()
 
-	engine := service.NewRuleEngine(service.RuleConfig{
+	ruleDefaults := service.RuleConfig{
 		LargeOrderThreshold:          cfg.LargeOrderThreshold,
 		RapidOrderLimit:              cfg.RapidOrderLimit,
 		RapidOrderWindow:             time.Duration(cfg.RapidOrderWindowSeconds) * time.Second,
@@ -61,7 +61,12 @@ func main() {
 		HighCancelWindow:             time.Duration(cfg.HighCancelWindowSeconds) * time.Second,
 		RiskScoreThreshold:           cfg.RiskScoreThreshold,
 		AbnormalPriceMovementPercent: cfg.AbnormalPriceMovementPercent,
-	})
+	}
+	engine := service.NewRuleEngine(ruleDefaults)
+	ruleConfigService := service.NewRuleConfigService(repository.NewRuleConfigRepository(pool), engine, producer, metrics, ruleDefaults)
+	if err := ruleConfigService.EnsureDefaults(ctx, "default-tenant"); err != nil {
+		logger.Warn("surveillance rule config defaults unavailable; using env fallbacks", "error", err)
+	}
 	surveillanceService := service.NewSurveillanceService(repository.NewAlertRepository(pool), producer, metrics, engine)
 	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, surveillanceService, logger, metrics, kafka.RetryConfig{
 		MaxRetries:        cfg.EventProcessingMaxRetries,
@@ -76,6 +81,7 @@ func main() {
 		KafkaBrokers: cfg.KafkaBrokers,
 		Metrics:      metrics,
 		Service:      surveillanceService,
+		RuleService:  ruleConfigService,
 		Validator:    security.NewValidator([]byte(cfg.JWTSecret)),
 	})
 

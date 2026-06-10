@@ -22,12 +22,22 @@ type RuleConfig struct {
 	AbnormalPriceMovementPercent float64
 }
 
+type effectiveRuleSetting struct {
+	Enabled          bool
+	Severity         string
+	ThresholdNumeric float64
+	ThresholdCount   int
+	ThresholdPercent float64
+	Window           time.Duration
+}
+
 type RuleEngine struct {
 	cfg              RuleConfig
 	mu               sync.Mutex
 	orderTimestamps  map[string][]time.Time
 	cancelTimestamps map[string][]time.Time
 	lastPrices       map[string]float64
+	ruleConfigs      map[string]map[string]domain.RuleConfig
 }
 
 func NewRuleEngine(cfg RuleConfig) *RuleEngine {
@@ -36,26 +46,125 @@ func NewRuleEngine(cfg RuleConfig) *RuleEngine {
 		orderTimestamps:  map[string][]time.Time{},
 		cancelTimestamps: map[string][]time.Time{},
 		lastPrices:       map[string]float64{},
+		ruleConfigs:      map[string]map[string]domain.RuleConfig{},
+	}
+}
+
+func DefaultDomainRuleConfigs(tenantID string, cfg RuleConfig) []domain.RuleConfig {
+	largeDescription := "Triggers when order notional exceeds configured threshold"
+	rapidDescription := "Triggers when a user submits too many orders within a rolling window"
+	cancelDescription := "Triggers when a user cancels too many orders within a rolling window"
+	riskDescription := "Triggers when risk score meets or exceeds configured threshold"
+	priceDescription := "Triggers when symbol price moves beyond configured percentage"
+	rapidWindow := int(cfg.RapidOrderWindow.Seconds())
+	cancelWindow := int(cfg.HighCancelWindow.Seconds())
+	return []domain.RuleConfig{
+		{ID: uuid.NewString(), TenantID: defaultTenant(tenantID), RuleName: domain.RuleLargeOrder, Enabled: true, Severity: domain.SeverityHigh, ThresholdNumeric: &cfg.LargeOrderThreshold, Config: map[string]any{}, Description: &largeDescription},
+		{ID: uuid.NewString(), TenantID: defaultTenant(tenantID), RuleName: domain.RuleRapidOrderSubmission, Enabled: true, Severity: domain.SeverityMedium, ThresholdCount: &cfg.RapidOrderLimit, WindowSeconds: &rapidWindow, Config: map[string]any{}, Description: &rapidDescription},
+		{ID: uuid.NewString(), TenantID: defaultTenant(tenantID), RuleName: domain.RuleHighCancelRate, Enabled: true, Severity: domain.SeverityHigh, ThresholdCount: &cfg.HighCancelLimit, WindowSeconds: &cancelWindow, Config: map[string]any{}, Description: &cancelDescription},
+		{ID: uuid.NewString(), TenantID: defaultTenant(tenantID), RuleName: domain.RuleRiskScoreBreach, Enabled: true, Severity: domain.SeverityHigh, ThresholdNumeric: &cfg.RiskScoreThreshold, Config: map[string]any{}, Description: &riskDescription},
+		{ID: uuid.NewString(), TenantID: defaultTenant(tenantID), RuleName: domain.RuleAbnormalPriceMovement, Enabled: true, Severity: domain.SeverityMedium, ThresholdPercent: &cfg.AbnormalPriceMovementPercent, Config: map[string]any{}, Description: &priceDescription},
+	}
+}
+
+func fallbackDomainRuleConfig(tenantID, ruleName string, cfg RuleConfig) domain.RuleConfig {
+	for _, config := range DefaultDomainRuleConfigs(tenantID, cfg) {
+		if config.RuleName == ruleName {
+			return config
+		}
+	}
+	return domain.RuleConfig{}
+}
+
+func (e *RuleEngine) ruleSetting(tenantID, ruleName string) effectiveRuleSetting {
+	setting := e.fallbackSetting(ruleName)
+	e.mu.Lock()
+	configs := e.ruleConfigs[defaultTenant(tenantID)]
+	if configs == nil && defaultTenant(tenantID) != "default-tenant" {
+		configs = e.ruleConfigs["default-tenant"]
+	}
+	config, ok := configs[ruleName]
+	e.mu.Unlock()
+	if !ok {
+		return setting
+	}
+	setting.Enabled = config.Enabled
+	if config.Severity != "" {
+		setting.Severity = config.Severity
+	}
+	if config.ThresholdNumeric != nil {
+		setting.ThresholdNumeric = *config.ThresholdNumeric
+	}
+	if config.ThresholdCount != nil {
+		setting.ThresholdCount = *config.ThresholdCount
+	}
+	if config.WindowSeconds != nil && *config.WindowSeconds > 0 {
+		setting.Window = time.Duration(*config.WindowSeconds) * time.Second
+	}
+	if config.ThresholdPercent != nil {
+		setting.ThresholdPercent = *config.ThresholdPercent
+	}
+	return setting
+}
+
+func (e *RuleEngine) fallbackSetting(ruleName string) effectiveRuleSetting {
+	switch ruleName {
+	case domain.RuleLargeOrder:
+		return effectiveRuleSetting{Enabled: true, Severity: domain.SeverityHigh, ThresholdNumeric: e.cfg.LargeOrderThreshold}
+	case domain.RuleRapidOrderSubmission:
+		return effectiveRuleSetting{Enabled: true, Severity: domain.SeverityMedium, ThresholdCount: e.cfg.RapidOrderLimit, Window: e.cfg.RapidOrderWindow}
+	case domain.RuleHighCancelRate:
+		return effectiveRuleSetting{Enabled: true, Severity: domain.SeverityHigh, ThresholdCount: e.cfg.HighCancelLimit, Window: e.cfg.HighCancelWindow}
+	case domain.RuleRiskScoreBreach:
+		return effectiveRuleSetting{Enabled: true, Severity: domain.SeverityCritical, ThresholdNumeric: e.cfg.RiskScoreThreshold}
+	case domain.RuleAbnormalPriceMovement:
+		return effectiveRuleSetting{Enabled: true, Severity: domain.SeverityMedium, ThresholdPercent: e.cfg.AbnormalPriceMovementPercent}
+	default:
+		return effectiveRuleSetting{Enabled: true, Severity: domain.SeverityMedium}
 	}
 }
 
 func (e *RuleEngine) Evaluate(event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution) {
+	alerts, executions, _ := e.EvaluateForTenant("default-tenant", event, now)
+	return alerts, executions
+}
+
+func (e *RuleEngine) EvaluateForTenant(tenantID string, event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution, []string) {
 	switch event.Topic {
 	case "order.created", "order.filled":
-		return e.evaluateOrder(event, now, event.Topic == "order.created")
+		alerts, executions, skipped := e.evaluateOrder(tenantID, event, now, event.Topic == "order.created")
+		return alerts, executions, skipped
 	case "order.cancelled":
-		return e.evaluateCancelled(event, now)
+		alerts, executions, skipped := e.evaluateCancelled(tenantID, event, now)
+		return alerts, executions, skipped
 	case "risk.score.updated":
-		return e.evaluateRiskScore(event, now)
+		alerts, executions, skipped := e.evaluateRiskScore(tenantID, event, now)
+		return alerts, executions, skipped
 	case "market.ticks":
-		return e.evaluateMarketTick(event, now)
+		alerts, executions, skipped := e.evaluateMarketTick(tenantID, event, now)
+		return alerts, executions, skipped
 	default:
-		return nil, nil
+		return nil, nil, nil
 	}
 }
 
-func (e *RuleEngine) evaluateOrder(event domain.SourceEvent, now time.Time, includeRapidRule bool) ([]domain.Alert, []domain.RuleExecution) {
+func (e *RuleEngine) SetTenantRuleConfigs(tenantID string, configs []domain.RuleConfig) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.ruleConfigs == nil {
+		e.ruleConfigs = map[string]map[string]domain.RuleConfig{}
+	}
+	byRule := map[string]domain.RuleConfig{}
+	for _, config := range configs {
+		byRule[config.RuleName] = config
+	}
+	e.ruleConfigs[defaultTenant(tenantID)] = byRule
+}
+
+func (e *RuleEngine) evaluateOrder(tenantID string, event domain.SourceEvent, now time.Time, includeRapidRule bool) ([]domain.Alert, []domain.RuleExecution, []string) {
 	start := time.Now()
+	largeRule := e.ruleSetting(tenantID, domain.RuleLargeOrder)
+	rapidRule := e.ruleSetting(tenantID, domain.RuleRapidOrderSubmission)
 	payload := decodeMap(event.Value)
 	entityID := firstString(payload, "orderId", "order_id", "id")
 	userID := firstString(payload, "userId", "user_id")
@@ -68,63 +177,84 @@ func (e *RuleEngine) evaluateOrder(event domain.SourceEvent, now time.Time, incl
 	}
 	var alerts []domain.Alert
 	var executions []domain.RuleExecution
-	matched := notional > e.cfg.LargeOrderThreshold
-	if matched {
-		alerts = append(alerts, newAlert("LargeOrderRule", domain.SeverityHigh, "ORDER", entityID, userID, symbol, fmt.Sprintf("Order notional %.2f exceeds configured threshold %.2f", notional, e.cfg.LargeOrderThreshold), map[string]any{"notional": notional, "threshold": e.cfg.LargeOrderThreshold, "sourceTopic": event.Topic}, now))
+	var skipped []string
+	if !largeRule.Enabled {
+		skipped = append(skipped, domain.RuleLargeOrder)
+	} else {
+		matched := notional > largeRule.ThresholdNumeric
+		if matched {
+			alerts = append(alerts, newAlert(domain.RuleLargeOrder, largeRule.Severity, "ORDER", entityID, userID, symbol, fmt.Sprintf("Order notional %.2f exceeds configured threshold %.2f", notional, largeRule.ThresholdNumeric), map[string]any{"notional": notional, "threshold": largeRule.ThresholdNumeric, "sourceTopic": event.Topic}, now))
+		}
+		executions = append(executions, ruleExecution(domain.RuleLargeOrder, event.Topic, entityID, matched, start, nil))
 	}
-	executions = append(executions, ruleExecution("LargeOrderRule", event.Topic, entityID, matched, start, nil))
 
 	if includeRapidRule && userID != "" {
 		start = time.Now()
-		count := e.appendRolling("order", userID, now, e.cfg.RapidOrderWindow)
-		matched = count > e.cfg.RapidOrderLimit
-		if matched {
-			alerts = append(alerts, newAlert("RapidOrderSubmissionRule", domain.SeverityMedium, "USER", userID, userID, symbol, fmt.Sprintf("User submitted %d orders within %s", count, e.cfg.RapidOrderWindow), map[string]any{"count": count, "limit": e.cfg.RapidOrderLimit, "windowSeconds": int(e.cfg.RapidOrderWindow.Seconds()), "sourceTopic": event.Topic}, now))
+		if !rapidRule.Enabled {
+			skipped = append(skipped, domain.RuleRapidOrderSubmission)
+		} else {
+			count := e.appendRolling("order", userID, now, rapidRule.Window)
+			matched := count > rapidRule.ThresholdCount
+			if matched {
+				alerts = append(alerts, newAlert(domain.RuleRapidOrderSubmission, rapidRule.Severity, "USER", userID, userID, symbol, fmt.Sprintf("User submitted %d orders within %s", count, rapidRule.Window), map[string]any{"count": count, "limit": rapidRule.ThresholdCount, "windowSeconds": int(rapidRule.Window.Seconds()), "sourceTopic": event.Topic}, now))
+			}
+			executions = append(executions, ruleExecution(domain.RuleRapidOrderSubmission, event.Topic, userID, matched, start, nil))
 		}
-		executions = append(executions, ruleExecution("RapidOrderSubmissionRule", event.Topic, userID, matched, start, nil))
 	}
-	return alerts, executions
+	return alerts, executions, skipped
 }
 
-func (e *RuleEngine) evaluateCancelled(event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution) {
+func (e *RuleEngine) evaluateCancelled(tenantID string, event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution, []string) {
 	start := time.Now()
+	rule := e.ruleSetting(tenantID, domain.RuleHighCancelRate)
+	if !rule.Enabled {
+		return nil, nil, []string{domain.RuleHighCancelRate}
+	}
 	payload := decodeMap(event.Value)
 	entityID := firstString(payload, "orderId", "order_id", "id")
 	userID := firstString(payload, "userId", "user_id")
 	symbol := strings.ToUpper(firstString(payload, "symbol"))
 	count := 0
 	if userID != "" {
-		count = e.appendRolling("cancel", userID, now, e.cfg.HighCancelWindow)
+		count = e.appendRolling("cancel", userID, now, rule.Window)
 	}
-	matched := userID != "" && count > e.cfg.HighCancelLimit
+	matched := userID != "" && count > rule.ThresholdCount
 	var alerts []domain.Alert
 	if matched {
-		alerts = append(alerts, newAlert("HighCancelRateRule", domain.SeverityHigh, "USER", userID, userID, symbol, fmt.Sprintf("User cancelled %d orders within %s", count, e.cfg.HighCancelWindow), map[string]any{"count": count, "limit": e.cfg.HighCancelLimit, "windowSeconds": int(e.cfg.HighCancelWindow.Seconds()), "sourceTopic": event.Topic}, now))
+		alerts = append(alerts, newAlert(domain.RuleHighCancelRate, rule.Severity, "USER", userID, userID, symbol, fmt.Sprintf("User cancelled %d orders within %s", count, rule.Window), map[string]any{"count": count, "limit": rule.ThresholdCount, "windowSeconds": int(rule.Window.Seconds()), "sourceTopic": event.Topic}, now))
 	}
-	return alerts, []domain.RuleExecution{ruleExecution("HighCancelRateRule", event.Topic, entityID, matched, start, nil)}
+	return alerts, []domain.RuleExecution{ruleExecution(domain.RuleHighCancelRate, event.Topic, entityID, matched, start, nil)}, nil
 }
 
-func (e *RuleEngine) evaluateRiskScore(event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution) {
+func (e *RuleEngine) evaluateRiskScore(tenantID string, event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution, []string) {
 	start := time.Now()
+	rule := e.ruleSetting(tenantID, domain.RuleRiskScoreBreach)
+	if !rule.Enabled {
+		return nil, nil, []string{domain.RuleRiskScoreBreach}
+	}
 	payload := decodeMap(event.Value)
 	entityID := firstString(payload, "portfolioId", "portfolio_id", "userId", "user_id", "id")
 	userID := firstString(payload, "userId", "user_id")
 	score := firstFloat(payload, "score", "riskScore", "risk_score")
-	matched := score >= e.cfg.RiskScoreThreshold
+	matched := score >= rule.ThresholdNumeric
 	var alerts []domain.Alert
 	if matched {
-		alerts = append(alerts, newAlert("RiskScoreBreachRule", domain.SeverityCritical, "RISK_SCORE", entityID, userID, "", fmt.Sprintf("Risk score %.2f meets or exceeds threshold %.2f", score, e.cfg.RiskScoreThreshold), map[string]any{"score": score, "threshold": e.cfg.RiskScoreThreshold, "sourceTopic": event.Topic}, now))
+		alerts = append(alerts, newAlert(domain.RuleRiskScoreBreach, rule.Severity, "RISK_SCORE", entityID, userID, "", fmt.Sprintf("Risk score %.2f meets or exceeds threshold %.2f", score, rule.ThresholdNumeric), map[string]any{"score": score, "threshold": rule.ThresholdNumeric, "sourceTopic": event.Topic}, now))
 	}
-	return alerts, []domain.RuleExecution{ruleExecution("RiskScoreBreachRule", event.Topic, entityID, matched, start, nil)}
+	return alerts, []domain.RuleExecution{ruleExecution(domain.RuleRiskScoreBreach, event.Topic, entityID, matched, start, nil)}, nil
 }
 
-func (e *RuleEngine) evaluateMarketTick(event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution) {
+func (e *RuleEngine) evaluateMarketTick(tenantID string, event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution, []string) {
 	start := time.Now()
+	rule := e.ruleSetting(tenantID, domain.RuleAbnormalPriceMovement)
+	if !rule.Enabled {
+		return nil, nil, []string{domain.RuleAbnormalPriceMovement}
+	}
 	payload := decodeMap(event.Value)
 	symbol := strings.ToUpper(firstString(payload, "symbol"))
 	price := firstFloat(payload, "price", "lastPrice", "last_price")
 	matched := false
-	metadata := map[string]any{"currentPrice": price, "thresholdPercent": e.cfg.AbnormalPriceMovementPercent, "sourceTopic": event.Topic}
+	metadata := map[string]any{"currentPrice": price, "thresholdPercent": rule.ThresholdPercent, "sourceTopic": event.Topic}
 	if symbol != "" && price > 0 {
 		e.mu.Lock()
 		last := e.lastPrices[symbol]
@@ -132,16 +262,16 @@ func (e *RuleEngine) evaluateMarketTick(event domain.SourceEvent, now time.Time)
 			change := math.Abs(price-last) / last * 100
 			metadata["lastPrice"] = last
 			metadata["changePercent"] = change
-			matched = change > e.cfg.AbnormalPriceMovementPercent
+			matched = change > rule.ThresholdPercent
 		}
 		e.lastPrices[symbol] = price
 		e.mu.Unlock()
 	}
 	var alerts []domain.Alert
 	if matched {
-		alerts = append(alerts, newAlert("AbnormalPriceMovementRule", domain.SeverityMedium, "SYMBOL", symbol, "", symbol, fmt.Sprintf("%s moved more than %.2f%% from the last seen price", symbol, e.cfg.AbnormalPriceMovementPercent), metadata, now))
+		alerts = append(alerts, newAlert(domain.RuleAbnormalPriceMovement, rule.Severity, "SYMBOL", symbol, "", symbol, fmt.Sprintf("%s moved more than %.2f%% from the last seen price", symbol, rule.ThresholdPercent), metadata, now))
 	}
-	return alerts, []domain.RuleExecution{ruleExecution("AbnormalPriceMovementRule", event.Topic, symbol, matched, start, nil)}
+	return alerts, []domain.RuleExecution{ruleExecution(domain.RuleAbnormalPriceMovement, event.Topic, symbol, matched, start, nil)}, nil
 }
 
 func (e *RuleEngine) appendRolling(kind, userID string, now time.Time, window time.Duration) int {

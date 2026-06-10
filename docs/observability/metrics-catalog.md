@@ -54,6 +54,10 @@ OpenTelemetry traces are available in Jaeger for selected services. Do not add `
 | `surveillance_events_deadlettered_total` | Counter | Events published to surveillance DLQ. |
 | `surveillance_duplicate_events_skipped_total` | Counter | Idempotent duplicate skips. |
 | `surveillance_event_processing_duration_seconds_bucket` | Histogram | Surveillance event processing latency. |
+| `surveillance_rule_config_updates_total` | Counter | Rule config updates by rule name and action. |
+| `surveillance_rule_config_reload_total` | Counter | Rule config cache reload attempts by status. |
+| `surveillance_rule_disabled_skips_total` | Counter | Rule evaluations skipped because the rule is disabled. |
+| `surveillance_rule_config_cache_entries` | Gauge | Current rule config entries cached by the service. |
 
 ## Notification
 

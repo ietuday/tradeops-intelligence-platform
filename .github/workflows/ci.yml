@@ -132,6 +132,7 @@ jobs:
           bash -n scripts/security-check.sh
           bash -n scripts/smoke-test.sh
           bash -n scripts/demo-surveillance.sh
+          bash -n scripts/demo-rule-config.sh
           bash -n scripts/demo-notifications.sh
           bash -n scripts/demo-e2e-tradeops.sh
           bash -n scripts/demo-reliability.sh

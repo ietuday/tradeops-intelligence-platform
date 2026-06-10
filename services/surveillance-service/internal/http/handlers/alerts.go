@@ -123,6 +123,8 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		httpmiddleware.WriteError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, repository.ErrInvalidTransition):
 		httpmiddleware.WriteError(w, http.StatusConflict, "invalid alert status transition")
+	case errors.Is(err, service.ErrInvalidRuleConfig):
+		httpmiddleware.WriteError(w, http.StatusBadRequest, "invalid rule config")
 	default:
 		httpmiddleware.WriteError(w, http.StatusInternalServerError, "internal error")
 	}

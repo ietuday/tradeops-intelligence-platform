@@ -23,6 +23,8 @@ Each schema is versioned in the filename, for example `order.created.v1.json`. T
 
 This release does not add Redpanda Schema Registry or enforce schemas at runtime. Producers and consumers remain backward-compatible with existing flat event payloads.
 
+v2.6.0 adds schemas for surveillance rule configuration events so rule threshold updates, enable actions, and disable actions are governed by the same repository-local contract process.
+
 ## Naming Convention
 
 Use dot-separated event names:

@@ -125,6 +125,21 @@ docker compose -f infrastructure/docker/docker-compose.yml logs surveillance-ser
 
 Fix: Confirm Redpanda and consumers are healthy, inspect duplicate-skip metrics, and replay one known-good payload at a time.
 
+## Surveillance Rule Does Not Trigger
+
+Symptom: A known-good event does not create the expected surveillance alert.
+
+Possible cause: The rule is disabled, the tenant-specific threshold is higher than expected, the event belongs to another tenant, or the event was skipped as a duplicate.
+
+Useful command:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-rule-config.sh
+curl http://localhost:8090/metrics | grep surveillance_rule_disabled_skips_total
+```
+
+Fix: Check `/api/surveillance/rules`, confirm `enabled=true`, verify the threshold fields, and make sure the event payload carries the expected `tenantId` and `correlationId`.
+
 ## Duplicate Event Detected
 
 Symptom: A replayed event does not create a new position update, alert, or notification.

@@ -191,12 +191,26 @@ Common endpoints:
 | `POST` | `/api/surveillance/alerts/{id}/acknowledge` | Move alert to `ACKNOWLEDGED`. |
 | `POST` | `/api/surveillance/alerts/{id}/resolve` | Move alert to `RESOLVED`. |
 | `POST` | `/api/surveillance/alerts/{id}/dismiss` | Move alert to `DISMISSED`. |
+| `GET` | `/api/surveillance/rules` | List tenant-effective rule configs. |
+| `GET` | `/api/surveillance/rules/{ruleName}` | Get one rule config. |
+| `PUT` | `/api/surveillance/rules/{ruleName}` | Update threshold/severity/enabled state. |
+| `POST` | `/api/surveillance/rules/{ruleName}/enable` | Enable a rule. |
+| `POST` | `/api/surveillance/rules/{ruleName}/disable` | Disable a rule. |
 
 Example:
 
 ```bash
 curl "http://localhost:8080/api/surveillance/alerts?status=OPEN&limit=10" \
   -H "Authorization: Bearer ${TOKEN}"
+```
+
+Rule config writes require `trading_admin` or `risk_manager`:
+
+```bash
+curl -X PUT "http://localhost:8080/api/surveillance/rules/LargeOrderRule" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{"enabled":true,"severity":"CRITICAL","thresholdNumeric":250000}'
 ```
 
 ## Notification APIs

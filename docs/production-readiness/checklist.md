@@ -55,6 +55,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Demo payloads exist for surveillance and notification events.
 - [x] Sample replay and DLQ replay guidance are documented.
 - [ ] Add schema validation or schema registry contracts.
+- [x] Repository-local JSON Schemas document core Kafka/Redpanda event contracts.
 - [x] Define dead-letter topics and conservative replay procedures.
 - [ ] Add consumer lag monitoring.
 
@@ -114,6 +115,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Docker Compose config validation is documented.
 - [ ] Add full end-to-end automated test with containers.
 - [ ] Add contract tests for Kafka event payloads.
+- [x] Add lightweight event schema parsing and sample mapping validation.
 - [ ] Add load and resilience tests.
 
 ## Security
@@ -169,6 +171,8 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - OpenTelemetry tracing is local-demo focused; production would use a managed collector/backend and controlled sampling.
 - Trace IDs, span IDs, correlation IDs, and unbounded tenant IDs should not be used as Prometheus labels.
 - Event payload schemas are documented by examples, not enforced by a schema registry.
+- Event payload schemas are repository-local JSON Schemas, not enforced by a live schema registry.
+- Surveillance rule configuration is local-cache based; multi-instance deployments would need explicit cache invalidation or short TTL refresh.
 - Notification email delivery is mock/log-only.
 - Webhook delivery is intentionally simple.
 - Surveillance consumes some event types that do not trigger rules yet.

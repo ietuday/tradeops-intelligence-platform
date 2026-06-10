@@ -107,6 +107,88 @@ func TestRuleEngineDetectsAbnormalPriceMovement(t *testing.T) {
 	}
 }
 
+func TestRuleEngineSkipsDisabledRule(t *testing.T) {
+	engine := NewRuleEngine(testRuleConfig())
+	engine.SetTenantRuleConfigs("tenant-a", []domain.RuleConfig{{
+		RuleName: domain.RuleLargeOrder,
+		Enabled:  false,
+		Severity: domain.SeverityHigh,
+	}})
+
+	alerts, executions, skipped := engine.EvaluateForTenant("tenant-a", sourceEvent("order.filled", map[string]any{
+		"orderId":   "order-disabled",
+		"userId":    "11111111-1111-1111-1111-111111111111",
+		"symbol":    "AAPL",
+		"quantity":  1000,
+		"fillPrice": 150,
+	}), time.Now().UTC())
+
+	if len(alerts) != 0 || len(executions) != 0 {
+		t.Fatalf("disabled rule should not alert or execute, alerts=%+v executions=%+v", alerts, executions)
+	}
+	if len(skipped) != 1 || skipped[0] != domain.RuleLargeOrder {
+		t.Fatalf("expected disabled skip for LargeOrderRule, got %+v", skipped)
+	}
+}
+
+func TestRuleEngineUsesTenantRuleThresholdAndSeverity(t *testing.T) {
+	engine := NewRuleEngine(testRuleConfig())
+	threshold := 200000.0
+	engine.SetTenantRuleConfigs("tenant-a", []domain.RuleConfig{{
+		RuleName:         domain.RuleLargeOrder,
+		Enabled:          true,
+		Severity:         domain.SeverityCritical,
+		ThresholdNumeric: &threshold,
+	}})
+
+	alerts, _, _ := engine.EvaluateForTenant("tenant-a", sourceEvent("order.filled", map[string]any{
+		"orderId":   "order-under-config",
+		"userId":    "11111111-1111-1111-1111-111111111111",
+		"symbol":    "AAPL",
+		"quantity":  1000,
+		"fillPrice": 150,
+	}), time.Now().UTC())
+	if len(alerts) != 0 {
+		t.Fatalf("did not expect alert below tenant threshold, got %+v", alerts)
+	}
+
+	alerts, _, _ = engine.EvaluateForTenant("tenant-a", sourceEvent("order.filled", map[string]any{
+		"orderId":   "order-over-config",
+		"userId":    "11111111-1111-1111-1111-111111111111",
+		"symbol":    "AAPL",
+		"quantity":  2000,
+		"fillPrice": 150,
+	}), time.Now().UTC())
+	if len(alerts) != 1 || alerts[0].Severity != domain.SeverityCritical {
+		t.Fatalf("expected critical alert over tenant threshold, got %+v", alerts)
+	}
+}
+
+func TestRuleEngineUsesConfiguredRollingWindows(t *testing.T) {
+	engine := NewRuleEngine(testRuleConfig())
+	limit := 1
+	window := 10
+	engine.SetTenantRuleConfigs("tenant-a", []domain.RuleConfig{{
+		RuleName:       domain.RuleRapidOrderSubmission,
+		Enabled:        true,
+		Severity:       domain.SeverityHigh,
+		ThresholdCount: &limit,
+		WindowSeconds:  &window,
+	}})
+	now := time.Now().UTC()
+	engine.EvaluateForTenant("tenant-a", sourceEvent("order.created", map[string]any{
+		"orderId": "order-1",
+		"userId":  "11111111-1111-1111-1111-111111111111",
+	}), now)
+	alerts, _, _ := engine.EvaluateForTenant("tenant-a", sourceEvent("order.created", map[string]any{
+		"orderId": "order-2",
+		"userId":  "11111111-1111-1111-1111-111111111111",
+	}), now.Add(time.Second))
+	if len(alerts) != 1 || alerts[0].AlertType != domain.RuleRapidOrderSubmission {
+		t.Fatalf("expected rapid order alert from configured limit/window, got %+v", alerts)
+	}
+}
+
 func TestProcessEventSkipsDuplicateAlert(t *testing.T) {
 	store := &fakeAlertStore{duplicate: true}
 	svc := NewSurveillanceService(store, nil, observability.NewMetrics(), NewRuleEngine(testRuleConfig()))
@@ -126,6 +208,24 @@ func TestProcessEventSkipsDuplicateAlert(t *testing.T) {
 	}
 	if store.executionCount != 1 {
 		t.Fatalf("expected rule execution to be recorded, got %d", store.executionCount)
+	}
+}
+
+func TestRuleConfigValidationRejectsInvalidValues(t *testing.T) {
+	severity := "NOPE"
+	if err := validateRuleConfigRequest(domain.RuleLargeOrder, domain.UpdateRuleConfigRequest{Severity: &severity}); err == nil {
+		t.Fatal("expected invalid severity error")
+	}
+	negative := -1.0
+	if err := validateRuleConfigRequest(domain.RuleLargeOrder, domain.UpdateRuleConfigRequest{ThresholdNumeric: &negative}); err == nil {
+		t.Fatal("expected negative threshold error")
+	}
+	window := 0
+	if err := validateRuleConfigRequest(domain.RuleRapidOrderSubmission, domain.UpdateRuleConfigRequest{WindowSeconds: &window}); err == nil {
+		t.Fatal("expected invalid window error")
+	}
+	if err := validateRuleConfigRequest("UnknownRule", domain.UpdateRuleConfigRequest{}); err == nil {
+		t.Fatal("expected unknown rule error")
 	}
 }
 

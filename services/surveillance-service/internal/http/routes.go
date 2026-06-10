@@ -17,6 +17,7 @@ type Dependencies struct {
 	KafkaBrokers []string
 	Metrics      *observability.Metrics
 	Service      *service.SurveillanceService
+	RuleService  *service.RuleConfigService
 	Validator    *security.Validator
 }
 
@@ -27,6 +28,7 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 
 	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers)
 	alerts := handlers.NewAlertHandler(deps.Service)
+	rules := handlers.NewRuleHandler(deps.RuleService)
 
 	router.Get("/health", health.Health)
 	router.Get("/ready", health.Ready)
@@ -40,6 +42,11 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Post("/alerts/{id}/acknowledge", alerts.Acknowledge)
 		r.Post("/alerts/{id}/resolve", alerts.Resolve)
 		r.Post("/alerts/{id}/dismiss", alerts.Dismiss)
+		r.Get("/rules", rules.List)
+		r.Get("/rules/{ruleName}", rules.Get)
+		r.Put("/rules/{ruleName}", rules.Update)
+		r.Post("/rules/{ruleName}/enable", rules.Enable)
+		r.Post("/rules/{ruleName}/disable", rules.Disable)
 	})
 
 	return observability.HTTPHandler("surveillance-service", router)

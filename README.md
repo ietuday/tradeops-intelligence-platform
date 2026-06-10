@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.5.0` Advanced Event Schema Governance.
+Current release: `v2.6.0` Rule Configuration Management.
 
 ## Architecture Summary
 
@@ -19,6 +19,8 @@ v2.3.0 adds local-demo OpenTelemetry tracing with Jaeger for the API Gateway, or
 v2.4.0 adds a lightweight SQL migration runner, `schema_migrations` tracking, checksum validation, and idempotent demo seed management. See [database migrations](docs/database/migrations.md).
 
 v2.5.0 adds versioned JSON Schemas, an event envelope standard, a compatibility checklist, and read-only validation for Kafka/Redpanda and WebSocket event contracts. See [event schema governance](docs/events/schema-governance.md).
+
+v2.6.0 adds tenant-aware, database-backed surveillance rule configuration APIs for thresholds, severity, and enable/disable state with environment defaults as fallback. See [surveillance rule configuration](docs/surveillance/rule-configuration.md).
 
 ## Tech Stack
 
@@ -134,6 +136,7 @@ Run focused demos:
 
 ```bash
 ./scripts/demo-surveillance.sh
+./scripts/demo-rule-config.sh
 ./scripts/demo-notifications.sh
 ./scripts/demo-audit.sh
 ./scripts/demo-reliability.sh
@@ -150,6 +153,7 @@ bash -n scripts/smoke-test.sh
 bash -n scripts/run-load-tests.sh
 bash -n scripts/perf-smoke.sh
 bash -n scripts/demo-surveillance.sh
+bash -n scripts/demo-rule-config.sh
 bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
@@ -225,6 +229,17 @@ Event contracts live under `schemas/events/` as versioned JSON Schema files. v2.
 ```
 
 Start with the [event catalog](docs/events/event-catalog.md), [event envelope](docs/events/event-envelope.md), [compatibility rules](docs/events/compatibility-rules.md), and [event contract checklist](docs/events/event-contract-checklist.md).
+
+## Surveillance Rule Configuration
+
+Surveillance rule thresholds and enable/disable state are configurable per tenant through `/api/surveillance/rules`. Existing env vars remain fallback defaults, so local demos continue to work if the config table is empty.
+
+```bash
+TOKEN=<jwt> ./scripts/demo-rule-config.sh
+TOKEN=<jwt> ./scripts/demo-rule-config.sh --apply
+```
+
+See [rule configuration](docs/surveillance/rule-configuration.md).
 
 ## Real-Time WebSocket Streaming
 

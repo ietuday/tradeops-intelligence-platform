@@ -25,6 +25,7 @@ help:
 	@echo "  make validate-helm        Validate optional Helm chart when Helm is installed"
 	@echo "  make smoke                Run smoke test against a running stack"
 	@echo "  make demo-surveillance    Run surveillance demo"
+	@echo "  make demo-rule-config     Run surveillance rule config demo"
 	@echo "  make demo-notifications   Run notification demo"
 	@echo "  make demo-e2e             Run end-to-end demo"
 	@echo "  make docker-build         Build service Docker images locally"
@@ -63,6 +64,7 @@ validate-scripts:
 	bash -n scripts/perf-smoke.sh
 	bash -n scripts/smoke-test.sh
 	bash -n scripts/demo-surveillance.sh
+	bash -n scripts/demo-rule-config.sh
 	bash -n scripts/demo-notifications.sh
 	bash -n scripts/demo-e2e-tradeops.sh
 	bash -n scripts/demo-reliability.sh
@@ -111,6 +113,9 @@ smoke:
 
 demo-surveillance:
 	./scripts/demo-surveillance.sh
+
+demo-rule-config:
+	./scripts/demo-rule-config.sh
 
 demo-notifications:
 	./scripts/demo-notifications.sh

@@ -49,7 +49,10 @@ func (s *SurveillanceService) ProcessEvent(ctx context.Context, event domain.Sou
 	}
 	now := time.Now().UTC()
 	tenantID := tenantIDFromEvent(event.Value)
-	alerts, executions := s.engine.Evaluate(event, now)
+	alerts, executions, skippedRules := s.engine.EvaluateForTenant(tenantID, event, now)
+	for _, ruleName := range skippedRules {
+		s.metrics.RuleDisabledSkips.WithLabelValues(ruleName).Inc()
+	}
 	for _, execution := range executions {
 		execution.TenantID = tenantID
 		s.metrics.RuleExecutions.WithLabelValues(execution.RuleName, execution.SourceTopic).Inc()

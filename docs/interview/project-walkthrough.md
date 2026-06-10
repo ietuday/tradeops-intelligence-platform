@@ -2,7 +2,7 @@
 
 ## 60-Second Explanation
 
-TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, market data ingestion, order management, portfolio updates, strategy and risk analytics, surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
+TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, market data ingestion, order management, portfolio updates, strategy and risk analytics, configurable surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, event schema governance, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
 
 ## 2-Minute Explanation
 
@@ -58,7 +58,7 @@ TradeOps uses shared-database multitenancy for interview-friendly simplicity. Te
 
 ## How Kafka/Redpanda Is Used
 
-Redpanda is the local Kafka-compatible broker. Services publish domain events after important state changes. Consumers process events asynchronously and defensively handle malformed payloads. Events use `correlationId` where available so one workflow can be followed across producers, consumers, DLQ records, and audit logs. The platform currently uses example payloads and documented topics instead of a full schema registry.
+Redpanda is the local Kafka-compatible broker. Services publish domain events after important state changes. Consumers process events asynchronously and defensively handle malformed payloads. Events use `correlationId` where available so one workflow can be followed across producers, consumers, DLQ records, and audit logs. The platform uses repository-local JSON Schemas and sample mappings for event governance without adding a live schema registry.
 
 Sample event replay scripts publish known-good payloads for surveillance, notification, and audit demos. DLQ replay is documented as a manual, root-cause-first operation instead of an automatic bulk replay.
 
@@ -72,7 +72,7 @@ Docker Compose runs the complete local platform. The optional Helm chart demonst
 
 ## How Surveillance Works
 
-The surveillance service consumes order, market, portfolio, risk, and strategy events. It evaluates rules such as large orders, rapid orders, high cancellations, abnormal price movement, and risk-score breaches. Matching rules create alerts in PostgreSQL and publish `surveillance.alert.created`. Alert APIs support lifecycle transitions from `OPEN` to `ACKNOWLEDGED`, `RESOLVED`, or `DISMISSED`.
+The surveillance service consumes order, market, portfolio, risk, and strategy events. It evaluates rules such as large orders, rapid orders, high cancellations, abnormal price movement, and risk-score breaches. Rule thresholds, severity, and enable/disable state are tenant-aware and database-backed, with environment defaults as fallback. Matching rules create alerts in PostgreSQL and publish `surveillance.alert.created`. Alert APIs support lifecycle transitions from `OPEN` to `ACKNOWLEDGED`, `RESOLVED`, or `DISMISSED`.
 
 ## How Notification Delivery Works
 
@@ -87,16 +87,17 @@ The audit service consumes important platform events, maps them to normalized ac
 1. Start the stack with `make dev-up`.
 2. Run `make smoke` to verify service health and core workflows.
 3. Run `./scripts/demo-surveillance.sh` to create and transition a surveillance alert.
-4. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
-5. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
-6. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
-7. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
-8. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
-9. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
-10. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-11. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
-12. Run `./scripts/security-check.sh` to show safe repository security validation.
-13. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+4. Run `TOKEN=<jwt> ./scripts/demo-rule-config.sh` to show tenant-aware rule thresholds and enable/disable APIs.
+5. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
+6. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
+7. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
+8. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
+9. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
+10. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
+11. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
+12. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
+13. Run `./scripts/security-check.sh` to show safe repository security validation.
+14. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
@@ -118,7 +119,7 @@ The audit service consumes important platform events, maps them to normalized ac
 ## Known Limitations And Future Improvements
 
 - This is a local Compose platform, not a production deployment.
-- Kafka schemas are documented by examples but not enforced by a schema registry.
+- Kafka schemas are repository-local JSON Schemas but not enforced by a live schema registry.
 - Correlation IDs are not a substitute for OpenTelemetry spans when deep latency attribution is needed.
 - Consumer lag metrics are not implemented yet; current event-health views use retry, failure, duplicate, and DLQ metrics.
 - Retention and archival scripts are local portfolio helpers, not regulated production archival automation.

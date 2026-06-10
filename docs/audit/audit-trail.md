@@ -15,6 +15,8 @@
 
 `user.registered`, `user.login`, `user.logout`, `order.created`, `order.cancelled`, `order.filled`, `portfolio.updated`, `risk.score.updated`, `risk.breached`, `surveillance.alert.created`, `surveillance.alert.acknowledged`, `surveillance.alert.resolved`, `surveillance.alert.dismissed`, `notification.read`, `notification.failed`, `notification.sent`, `notification.retry_requested`.
 
+Surveillance rule config changes publish `surveillance.rule_config.updated`, `surveillance.rule_config.enabled`, and `surveillance.rule_config.disabled`. Audit normalization for these topics is documented as a future extension.
+
 ## Audit Log Schema
 
 Key fields: `tenant_id`, `event_type`, `service_name`, `actor_user_id`, `actor_role`, `entity_type`, `entity_id`, `action`, `description`, `severity`, `correlation_id`, `ip_address`, `user_agent`, `metadata`, `source_event_key`, and `created_at`.

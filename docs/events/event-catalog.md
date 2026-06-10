@@ -21,6 +21,9 @@
 | `surveillance.alert.acknowledged` | `surveillance-service` | `notification-service`, `audit-service`, API Gateway WebSocket | `schemas/events/surveillance/surveillance.alert.acknowledged.v1.json` | v1 | Alert acknowledged event. |
 | `surveillance.alert.resolved` | `surveillance-service` | `notification-service`, `audit-service`, API Gateway WebSocket | `schemas/events/surveillance/surveillance.alert.resolved.v1.json` | v1 | Alert resolved event. |
 | `surveillance.alert.dismissed` | `surveillance-service` | `notification-service`, `audit-service`, API Gateway WebSocket | `schemas/events/surveillance/surveillance.alert.dismissed.v1.json` | v1 | Alert dismissed event. |
+| `surveillance.rule_config.updated` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_config.updated.v1.json` | v1 | Surveillance rule config changed event. |
+| `surveillance.rule_config.enabled` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_config.enabled.v1.json` | v1 | Surveillance rule enabled event. |
+| `surveillance.rule_config.disabled` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_config.disabled.v1.json` | v1 | Surveillance rule disabled event. |
 | `notification.created` | `notification-service` | API Gateway WebSocket | `schemas/events/notifications/notification.created.v1.json` | v1 | Notification created event. |
 | `notification.sent` | `notification-service` | `audit-service`, API Gateway WebSocket | `schemas/events/notifications/notification.sent.v1.json` | v1 | Notification delivery success event. |
 | `notification.failed` | `notification-service` | `audit-service`, API Gateway WebSocket | `schemas/events/notifications/notification.failed.v1.json` | v1 | Notification delivery failure event. |
