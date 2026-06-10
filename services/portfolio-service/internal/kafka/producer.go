@@ -22,6 +22,9 @@ func NewProducer(brokers []string, portfolioTopic, snapshotTopic string) *Produc
 }
 
 func (p *Producer) PublishPortfolioUpdated(ctx context.Context, event domain.PortfolioEvent) error {
+	if event.EventVersion == "" {
+		event.EventVersion = "1.0"
+	}
 	return writeJSON(ctx, p.portfolioWriter, event.UserID, event, event.OccurredAt)
 }
 
@@ -29,6 +32,7 @@ func (p *Producer) PublishSnapshotCreated(ctx context.Context, snapshot domain.S
 	payload := map[string]any{
 		"eventId":       correlationID,
 		"eventType":     "portfolio.snapshot.created",
+		"eventVersion":  "1.0",
 		"tenantId":      snapshot.TenantID,
 		"snapshot":      snapshot,
 		"occurredAt":    snapshot.CreatedAt,

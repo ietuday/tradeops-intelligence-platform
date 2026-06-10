@@ -27,6 +27,9 @@ func NewProducer(brokers []string, topic string) *Producer {
 }
 
 func (p *Producer) PublishTick(ctx context.Context, event domain.NormalizedTickEvent) error {
+	if event.EventVersion == "" {
+		event.EventVersion = "1.0"
+	}
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return err

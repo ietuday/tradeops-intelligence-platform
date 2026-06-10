@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/surveillance/surveillance.alert.dismissed.v1.json",
+  "title": "surveillance.alert.dismissed v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["alertId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["surveillance.alert.dismissed"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "alertId": { "type": "string" },
+    "status": { "type": "string" },
+    "dismissedBy": { "type": "string" },
+    "reason": { "type": "string" }
+  }
+}

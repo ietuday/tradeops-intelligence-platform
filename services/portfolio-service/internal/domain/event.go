@@ -5,6 +5,7 @@ import "time"
 type OrderFilledEvent struct {
 	EventID       string    `json:"eventId"`
 	EventType     string    `json:"eventType"`
+	EventVersion  string    `json:"eventVersion,omitempty"`
 	TenantID      string    `json:"tenantId"`
 	OrderID       string    `json:"orderId"`
 	UserID        string    `json:"userId"`
@@ -21,6 +22,7 @@ type OrderFilledEvent struct {
 type PortfolioEvent struct {
 	EventID       string    `json:"eventId"`
 	EventType     string    `json:"eventType"`
+	EventVersion  string    `json:"eventVersion,omitempty"`
 	TenantID      string    `json:"tenantId"`
 	PortfolioID   string    `json:"portfolioId"`
 	UserID        string    `json:"userId"`

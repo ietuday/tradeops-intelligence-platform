@@ -42,6 +42,7 @@ type Notification struct {
 type NotificationEvent struct {
 	EventID        string         `json:"eventId"`
 	EventType      string         `json:"eventType"`
+	EventVersion   string         `json:"eventVersion,omitempty"`
 	TenantID       string         `json:"tenantId"`
 	NotificationID string         `json:"notificationId"`
 	UserID         *string        `json:"userId,omitempty"`

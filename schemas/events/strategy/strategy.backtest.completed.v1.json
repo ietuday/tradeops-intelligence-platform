@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/strategy/strategy.backtest.completed.v1.json",
+  "title": "strategy.backtest.completed v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["strategyId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["strategy.backtest.completed"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "backtestId": { "type": "string" },
+    "strategyId": { "type": "string" },
+    "status": { "type": "string" },
+    "metrics": { "type": "object", "additionalProperties": true }
+  }
+}

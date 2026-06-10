@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/strategy/strategy.signal.generated.v1.json",
+  "title": "strategy.signal.generated v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["strategyId", "symbol", "signal"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["strategy.signal.generated"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "strategyId": { "type": "string" },
+    "symbol": { "type": "string" },
+    "signal": { "type": "string" },
+    "confidence": { "type": "number" }
+  }
+}

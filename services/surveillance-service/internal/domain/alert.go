@@ -37,6 +37,7 @@ type Alert struct {
 type AlertEvent struct {
 	EventID       string         `json:"eventId"`
 	EventType     string         `json:"eventType"`
+	EventVersion  string         `json:"eventVersion,omitempty"`
 	TenantID      string         `json:"tenantId"`
 	AlertID       string         `json:"alertId"`
 	AlertType     string         `json:"alertType"`

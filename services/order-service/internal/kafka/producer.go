@@ -22,6 +22,9 @@ func NewProducer(brokers []string) *Producer {
 
 func (p *Producer) Publish(ctx context.Context, event domain.OrderEvent) error {
 	topic := topicForEvent(event.EventType)
+	if event.EventVersion == "" {
+		event.EventVersion = "1.0"
+	}
 	writer := p.writer(topic)
 	event.TraceParent = observability.TraceParent(ctx)
 	event.TraceID, event.SpanID = observability.TraceIDs(ctx)

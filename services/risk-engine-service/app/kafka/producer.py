@@ -48,6 +48,8 @@ class KafkaProducer:
 
     def _publish(self, topic: str, payload: dict[str, Any]) -> None:
         try:
+            payload.setdefault("eventType", topic)
+            payload.setdefault("eventVersion", "1.0")
             payload.setdefault("correlationId", str(uuid.uuid4()))
             self.producer.produce(topic, json.dumps(payload, default=str).encode("utf-8"))
             self.producer.poll(0)

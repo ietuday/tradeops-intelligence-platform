@@ -140,6 +140,7 @@ jobs:
           bash -n scripts/demo-correlation-tracing.sh
           bash -n scripts/demo-websocket-streams.sh
           bash -n scripts/demo-otel-tracing.sh
+          bash -n scripts/validate-event-schemas.sh
           bash -n scripts/db-migrate.sh
           bash -n scripts/db-seed.sh
           bash -n scripts/demo-db-migrations.sh
@@ -149,6 +150,9 @@ jobs:
           bash -n scripts/replay-sample-events.sh
           bash -n scripts/replay-dlq-events.sh
           bash -n scripts/validate-helm.sh
+
+      - name: Validate event schemas
+        run: ./scripts/validate-event-schemas.sh
 
   docker-compose-config:
     name: Docker Compose config

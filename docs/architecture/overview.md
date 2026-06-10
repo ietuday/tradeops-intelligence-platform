@@ -8,6 +8,8 @@ v2.2.0 adds shared-database multitenancy. Tenant-owned tables use `tenant_id`, J
 
 v2.3.0 adds OpenTelemetry tracing for the primary API Gateway -> order -> surveillance -> notification -> audit path. W3C `traceparent` and `tracestate` headers flow over HTTP, while Kafka events preserve `correlationId` and include `traceparent` where practical.
 
+v2.5.0 adds lightweight event schema governance. Core Kafka/Redpanda topics, DLQ payloads, and WebSocket stream messages now have versioned JSON Schemas under `schemas/events/`, with optional envelope metadata for `eventVersion`, `tenantId`, `correlationId`, and `traceparent`.
+
 ## Service List
 
 | Service | Purpose |
@@ -32,6 +34,7 @@ v2.3.0 adds OpenTelemetry tracing for the primary API Gateway -> order -> survei
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka, Prometheus client |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
+| Event contracts | JSON Schema, event catalog, compatibility rules |
 | Observability | Prometheus, Grafana, Jaeger, OpenTelemetry, alert rules, SLO docs, structured logs, correlation IDs |
 | Runtime | Docker Compose, optional Helm/Kubernetes deployment-readiness chart |
 
@@ -199,3 +202,5 @@ flowchart LR
 - `market-data-service` normalizes MQTT ticks and publishes `market.ticks`.
 - Redpanda/Kafka connects order, portfolio, strategy, risk, surveillance, and notification flows.
 - Bad payload handling is intentionally defensive in event consumers so malformed demo messages do not crash services.
+- Versioned event schemas live under `schemas/events/`; see [event catalog](../events/event-catalog.md) and [schema governance](../events/schema-governance.md).
+- Event producers should add `eventType`, `eventVersion`, `tenantId`, `correlationId`, and `traceparent` additively where practical.

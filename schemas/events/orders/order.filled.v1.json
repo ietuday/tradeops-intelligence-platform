@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/orders/order.filled.v1.json",
+  "title": "order.filled v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["orderId", "userId", "symbol", "quantity"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["order.filled"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "orderId": { "type": "string" },
+    "userId": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "symbol": { "type": "string" },
+    "side": { "type": "string" },
+    "quantity": { "type": "number" },
+    "filledQuantity": { "type": "number" },
+    "fillPrice": { "type": "number" },
+    "status": { "type": "string" }
+  }
+}

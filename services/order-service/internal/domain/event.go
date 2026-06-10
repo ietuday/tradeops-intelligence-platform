@@ -5,6 +5,7 @@ import "time"
 type OrderEvent struct {
 	EventID       string    `json:"eventId"`
 	EventType     string    `json:"eventType"`
+	EventVersion  string    `json:"eventVersion,omitempty"`
 	TenantID      string    `json:"tenantId"`
 	OrderID       string    `json:"orderId"`
 	UserID        string    `json:"userId"`

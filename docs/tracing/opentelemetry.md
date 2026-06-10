@@ -55,6 +55,8 @@ The API Gateway forwards those headers with:
 
 Kafka propagation is lightweight and additive. Selected producers include `traceparent` as a Kafka header and JSON field when an active span exists. Consumers extract `traceparent` from headers or payload and start `consume <topic>` spans.
 
+v2.5.0 event schemas treat `traceparent` as optional metadata alongside `eventVersion`, `tenantId`, and `correlationId`. See [event envelope](../events/event-envelope.md) for the standard event shape.
+
 ## Correlation ID Vs Trace ID
 
 | ID | Purpose | Where to search |

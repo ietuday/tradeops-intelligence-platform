@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.4.0` Database Migration Runner & Seed Management.
+Current release: `v2.5.0` Advanced Event Schema Governance.
 
 ## Architecture Summary
 
@@ -18,6 +18,8 @@ v2.3.0 adds local-demo OpenTelemetry tracing with Jaeger for the API Gateway, or
 
 v2.4.0 adds a lightweight SQL migration runner, `schema_migrations` tracking, checksum validation, and idempotent demo seed management. See [database migrations](docs/database/migrations.md).
 
+v2.5.0 adds versioned JSON Schemas, an event envelope standard, a compatibility checklist, and read-only validation for Kafka/Redpanda and WebSocket event contracts. See [event schema governance](docs/events/schema-governance.md).
+
 ## Tech Stack
 
 | Area | Technologies |
@@ -27,6 +29,7 @@ v2.4.0 adds a lightweight SQL migration runner, `schema_migrations` tracking, ch
 | Python services | FastAPI, SQLAlchemy, psycopg, confluent-kafka |
 | Data | PostgreSQL, Redis |
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
+| Event contracts | JSON Schema, versioned event catalog, compatibility rules |
 | Observability | Prometheus, Grafana, Jaeger, OpenTelemetry, correlation IDs, health/readiness endpoints, metrics, alert rules, SLO dashboards |
 | Security | JWT/RBAC, Helmet, CORS config, request size limits, rate limiting, security checklist |
 | Multitenancy | Shared database tenant isolation, JWT `tenantId`, `X-Tenant-ID`, tenant-aware events |
@@ -101,6 +104,12 @@ Run database migrations and demo seeds against local PostgreSQL:
 ./scripts/db-seed.sh
 ```
 
+Validate event schemas and mapped sample payloads:
+
+```bash
+./scripts/validate-event-schemas.sh
+```
+
 Validate Compose config in CI-style mode without relying on a local `.env`:
 
 ```bash
@@ -148,6 +157,7 @@ bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
 bash -n scripts/demo-otel-tracing.sh
+bash -n scripts/validate-event-schemas.sh
 bash -n scripts/db-migrate.sh
 bash -n scripts/db-seed.sh
 bash -n scripts/demo-db-migrations.sh
@@ -205,6 +215,16 @@ TradeOps includes a simple SQL+Bash migration workflow for local demos and CI-fr
 ```
 
 The runner creates `schema_migrations`, applies sorted SQL migrations once, validates checksums, and keeps seeds idempotent with `ON CONFLICT`. See [database migrations](docs/database/migrations.md), [seed management](docs/database/seed-management.md), and the [database runbook](docs/database/db-runbook.md).
+
+## Event Schema Governance
+
+Event contracts live under `schemas/events/` as versioned JSON Schema files. v2.5.0 keeps validation lightweight and repository-local: schemas document current flat payloads while allowing optional envelope metadata such as `eventVersion`, `tenantId`, `correlationId`, and `traceparent`.
+
+```bash
+./scripts/validate-event-schemas.sh
+```
+
+Start with the [event catalog](docs/events/event-catalog.md), [event envelope](docs/events/event-envelope.md), [compatibility rules](docs/events/compatibility-rules.md), and [event contract checklist](docs/events/event-contract-checklist.md).
 
 ## Real-Time WebSocket Streaming
 

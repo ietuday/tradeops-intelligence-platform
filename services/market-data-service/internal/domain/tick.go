@@ -15,6 +15,7 @@ type Tick struct {
 type NormalizedTickEvent struct {
 	EventID       string    `json:"eventId"`
 	EventType     string    `json:"eventType"`
+	EventVersion  string    `json:"eventVersion,omitempty"`
 	Symbol        string    `json:"symbol"`
 	Price         float64   `json:"price"`
 	Volume        float64   `json:"volume"`

@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/orders/order.cancelled.v1.json",
+  "title": "order.cancelled v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["orderId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["order.cancelled"] },
+    "eventVersion": { "type": "string" },
+    "eventId": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "orderId": { "type": "string" },
+    "userId": { "type": "string" },
+    "symbol": { "type": "string" },
+    "side": { "type": "string" },
+    "orderType": { "type": "string" },
+    "quantity": { "type": "number" },
+    "status": { "type": "string" }
+  }
+}

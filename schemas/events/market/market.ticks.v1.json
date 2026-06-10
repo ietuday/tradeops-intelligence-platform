@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/market/market.ticks.v1.json",
+  "title": "market.ticks v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["symbol", "price"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["market.ticks", "market.tick.normalized", "market.tick.received"] },
+    "eventVersion": { "type": "string" },
+    "eventId": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "eventTime": { "type": "string", "format": "date-time" },
+    "receivedAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "symbol": { "type": "string" },
+    "price": { "type": "number" },
+    "volume": { "type": "number" }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/notifications/notification.created.v1.json",
+  "title": "notification.created v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["notificationId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["notification.created"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "notificationId": { "type": "string" },
+    "userId": { "type": "string" },
+    "channel": { "type": "string" },
+    "priority": { "type": "string" },
+    "status": { "type": "string" }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/common/dlq-message.v1.json",
+  "title": "TradeOps DLQ Message v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["originalTopic", "originalPayload", "error", "serviceName"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["portfolio.dlq", "surveillance.dlq", "notification.dlq", "audit.dlq"] },
+    "eventVersion": { "type": "string" },
+    "originalTopic": { "type": "string" },
+    "originalPayload": {},
+    "error": { "type": "string" },
+    "serviceName": { "type": "string" },
+    "failedAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "retryCount": { "type": "integer", "minimum": 0 }
+  },
+  "examples": [
+    {
+      "eventType": "notification.dlq",
+      "eventVersion": "1.0",
+      "originalTopic": "surveillance.alert.created",
+      "originalPayload": { "bad": true },
+      "error": "missing alertId",
+      "serviceName": "notification-service",
+      "retryCount": 3
+    }
+  ]
+}

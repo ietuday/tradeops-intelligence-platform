@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/common/event-envelope.v1.json",
+  "title": "TradeOps Event Envelope v1",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "eventId": { "type": "string" },
+    "eventType": { "type": "string" },
+    "eventVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "payload": { "type": "object", "additionalProperties": true }
+  },
+  "examples": [
+    {
+      "eventId": "11111111-1111-4111-8111-111111111111",
+      "eventType": "order.created",
+      "eventVersion": "1.0",
+      "tenantId": "default-tenant",
+      "correlationId": "demo-correlation-123",
+      "occurredAt": "2026-06-10T10:00:00Z",
+      "source": "order-service",
+      "payload": {}
+    }
+  ]
+}

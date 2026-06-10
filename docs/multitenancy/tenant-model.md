@@ -12,6 +12,8 @@ TradeOps uses a shared database multitenancy model. Tenant-owned tables carry a 
 
 Existing local demo data is backfilled to the default tenant so older demos continue to work.
 
+v2.5.0 event schemas keep `tenantId` optional for backward compatibility with older demo payloads, but tenant-owned producers should include it in new events. The event envelope standard also recommends `eventVersion`, `correlationId`, and `traceparent` metadata where available.
+
 ## Why Shared Database
 
 This portfolio project uses shared PostgreSQL tables with tenant filters because it is simple to run locally, easy to explain in interviews, and avoids the operational overhead of database-per-tenant provisioning. The model still demonstrates the important backend concepts: identity-scoped access, query isolation, event propagation, audit trails, and real-time stream filtering.
@@ -37,4 +39,3 @@ Tenant-owned data includes:
 - strategy and risk records where supported
 
 Market data remains global by default. Tenant-specific market feeds are documented as a future improvement.
-

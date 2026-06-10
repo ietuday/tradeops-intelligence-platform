@@ -8,6 +8,8 @@ Tenant-owned events should also include top-level `tenantId`. Consumers preserve
 
 v2.3.0 keeps the existing `correlationId` event field and adds lightweight `traceparent` propagation where practical. Consumers can continue processing old events without trace fields; they simply start a new trace while preserving `correlationId`.
 
+v2.5.0 adds repository-local JSON Schemas for core Kafka/Redpanda topics, DLQ payloads, and WebSocket stream messages. The schemas are versioned under `schemas/events/`, keep current flat payloads backward-compatible, and allow optional metadata such as `eventVersion`, `tenantId`, `correlationId`, and `traceparent`.
+
 ## Topic Map
 
 | Topic | Producer | Consumers | Purpose |
@@ -78,13 +80,21 @@ sequenceDiagram
 - Notification payloads live under `docs/examples/notifications/`.
 - Audit payloads live under `docs/examples/audit/`.
 - WebSocket stream message examples live under `docs/examples/websocket/`.
+- Versioned event schemas live under `schemas/events/`.
+- Sample-to-schema mappings live in `schemas/events/sample-mapping.json`.
 - Demo scripts publish compact JSON to Redpanda with `rpk topic produce`.
 - Replay/demo scripts accept `CORRELATION_ID` to inject a traceable `correlationId`.
 - Replay/demo scripts default `TENANT_ID=default-tenant` and preserve `tenantId`.
 
+Validate schema JSON and mapped samples:
+
+```bash
+./scripts/validate-event-schemas.sh
+```
+
 ## Current Limitations
 
-- Event schemas are documented by example payloads, not enforced by schema registry.
+- Event schemas are repository-local JSON Schema files and are not enforced by a live schema registry yet.
 - Some published topics are intentionally not consumed yet.
 - `portfolio.updated` and `strategy.signal.generated` are consumed by surveillance, but not all consumed events currently trigger rules.
 - Notification lifecycle events are consumed by audit-service for compliance-style traceability.

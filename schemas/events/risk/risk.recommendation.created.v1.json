@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/risk/risk.recommendation.created.v1.json",
+  "title": "risk.recommendation.created v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["recommendationId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["risk.recommendation.created"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "recommendationId": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "userId": { "type": "string" },
+    "message": { "type": "string" },
+    "priority": { "type": "string" }
+  }
+}

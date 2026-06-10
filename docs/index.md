@@ -6,6 +6,14 @@
 - [Event flow](architecture/event-flow.md)
 - [Service dependency matrix](architecture/service-dependency-matrix.md)
 
+## Event Contracts
+
+- [Schema governance](events/schema-governance.md)
+- [Event envelope](events/event-envelope.md)
+- [Compatibility rules](events/compatibility-rules.md)
+- [Event catalog](events/event-catalog.md)
+- [Event contract checklist](events/event-contract-checklist.md)
+
 ## API
 
 - [API summary](api/api-summary.md)
@@ -100,6 +108,7 @@
 
 ## Release Notes
 
+- [v2.5.0 Advanced Event Schema Governance](release-notes/v2.5.0.md)
 - [v2.4.0 Database Migration Runner & Seed Management](release-notes/v2.4.0.md)
 - [v2.3.0 OpenTelemetry Distributed Tracing](release-notes/v2.3.0.md)
 - [v2.2.0 Multi-Tenant Architecture](release-notes/v2.2.0.md)

@@ -59,6 +59,8 @@ Event message:
 }
 ```
 
+The stream message contract is documented in `schemas/events/common/websocket-stream-message.v1.json`. Event payloads may include `eventVersion`, `tenantId`, `correlationId`, and `traceparent` when those fields are present on the Kafka source event.
+
 Connection message:
 
 ```json
@@ -84,6 +86,8 @@ Heartbeat message:
 ## Correlation IDs
 
 The gateway uses `X-Correlation-ID`, `correlationId` query parameter, or a generated UUID for the connection. Kafka payloads preserve `correlationId` or `correlation_id` when present.
+
+For broader event metadata conventions, see [event envelope](../events/event-envelope.md).
 
 ## Tenant Filtering
 

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/portfolio/portfolio.updated.v1.json",
+  "title": "portfolio.updated v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["portfolioId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["portfolio.updated"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "userId": { "type": "string" },
+    "cashBalance": { "type": "number" },
+    "totalValue": { "type": "number" },
+    "positions": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+  }
+}

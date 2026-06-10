@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/risk/risk.score.updated.v1.json",
+  "title": "risk.score.updated v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["score"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["risk.score.updated"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "riskScoreId": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "userId": { "type": "string" },
+    "score": { "type": "number" },
+    "level": { "type": "string" },
+    "factors": { "type": "object", "additionalProperties": true }
+  }
+}

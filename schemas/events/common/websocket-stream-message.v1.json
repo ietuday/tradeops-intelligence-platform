@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/common/websocket-stream-message.v1.json",
+  "title": "TradeOps WebSocket Stream Message v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["type", "topic", "timestamp", "payload"],
+  "properties": {
+    "type": { "type": "string" },
+    "topic": { "type": "string" },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "payload": { "type": "object", "additionalProperties": true }
+  },
+  "examples": [
+    {
+      "type": "order.filled",
+      "topic": "order.filled",
+      "correlationId": "demo-websocket-order-001",
+      "timestamp": "2026-06-09T10:01:00Z",
+      "payload": { "tenantId": "default-tenant", "orderId": "order-1" }
+    }
+  ]
+}

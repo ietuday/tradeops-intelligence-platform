@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/risk/risk.breached.v1.json",
+  "title": "risk.breached v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["score"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["risk.breached"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "userId": { "type": "string" },
+    "score": { "type": "number" },
+    "threshold": { "type": "number" },
+    "level": { "type": "string" }
+  }
+}

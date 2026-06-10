@@ -6,7 +6,7 @@ HELM_CHART := infrastructure/helm/tradeops-platform
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
 PYTHON_SERVICES := strategy-service risk-engine-service
 
-.PHONY: help test test-go test-node test-python compose-config validate-scripts security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+.PHONY: help test test-go test-node test-python compose-config validate-scripts validate-event-schemas security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
 
 help:
 	@echo "TradeOps local commands"
@@ -17,6 +17,7 @@ help:
 	@echo "  make test-python          Run Python service tests when tests exist"
 	@echo "  make compose-config       Validate Docker Compose config"
 	@echo "  make validate-scripts     Validate Bash script syntax"
+	@echo "  make validate-event-schemas Validate event schema JSON and sample mappings"
 	@echo "  make security-check       Run read-only local security checks"
 	@echo "  make perf-smoke           Run lightweight curl timing checks"
 	@echo "  make load-test-gateway    Run optional k6 gateway load test"
@@ -70,6 +71,7 @@ validate-scripts:
 	bash -n scripts/demo-correlation-tracing.sh
 	bash -n scripts/demo-websocket-streams.sh
 	bash -n scripts/demo-otel-tracing.sh
+	bash -n scripts/validate-event-schemas.sh
 	bash -n scripts/db-migrate.sh
 	bash -n scripts/db-seed.sh
 	bash -n scripts/demo-db-migrations.sh
@@ -79,6 +81,9 @@ validate-scripts:
 	bash -n scripts/replay-sample-events.sh
 	bash -n scripts/replay-dlq-events.sh
 	bash -n scripts/validate-helm.sh
+
+validate-event-schemas:
+	./scripts/validate-event-schemas.sh
 
 security-check:
 	./scripts/security-check.sh
