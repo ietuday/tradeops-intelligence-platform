@@ -28,6 +28,10 @@ type Metrics struct {
 	RuleConfigReloads      prometheus.CounterVec
 	RuleDisabledSkips      prometheus.CounterVec
 	RuleConfigCacheEntries prometheus.Gauge
+	RuleSimulationRequests prometheus.CounterVec
+	RuleSimulationDuration prometheus.HistogramVec
+	RuleSimulationMatches  prometheus.CounterVec
+	RuleSimulationFailures prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -109,8 +113,25 @@ func NewMetrics() *Metrics {
 			Name: "surveillance_rule_config_cache_entries",
 			Help: "Current number of surveillance rule config entries cached.",
 		}),
+		RuleSimulationRequests: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_rule_simulation_requests_total",
+			Help: "Total surveillance rule simulation requests.",
+		}, []string{"rule_name", "status"}),
+		RuleSimulationDuration: *prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "surveillance_rule_simulation_duration_seconds",
+			Help:    "Surveillance rule simulation duration in seconds.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2},
+		}, []string{"rule_name", "status"}),
+		RuleSimulationMatches: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_rule_simulation_matches_total",
+			Help: "Total matched events found by surveillance rule dry-run simulations.",
+		}, []string{"rule_name"}),
+		RuleSimulationFailures: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "surveillance_rule_simulation_failures_total",
+			Help: "Total failed surveillance rule simulations.",
+		}, []string{"rule_name"}),
 	}
-	registry.MustRegister(metrics.AlertsCreated, metrics.AlertsAcknowledged, metrics.AlertsResolved, metrics.AlertsDismissed, &metrics.RuleMatches, &metrics.RuleExecutions, &metrics.KafkaMessages, metrics.KafkaPublishErrors, metrics.RuleDuration, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.ProcessingDuration, &metrics.DuplicateSkipped, &metrics.RuleConfigUpdates, &metrics.RuleConfigReloads, &metrics.RuleDisabledSkips, metrics.RuleConfigCacheEntries)
+	registry.MustRegister(metrics.AlertsCreated, metrics.AlertsAcknowledged, metrics.AlertsResolved, metrics.AlertsDismissed, &metrics.RuleMatches, &metrics.RuleExecutions, &metrics.KafkaMessages, metrics.KafkaPublishErrors, metrics.RuleDuration, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.ProcessingDuration, &metrics.DuplicateSkipped, &metrics.RuleConfigUpdates, &metrics.RuleConfigReloads, &metrics.RuleDisabledSkips, metrics.RuleConfigCacheEntries, &metrics.RuleSimulationRequests, &metrics.RuleSimulationDuration, &metrics.RuleSimulationMatches, &metrics.RuleSimulationFailures)
 	return metrics
 }
 

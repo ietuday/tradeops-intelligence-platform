@@ -35,6 +35,9 @@ v2.5.0 adds repository-local JSON Schemas for core Kafka/Redpanda topics, DLQ pa
 | `surveillance.alert.acknowledged` | `surveillance-service` | `notification-service`, `audit-service` | Alert acknowledged event. |
 | `surveillance.alert.resolved` | `surveillance-service` | `notification-service`, `audit-service` | Alert resolved event. |
 | `surveillance.alert.dismissed` | `surveillance-service` | `notification-service`, `audit-service` | Alert dismissed event. |
+| `surveillance.rule_simulation.requested` | `surveillance-service` | Future audit/compliance integrations | Dry-run rule simulation requested event. |
+| `surveillance.rule_simulation.completed` | `surveillance-service` | Future audit/compliance integrations | Dry-run rule simulation completed event. |
+| `surveillance.rule_simulation.failed` | `surveillance-service` | Future audit/compliance integrations | Dry-run rule simulation failed event. |
 | `notification.created` | `notification-service` | None currently | Notification created event. |
 | `notification.sent` | `notification-service` | `audit-service` | Notification delivery success event. |
 | `notification.failed` | `notification-service` | `audit-service` | Notification delivery failure event. |
@@ -77,6 +80,7 @@ sequenceDiagram
 ## Demo Payloads
 
 - Surveillance payloads live under `docs/examples/surveillance/`.
+- Rule simulation runs through HTTP APIs and publishes `surveillance.rule_simulation.*` lifecycle events only; it does not publish live `surveillance.alert.*` events.
 - Notification payloads live under `docs/examples/notifications/`.
 - Audit payloads live under `docs/examples/audit/`.
 - WebSocket stream message examples live under `docs/examples/websocket/`.

@@ -6,7 +6,7 @@ TradeOps Intelligence Platform is a local microservices trading intelligence sys
 
 ## 2-Minute Explanation
 
-The platform is organized around independent services. The API Gateway is the client entry point. Identity issues JWTs. The order service handles order creation with idempotency. A filled order emits an event that portfolio consumes to update holdings and publish portfolio updates. Risk and strategy services generate analytics and events. Surveillance consumes market, order, portfolio, risk, and strategy events, runs rules such as large order and abnormal price movement detection, and creates alert lifecycle events. Notification consumes surveillance alert events, creates user notifications, supports preferences, and records delivery attempts. Audit consumes important user, business, and system events and stores searchable audit logs.
+The platform is organized around independent services. The API Gateway is the client entry point. Identity issues JWTs. The order service handles order creation with idempotency. A filled order emits an event that portfolio consumes to update holdings and publish portfolio updates. Risk and strategy services generate analytics and events. Surveillance consumes market, order, portfolio, risk, and strategy events, runs rules such as large order and abnormal price movement detection, supports dry-run simulation for proposed rule configs, and creates alert lifecycle events only in live processing. Notification consumes surveillance alert events, creates user notifications, supports preferences, and records delivery attempts. Audit consumes important user, business, and system events and stores searchable audit logs.
 
 Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports for platform health, gateway traffic, event processing, surveillance/notifications, and audit/compliance, Jaeger shows OpenTelemetry traces for the gateway/order/surveillance/notification/audit path, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, Redpanda, and Jaeger.
 
@@ -74,6 +74,8 @@ Docker Compose runs the complete local platform. The optional Helm chart demonst
 
 The surveillance service consumes order, market, portfolio, risk, and strategy events. It evaluates rules such as large orders, rapid orders, high cancellations, abnormal price movement, and risk-score breaches. Rule thresholds, severity, and enable/disable state are tenant-aware and database-backed, with environment defaults as fallback. Matching rules create alerts in PostgreSQL and publish `surveillance.alert.created`. Alert APIs support lifecycle transitions from `OPEN` to `ACKNOWLEDGED`, `RESOLVED`, or `DISMISSED`.
 
+Rule simulation adds a production-style dry-run workflow. A caller can submit proposed config changes, the service overlays them on tenant-effective configs in memory, evaluates demo/historical-style events with a throwaway rule engine, and returns matched event and would-trigger alert counts. It does not update `surveillance_rule_configs`, mutate the live cache, create alerts, publish live alert events, or trigger notifications.
+
 ## How Notification Delivery Works
 
 The notification service consumes surveillance alert lifecycle topics. It creates user notifications and sends through configured channels. `IN_APP` persists and marks notifications as sent. `EMAIL` is intentionally mock/log-only. `WEBHOOK` posts to a configured URL with timeout and retry behavior, recording delivery attempts and failures.
@@ -88,16 +90,17 @@ The audit service consumes important platform events, maps them to normalized ac
 2. Run `make smoke` to verify service health and core workflows.
 3. Run `./scripts/demo-surveillance.sh` to create and transition a surveillance alert.
 4. Run `TOKEN=<jwt> ./scripts/demo-rule-config.sh` to show tenant-aware rule thresholds and enable/disable APIs.
-5. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
-6. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
-7. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
-8. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
-9. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
-10. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
-11. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-12. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
-13. Run `./scripts/security-check.sh` to show safe repository security validation.
-14. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+5. Run `TOKEN=<jwt> ./scripts/demo-rule-simulation.sh` to show a dry-run threshold comparison with no live alert side effects.
+6. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
+7. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
+8. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
+9. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
+10. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
+11. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
+12. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
+13. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
+14. Run `./scripts/security-check.sh` to show safe repository security validation.
+15. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
@@ -112,6 +115,7 @@ The audit service consumes important platform events, maps them to normalized ac
 - Data lifecycle is treated operationally with retention docs, backups, archival exports, replay guidance, and explicit confirmation for destructive actions.
 - Deployment readiness is represented with a simple Helm chart while keeping Compose as the primary local runtime.
 - Event consumers are defensive so bad demo payloads do not crash the process.
+- Rule simulation shows how to test risk-control changes safely before mutating production behavior.
 - The gateway keeps external routing stable while services retain internal base paths.
 - Audit logging demonstrates compliance-style traceability without coupling business services to synchronous audit writes.
 - The project includes demo scripts, release notes, architecture docs, troubleshooting, and production-readiness documentation because operational clarity is part of engineering quality.

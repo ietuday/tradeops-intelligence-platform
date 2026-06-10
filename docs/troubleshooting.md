@@ -140,6 +140,38 @@ curl http://localhost:8090/metrics | grep surveillance_rule_disabled_skips_total
 
 Fix: Check `/api/surveillance/rules`, confirm `enabled=true`, verify the threshold fields, and make sure the event payload carries the expected `tenantId` and `correlationId`.
 
+## Rule Simulation Returns Unexpected Counts
+
+Symptom: `POST /api/surveillance/rules/{ruleName}/simulate` returns fewer or more would-trigger alerts than expected.
+
+Possible cause: The request used the wrong tenant, the proposed threshold field does not match the rule type, the rule is disabled in the proposed config, or the simulation is using deterministic demo/historical-style events rather than live Kafka history.
+
+Useful command:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-rule-simulation.sh
+curl http://localhost:8090/metrics | grep surveillance_rule_simulation
+```
+
+Fix: Confirm `tenantId` matches the JWT tenant, use canonical rule names such as `LargeOrderRule`, and compare the current/strict/relaxed demo outputs. Simulation is intentionally dry-run only: it will not create live alerts or notification records.
+
+## Rule Simulation Fails RBAC Or Tenant Check
+
+Symptom: Simulation returns `403 forbidden` or `401 unauthorized`.
+
+Possible cause: Missing JWT, a token without read-oriented surveillance roles, or a request `tenantId` that does not match the JWT tenant.
+
+Useful command:
+
+```bash
+curl -i -X POST "http://localhost:8080/api/surveillance/rules/LargeOrderRule/simulate" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{"tenantId":"default-tenant","dryRun":true}'
+```
+
+Fix: Use a token with `trading_admin`, `risk_manager`, `analyst`, or `viewer`. Non-admin callers must simulate only their JWT tenant.
+
 ## Duplicate Event Detected
 
 Symptom: A replayed event does not create a new position update, alert, or notification.

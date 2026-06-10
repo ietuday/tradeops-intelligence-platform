@@ -24,6 +24,9 @@
 | `surveillance.rule_config.updated` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_config.updated.v1.json` | v1 | Surveillance rule config changed event. |
 | `surveillance.rule_config.enabled` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_config.enabled.v1.json` | v1 | Surveillance rule enabled event. |
 | `surveillance.rule_config.disabled` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_config.disabled.v1.json` | v1 | Surveillance rule disabled event. |
+| `surveillance.rule_simulation.requested` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_simulation.requested.v1.json` | v1 | Dry-run rule simulation requested event. |
+| `surveillance.rule_simulation.completed` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_simulation.completed.v1.json` | v1 | Dry-run rule simulation completed event. |
+| `surveillance.rule_simulation.failed` | `surveillance-service` | Future audit/compliance integrations | `schemas/events/surveillance/surveillance.rule_simulation.failed.v1.json` | v1 | Dry-run rule simulation failed event. |
 | `notification.created` | `notification-service` | API Gateway WebSocket | `schemas/events/notifications/notification.created.v1.json` | v1 | Notification created event. |
 | `notification.sent` | `notification-service` | `audit-service`, API Gateway WebSocket | `schemas/events/notifications/notification.sent.v1.json` | v1 | Notification delivery success event. |
 | `notification.failed` | `notification-service` | `audit-service`, API Gateway WebSocket | `schemas/events/notifications/notification.failed.v1.json` | v1 | Notification delivery failure event. |

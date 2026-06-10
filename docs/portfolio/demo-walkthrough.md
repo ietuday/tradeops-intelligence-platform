@@ -28,6 +28,7 @@ Use this to tell the full story: gateway health, auth/token requirements, sample
 | --- | --- | --- |
 | Surveillance | `./scripts/demo-surveillance.sh` | Large order event creates alert and moves through lifecycle. |
 | Rule configuration | `TOKEN=<jwt> ./scripts/demo-rule-config.sh` | Shows tenant-aware surveillance rule thresholds and enable/disable APIs. |
+| Rule simulation | `TOKEN=<jwt> ./scripts/demo-rule-simulation.sh` | Compares proposed surveillance thresholds in dry-run mode without creating live alerts. |
 | Notifications | `./scripts/demo-notifications.sh` | Surveillance alert event creates user notification and mark-read flow. |
 | Audit | `./scripts/demo-audit.sh` | Source events become searchable audit logs and export data. |
 | Reliability/DLQ | `./scripts/demo-reliability.sh` | Shows defensive handling, retry/DLQ guidance, and safe replay posture. |
@@ -55,6 +56,7 @@ Explain that Compose is the full local demo runtime, while Helm shows applicatio
 - Grafana platform and event dashboards.
 - Surveillance alerts API.
 - Surveillance rule config API.
+- Surveillance rule simulation output.
 - Notifications API.
 - Audit logs API.
 - End-to-end demo output.

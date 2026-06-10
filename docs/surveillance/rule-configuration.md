@@ -72,6 +72,20 @@ curl -X POST "http://localhost:8080/api/surveillance/rules/LargeOrderRule/enable
   -H "X-Tenant-ID: default-tenant"
 ```
 
+## Dry-Run Simulation
+
+Use rule simulation before applying threshold changes:
+
+```bash
+curl -X POST "http://localhost:8080/api/surveillance/rules/LargeOrderRule/simulate" \
+  -H "Authorization: Bearer <jwt>" \
+  -H "X-Tenant-ID: default-tenant" \
+  -H "Content-Type: application/json" \
+  -d '{"tenantId":"default-tenant","lookbackMinutes":60,"dryRun":true,"config":{"thresholdNumeric":200000}}'
+```
+
+The simulator reads the tenant-effective config, overlays proposed values in memory, and returns would-trigger alert counts without updating `surveillance_rule_configs`, refreshing the live cache, creating alerts, or publishing `surveillance.alert.*` events. See [rule simulation](rule-simulation.md).
+
 ## RBAC
 
 Read access:
@@ -93,6 +107,9 @@ Rule changes publish Kafka/Redpanda events:
 - `surveillance.rule_config.updated`
 - `surveillance.rule_config.enabled`
 - `surveillance.rule_config.disabled`
+- `surveillance.rule_simulation.requested`
+- `surveillance.rule_simulation.completed`
+- `surveillance.rule_simulation.failed`
 
 The event schemas live under `schemas/events/surveillance/`. Audit-service can consume and normalize these events in a future pass; for now the events are available for compliance and debugging integrations.
 
@@ -102,6 +119,10 @@ The event schemas live under `schemas/events/surveillance/`. Audit-service can c
 - `surveillance_rule_config_reload_total{status}`
 - `surveillance_rule_disabled_skips_total{rule_name}`
 - `surveillance_rule_config_cache_entries`
+- `surveillance_rule_simulation_requests_total{rule_name,status}`
+- `surveillance_rule_simulation_duration_seconds_bucket{rule_name,status}`
+- `surveillance_rule_simulation_matches_total{rule_name}`
+- `surveillance_rule_simulation_failures_total{rule_name}`
 
 Tenant IDs are intentionally not metric labels.
 
@@ -119,9 +140,16 @@ Apply a temporary LargeOrderRule threshold and restore it:
 TOKEN=<jwt> ./scripts/demo-rule-config.sh --apply
 ```
 
+Rule simulation:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-rule-simulation.sh
+```
+
 ## Known Limitations
 
 - No custom user-authored rules yet.
 - Rule names are fixed and validated.
 - Cache refresh is update-driven rather than a distributed invalidation mechanism.
 - Rule config change events are published, but audit normalization is documented as a future extension.
+- Rule simulation currently uses deterministic demo/historical-style events rather than a production event warehouse.

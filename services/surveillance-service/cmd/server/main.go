@@ -18,6 +18,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/repository"
 	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/service"
+	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/simulation"
 )
 
 func main() {
@@ -68,6 +69,7 @@ func main() {
 		logger.Warn("surveillance rule config defaults unavailable; using env fallbacks", "error", err)
 	}
 	surveillanceService := service.NewSurveillanceService(repository.NewAlertRepository(pool), producer, metrics, engine)
+	simulationService := simulation.NewService(ruleConfigService, producer, metrics, ruleDefaults, simulation.NewDemoEventLoader())
 	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.KafkaTopics, surveillanceService, logger, metrics, kafka.RetryConfig{
 		MaxRetries:        cfg.EventProcessingMaxRetries,
 		Backoff:           time.Duration(cfg.EventProcessingBackoffMS) * time.Millisecond,
@@ -82,6 +84,7 @@ func main() {
 		Metrics:      metrics,
 		Service:      surveillanceService,
 		RuleService:  ruleConfigService,
+		Simulation:   simulationService,
 		Validator:    security.NewValidator([]byte(cfg.JWTSecret)),
 	})
 

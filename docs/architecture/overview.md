@@ -10,6 +10,8 @@ v2.3.0 adds OpenTelemetry tracing for the primary API Gateway -> order -> survei
 
 v2.5.0 adds lightweight event schema governance. Core Kafka/Redpanda topics, DLQ payloads, and WebSocket stream messages now have versioned JSON Schemas under `schemas/events/`, with optional envelope metadata for `eventVersion`, `tenantId`, `correlationId`, and `traceparent`.
 
+v2.8.0 adds surveillance rule simulation: proposed rule configs can be evaluated in dry-run mode before changing live thresholds, with no live alert or notification side effects.
+
 ## Service List
 
 | Service | Purpose |
@@ -21,7 +23,7 @@ v2.5.0 adds lightweight event schema governance. Core Kafka/Redpanda topics, DLQ
 | `portfolio-service` | Consumes fills, updates holdings/cash, and publishes portfolio snapshots. |
 | `strategy-service` | Strategy CRUD, backtests, performance, generated signals, and strategy events. |
 | `risk-engine-service` | Portfolio risk score, VaR, volatility, drawdown, recommendations, and risk events. |
-| `surveillance-service` | Consumes trading/risk/market events and creates alert lifecycle events. |
+| `surveillance-service` | Consumes trading/risk/market events, supports dry-run rule simulation, and creates alert lifecycle events in live processing. |
 | `notification-service` | Consumes surveillance alert events, creates notifications, and records delivery attempts. |
 | `audit-service` | Consumes platform events, stores searchable audit logs, and exposes summary/export APIs. |
 
@@ -146,6 +148,7 @@ flowchart LR
   surveillance --> t_alert_ack[surveillance.alert.acknowledged]
   surveillance --> t_alert_resolved[surveillance.alert.resolved]
   surveillance --> t_alert_dismissed[surveillance.alert.dismissed]
+  surveillance --> t_rule_simulation[surveillance.rule_simulation.*]
 
   t_alert_created --> notification[notification-service]
   t_alert_ack --> notification

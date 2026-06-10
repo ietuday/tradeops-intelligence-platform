@@ -22,6 +22,13 @@ type RuleConfig struct {
 	AbnormalPriceMovementPercent float64
 }
 
+type EvaluationMode string
+
+const (
+	EvaluationModeLive   EvaluationMode = "live"
+	EvaluationModeDryRun EvaluationMode = "dry_run"
+)
+
 type effectiveRuleSetting struct {
 	Enabled          bool
 	Severity         string
@@ -130,6 +137,10 @@ func (e *RuleEngine) Evaluate(event domain.SourceEvent, now time.Time) ([]domain
 }
 
 func (e *RuleEngine) EvaluateForTenant(tenantID string, event domain.SourceEvent, now time.Time) ([]domain.Alert, []domain.RuleExecution, []string) {
+	return e.EvaluateForTenantWithMode(tenantID, event, now, EvaluationModeLive)
+}
+
+func (e *RuleEngine) EvaluateForTenantWithMode(tenantID string, event domain.SourceEvent, now time.Time, mode EvaluationMode) ([]domain.Alert, []domain.RuleExecution, []string) {
 	switch event.Topic {
 	case "order.created", "order.filled":
 		alerts, executions, skipped := e.evaluateOrder(tenantID, event, now, event.Topic == "order.created")

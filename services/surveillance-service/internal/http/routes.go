@@ -9,6 +9,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/observability"
 	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/service"
+	"github.com/ietuday/tradeops-intelligence-platform/services/surveillance-service/internal/simulation"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -18,6 +19,7 @@ type Dependencies struct {
 	Metrics      *observability.Metrics
 	Service      *service.SurveillanceService
 	RuleService  *service.RuleConfigService
+	Simulation   *simulation.Service
 	Validator    *security.Validator
 }
 
@@ -28,7 +30,7 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 
 	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers)
 	alerts := handlers.NewAlertHandler(deps.Service)
-	rules := handlers.NewRuleHandler(deps.RuleService)
+	rules := handlers.NewRuleHandler(deps.RuleService, deps.Simulation)
 
 	router.Get("/health", health.Health)
 	router.Get("/ready", health.Ready)
@@ -43,8 +45,10 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Post("/alerts/{id}/resolve", alerts.Resolve)
 		r.Post("/alerts/{id}/dismiss", alerts.Dismiss)
 		r.Get("/rules", rules.List)
+		r.Post("/rules/simulate", rules.SimulateBulk)
 		r.Get("/rules/{ruleName}", rules.Get)
 		r.Put("/rules/{ruleName}", rules.Update)
+		r.Post("/rules/{ruleName}/simulate", rules.Simulate)
 		r.Post("/rules/{ruleName}/enable", rules.Enable)
 		r.Post("/rules/{ruleName}/disable", rules.Disable)
 	})

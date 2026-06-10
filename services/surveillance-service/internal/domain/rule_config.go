@@ -57,6 +57,23 @@ type RuleConfigEvent struct {
 	Changes          map[string]any `json:"changes"`
 }
 
+type RuleSimulationEvent struct {
+	EventID            string    `json:"eventId"`
+	EventType          string    `json:"eventType"`
+	EventVersion       string    `json:"eventVersion"`
+	TenantID           string    `json:"tenantId"`
+	CorrelationID      string    `json:"correlationId,omitempty"`
+	TraceParent        string    `json:"traceparent,omitempty"`
+	RuleName           string    `json:"ruleName"`
+	LookbackMinutes    int       `json:"lookbackMinutes"`
+	DryRun             bool      `json:"dryRun"`
+	MatchedEvents      int       `json:"matchedEvents"`
+	WouldTriggerAlerts int       `json:"wouldTriggerAlerts"`
+	Status             string    `json:"status"`
+	Error              string    `json:"error,omitempty"`
+	OccurredAt         time.Time `json:"occurredAt"`
+}
+
 func KnownRuleNames() []string {
 	return []string{
 		RuleLargeOrder,

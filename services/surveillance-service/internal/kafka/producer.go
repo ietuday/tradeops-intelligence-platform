@@ -70,6 +70,31 @@ func (p *Producer) PublishRuleConfig(ctx context.Context, event domain.RuleConfi
 	})
 }
 
+func (p *Producer) PublishRuleSimulation(ctx context.Context, event domain.RuleSimulationEvent) error {
+	writer := p.writer(event.EventType)
+	if event.EventVersion == "" {
+		event.EventVersion = "1.0"
+	}
+	event.TraceParent = observability.TraceParent(ctx)
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	headers := []kafka.Header{
+		{Key: "eventType", Value: []byte(event.EventType)},
+		{Key: "correlationId", Value: []byte(event.CorrelationID)},
+	}
+	if event.TraceParent != "" {
+		headers = append(headers, kafka.Header{Key: "traceparent", Value: []byte(event.TraceParent)})
+	}
+	return writer.WriteMessages(ctx, kafka.Message{
+		Key:     []byte(event.RuleName),
+		Value:   payload,
+		Time:    event.OccurredAt,
+		Headers: headers,
+	})
+}
+
 func (p *Producer) Close() error {
 	var first error
 	for _, writer := range p.writers {

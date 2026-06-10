@@ -26,6 +26,7 @@ help:
 	@echo "  make smoke                Run smoke test against a running stack"
 	@echo "  make demo-surveillance    Run surveillance demo"
 	@echo "  make demo-rule-config     Run surveillance rule config demo"
+	@echo "  make demo-rule-simulation Run surveillance rule simulation demo"
 	@echo "  make demo-notifications   Run notification demo"
 	@echo "  make demo-e2e             Run end-to-end demo"
 	@echo "  make docker-build         Build service Docker images locally"
@@ -65,6 +66,7 @@ validate-scripts:
 	bash -n scripts/smoke-test.sh
 	bash -n scripts/demo-surveillance.sh
 	bash -n scripts/demo-rule-config.sh
+	bash -n scripts/demo-rule-simulation.sh
 	bash -n scripts/demo-notifications.sh
 	bash -n scripts/demo-e2e-tradeops.sh
 	bash -n scripts/demo-reliability.sh
@@ -116,6 +118,9 @@ demo-surveillance:
 
 demo-rule-config:
 	./scripts/demo-rule-config.sh
+
+demo-rule-simulation:
+	./scripts/demo-rule-simulation.sh
 
 demo-notifications:
 	./scripts/demo-notifications.sh

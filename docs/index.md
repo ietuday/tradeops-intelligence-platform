@@ -21,6 +21,7 @@
 ## Surveillance
 
 - [Rule configuration](surveillance/rule-configuration.md)
+- [Rule simulation](surveillance/rule-simulation.md)
 
 ## Reliability
 
@@ -112,6 +113,7 @@
 
 ## Release Notes
 
+- [v2.8.0 Surveillance Rule Simulation & Dry-Run Engine](release-notes/v2.8.0.md)
 - [v2.6.0 Rule Configuration Management](release-notes/v2.6.0.md)
 - [v2.5.0 Advanced Event Schema Governance](release-notes/v2.5.0.md)
 - [v2.4.0 Database Migration Runner & Seed Management](release-notes/v2.4.0.md)

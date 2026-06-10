@@ -58,6 +58,10 @@ OpenTelemetry traces are available in Jaeger for selected services. Do not add `
 | `surveillance_rule_config_reload_total` | Counter | Rule config cache reload attempts by status. |
 | `surveillance_rule_disabled_skips_total` | Counter | Rule evaluations skipped because the rule is disabled. |
 | `surveillance_rule_config_cache_entries` | Gauge | Current rule config entries cached by the service. |
+| `surveillance_rule_simulation_requests_total` | Counter | Dry-run rule simulation requests by rule name and status. |
+| `surveillance_rule_simulation_duration_seconds_bucket` | Histogram | Dry-run rule simulation latency by rule name and status. |
+| `surveillance_rule_simulation_matches_total` | Counter | Matched events found by dry-run simulations. |
+| `surveillance_rule_simulation_failures_total` | Counter | Failed dry-run rule simulations. |
 
 ## Notification
 

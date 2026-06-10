@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.6.0` Rule Configuration Management.
+Current release: `v2.8.0` Surveillance Rule Simulation & Dry-Run Engine.
 
 ## Architecture Summary
 
@@ -21,6 +21,8 @@ v2.4.0 adds a lightweight SQL migration runner, `schema_migrations` tracking, ch
 v2.5.0 adds versioned JSON Schemas, an event envelope standard, a compatibility checklist, and read-only validation for Kafka/Redpanda and WebSocket event contracts. See [event schema governance](docs/events/schema-governance.md).
 
 v2.6.0 adds tenant-aware, database-backed surveillance rule configuration APIs for thresholds, severity, and enable/disable state with environment defaults as fallback. See [surveillance rule configuration](docs/surveillance/rule-configuration.md).
+
+v2.8.0 adds dry-run surveillance rule simulation so proposed threshold changes can be evaluated against demo/historical-style events before changing live configs or creating alerts. See [surveillance rule simulation](docs/surveillance/rule-simulation.md).
 
 ## Tech Stack
 
@@ -137,6 +139,7 @@ Run focused demos:
 ```bash
 ./scripts/demo-surveillance.sh
 ./scripts/demo-rule-config.sh
+./scripts/demo-rule-simulation.sh
 ./scripts/demo-notifications.sh
 ./scripts/demo-audit.sh
 ./scripts/demo-reliability.sh
@@ -154,6 +157,7 @@ bash -n scripts/run-load-tests.sh
 bash -n scripts/perf-smoke.sh
 bash -n scripts/demo-surveillance.sh
 bash -n scripts/demo-rule-config.sh
+bash -n scripts/demo-rule-simulation.sh
 bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh
@@ -240,6 +244,25 @@ TOKEN=<jwt> ./scripts/demo-rule-config.sh --apply
 ```
 
 See [rule configuration](docs/surveillance/rule-configuration.md).
+
+## Surveillance Rule Simulation
+
+Dry-run proposed surveillance rule configs without updating `surveillance_rule_configs`, refreshing live caches, creating alerts, or triggering notifications:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-rule-simulation.sh
+```
+
+Example API call:
+
+```bash
+curl -X POST "http://localhost:8080/api/surveillance/rules/LargeOrderRule/simulate" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{"tenantId":"default-tenant","lookbackMinutes":60,"dryRun":true,"config":{"thresholdNumeric":200000}}'
+```
+
+See [rule simulation](docs/surveillance/rule-simulation.md).
 
 ## Real-Time WebSocket Streaming
 
@@ -383,6 +406,7 @@ No screenshots are committed by default. Use the [portfolio screenshots guide](d
 - [Service dependency matrix](docs/architecture/service-dependency-matrix.md)
 - [API summary](docs/api/api-summary.md)
 - [Audit trail](docs/audit/audit-trail.md)
+- [Surveillance rule simulation](docs/surveillance/rule-simulation.md)
 - [CI/CD quality gates](docs/ci-cd/quality-gates.md)
 - [Observability metrics catalog](docs/observability/metrics-catalog.md)
 - [Grafana dashboard guide](docs/observability/grafana-dashboards.md)
@@ -435,6 +459,8 @@ No screenshots are committed by default. Use the [portfolio screenshots guide](d
 
 ## Release Notes
 
+- [v2.8.0 Surveillance Rule Simulation & Dry-Run Engine](docs/release-notes/v2.8.0.md)
+- [v2.6.0 Rule Configuration Management](docs/release-notes/v2.6.0.md)
 - [v2.1.0 Real-Time WebSocket Streaming Layer](docs/release-notes/v2.1.0.md)
 - [v2.0.0 Final Portfolio Release](docs/release-notes/v2.0.0.md)
 - [v1.9.0 Performance Testing, Load Testing & Capacity Planning](docs/release-notes/v1.9.0.md)
@@ -488,6 +514,7 @@ It is still a local portfolio platform, not a real production deployment. See th
 
 - Docker Compose is used for local orchestration only.
 - Event schemas are documented by examples, not enforced by a schema registry.
+- Surveillance rule simulation uses deterministic demo/historical-style events rather than a production historical event store.
 - Audit export is API-returned JSON/CSV, not durable file generation.
 - Data lifecycle scripts are local operational helpers, not regulated production retention automation.
 - Helm manifests are deployment-readiness artifacts, not a fully managed production cluster setup.
@@ -523,6 +550,7 @@ bash -n scripts/run-load-tests.sh
 bash -n scripts/perf-smoke.sh
 bash -n scripts/smoke-test.sh
 bash -n scripts/demo-surveillance.sh
+bash -n scripts/demo-rule-simulation.sh
 bash -n scripts/demo-notifications.sh
 bash -n scripts/demo-audit.sh
 bash -n scripts/demo-e2e-tradeops.sh

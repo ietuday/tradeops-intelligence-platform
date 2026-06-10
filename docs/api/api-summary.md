@@ -194,6 +194,8 @@ Common endpoints:
 | `GET` | `/api/surveillance/rules` | List tenant-effective rule configs. |
 | `GET` | `/api/surveillance/rules/{ruleName}` | Get one rule config. |
 | `PUT` | `/api/surveillance/rules/{ruleName}` | Update threshold/severity/enabled state. |
+| `POST` | `/api/surveillance/rules/{ruleName}/simulate` | Dry-run one proposed rule config against demo/historical-style events. |
+| `POST` | `/api/surveillance/rules/simulate` | Dry-run one or more proposed rule configs. |
 | `POST` | `/api/surveillance/rules/{ruleName}/enable` | Enable a rule. |
 | `POST` | `/api/surveillance/rules/{ruleName}/disable` | Disable a rule. |
 
@@ -211,6 +213,15 @@ curl -X PUT "http://localhost:8080/api/surveillance/rules/LargeOrderRule" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   --data '{"enabled":true,"severity":"CRITICAL","thresholdNumeric":250000}'
+```
+
+Rule simulation is read-only and does not update live config, create alerts, or publish alert events:
+
+```bash
+curl -X POST "http://localhost:8080/api/surveillance/rules/LargeOrderRule/simulate" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data '{"tenantId":"default-tenant","lookbackMinutes":60,"dryRun":true,"config":{"thresholdNumeric":200000}}'
 ```
 
 ## Notification APIs

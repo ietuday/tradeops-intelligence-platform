@@ -57,6 +57,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [ ] Add schema validation or schema registry contracts.
 - [x] Repository-local JSON Schemas document core Kafka/Redpanda event contracts.
 - [x] Define dead-letter topics and conservative replay procedures.
+- [x] Surveillance rule simulation lifecycle events are documented separately from live alert events.
 - [ ] Add consumer lag monitoring.
 
 ## Data Lifecycle
@@ -95,6 +96,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Prometheus scrape targets cover all backend services.
 - [x] SLO-oriented dashboards are included for local demo workflows.
 - [x] Service and workflow alert thresholds are documented for local demos.
+- [x] Surveillance rule simulation exposes request, duration, match, and failure metrics without tenant labels.
 - [ ] Add business KPI dashboards for trading workflows.
 - [ ] Add Kafka consumer lag metrics.
 
@@ -113,6 +115,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] API Gateway Jest tests cover proxy behavior.
 - [x] Bash syntax checks are part of release validation.
 - [x] Docker Compose config validation is documented.
+- [x] Surveillance rule simulation service logic has unit coverage.
 - [ ] Add full end-to-end automated test with containers.
 - [ ] Add contract tests for Kafka event payloads.
 - [x] Add lightweight event schema parsing and sample mapping validation.
@@ -173,6 +176,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - Event payload schemas are documented by examples, not enforced by a schema registry.
 - Event payload schemas are repository-local JSON Schemas, not enforced by a live schema registry.
 - Surveillance rule configuration is local-cache based; multi-instance deployments would need explicit cache invalidation or short TTL refresh.
+- Surveillance rule simulation uses deterministic demo/historical-style events, not a production historical event warehouse.
 - Notification email delivery is mock/log-only.
 - Webhook delivery is intentionally simple.
 - Surveillance consumes some event types that do not trigger rules yet.
