@@ -1,5 +1,7 @@
 # Event Catalog
 
+The API Gateway admin endpoint `GET /api/admin/topics` exposes a static topic catalog derived from this document. It does not perform live Kafka topic discovery in v2.7.0.
+
 | Topic | Producer | Consumers | Schema file | Version | Description |
 | --- | --- | --- | --- | --- | --- |
 | `market.ticks` | `market-data-service` | `surveillance-service`, API Gateway WebSocket | `schemas/events/market/market.ticks.v1.json` | v1 | Normalized market tick event. |

@@ -42,6 +42,14 @@ Through API Gateway:
 /api/surveillance/rules
 ```
 
+Admin summary:
+
+```text
+/api/admin/rule-config-summary
+```
+
+The admin endpoint aggregates total/enabled/disabled/severity counts from the surveillance rule API and degrades gracefully if surveillance-service is unavailable.
+
 List rules:
 
 ```bash

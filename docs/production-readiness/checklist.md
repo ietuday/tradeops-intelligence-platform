@@ -43,6 +43,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Gateway centralizes client HTTP access.
 - [x] Gateway propagates authorization and correlation headers.
 - [x] Gateway exposes health, readiness, and metrics.
+- [x] Gateway exposes RBAC-protected admin operations APIs for health, catalogs, DLQ guidance, summaries, and safe config views.
 - [x] Gateway applies Helmet security headers, configurable CORS, request body limits, and local-demo rate limiting.
 - [ ] Add explicit request timeout, retry, and circuit-breaker policies per upstream.
 - [ ] Add production-grade distributed rate limiting and abuse protection.
@@ -79,6 +80,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] SLO-oriented docs and an observability runbook are included.
 - [x] Correlation IDs flow through gateway requests.
 - [x] Correlation IDs are propagated through key Kafka events, DLQ records, logs, and audit persistence.
+- [x] Admin operations APIs emit bounded-cardinality request and health-check metrics.
 - [ ] Add distributed tracing.
 - [ ] Add Alertmanager routing, ownership, and escalation policies.
 

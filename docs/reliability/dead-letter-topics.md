@@ -7,6 +7,8 @@ DLQ records include `correlationId` when the source event payload or Kafka heade
 
 The shared DLQ payload contract is documented in `schemas/events/common/dlq-message.v1.json`. The same schema is used for `portfolio.dlq`, `surveillance.dlq`, `notification.dlq`, and `audit.dlq`.
 
+The API Gateway admin endpoint `GET /api/admin/dlq-summary` returns the known DLQ catalog, owner service, replay script, and this runbook path for operator consoles. It does not inspect live Redpanda offsets in v2.7.0.
+
 ## Topics
 
 | Service | DLQ topic | Source examples |

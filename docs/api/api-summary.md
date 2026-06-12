@@ -14,6 +14,33 @@ Tenant-owned APIs use the JWT `tenantId` claim. API Gateway forwards the resolve
 
 Tenant-owned resources such as orders, portfolios, surveillance alerts, notifications, and audit logs are filtered by tenant where implemented. Market data remains global by default.
 
+## Admin Operations APIs
+
+Base gateway path: `/api/admin`
+
+Auth required: Yes.
+
+Read-only roles: `trading_admin`, `risk_manager`.
+
+Mutating roles: `trading_admin` only.
+
+Common endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/admin/health-summary` | Aggregated bounded service health summary. |
+| `GET` | `/api/admin/services` | Static service registry. |
+| `GET` | `/api/admin/topics` | Event topic catalog with schema paths. |
+| `GET` | `/api/admin/dlq-summary` | Known DLQ topics and runbook links. |
+| `GET` | `/api/admin/audit-summary` | Tenant-scoped audit activity summary. |
+| `GET` | `/api/admin/alerts-summary` | Tenant-scoped surveillance alert summary. |
+| `GET` | `/api/admin/notifications-summary` | Tenant-scoped notification summary. |
+| `GET` | `/api/admin/rule-config-summary` | Surveillance rule configuration counts. |
+| `GET` | `/api/admin/platform-config` | Safe non-secret runtime configuration. |
+| `GET` | `/api/admin/ops-checklist` | Operational checklist links. |
+
+See [admin console APIs](../admin/admin-console-apis.md).
+
 ## Auth APIs
 
 Base gateway path: `/api/auth`

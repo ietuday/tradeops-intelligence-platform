@@ -12,6 +12,7 @@ import { metricsHandler, metricsMiddleware } from './observability/metrics';
 import { shutdownTracing, tracingMiddleware } from './observability/tracing';
 import { authProxyRouter } from './routes/auth-proxy';
 import { auditProxyRouter } from './routes/audit-proxy';
+import { adminRouter } from './routes/admin';
 import { healthRouter } from './routes/health';
 import { marketProxyRouter } from './routes/market-proxy';
 import { notificationsProxyRouter } from './routes/notifications-proxy';
@@ -60,6 +61,7 @@ export function createApp() {
 
   app.use(healthRouter);
   app.get('/metrics', metricsHandler);
+  app.use('/api/admin', adminRouter());
   app.use('/api/audit', auditProxyRouter());
   app.use('/api/auth', authProxyRouter());
   app.use('/api/market', marketProxyRouter());

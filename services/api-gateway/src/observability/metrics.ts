@@ -79,6 +79,28 @@ const websocketKafkaEventsConsumedTotal = new client.Counter({
   registers: [register]
 });
 
+const adminRequestsTotal = new client.Counter({
+  name: 'tradeops_api_gateway_admin_requests_total',
+  help: 'Total admin API requests by endpoint and status.',
+  labelNames: ['endpoint', 'status'],
+  registers: [register]
+});
+
+const adminHealthChecksTotal = new client.Counter({
+  name: 'tradeops_api_gateway_admin_health_checks_total',
+  help: 'Total admin health checks by service and status.',
+  labelNames: ['service', 'status'],
+  registers: [register]
+});
+
+const adminHealthCheckDurationMs = new client.Histogram({
+  name: 'tradeops_api_gateway_admin_health_check_duration_ms',
+  help: 'Admin health check duration in milliseconds by service.',
+  labelNames: ['service'],
+  buckets: [5, 10, 25, 50, 100, 250, 500, 1000, 1500, 3000, 5000],
+  registers: [register]
+});
+
 function normalizeRoute(req: Request): string {
   return req.route?.path?.toString() || req.path || 'unknown';
 }
@@ -137,6 +159,15 @@ export function recordWebSocketAuthFailure(stream: string): void {
 
 export function recordWebSocketKafkaEventConsumed(topic: string): void {
   websocketKafkaEventsConsumedTotal.inc({ topic });
+}
+
+export function recordAdminRequest(endpoint: string, status: number): void {
+  adminRequestsTotal.inc({ endpoint, status: String(status) });
+}
+
+export function recordAdminHealthCheck(service: string, status: string, durationMs: number): void {
+  adminHealthChecksTotal.inc({ service, status });
+  adminHealthCheckDurationMs.observe({ service }, durationMs);
 }
 
 export { register };

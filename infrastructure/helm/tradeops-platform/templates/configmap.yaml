@@ -21,4 +21,6 @@ data:
   SURVEILLANCE_SERVICE_URL: "http://surveillance-service:8090"
   NOTIFICATION_SERVICE_URL: "http://notification-service:8091"
   AUDIT_SERVICE_URL: "http://audit-service:8092"
-
+  ADMIN_API_ENABLED: "true"
+  ADMIN_HEALTH_TIMEOUT_MS: "1500"
+  ADMIN_SERVICE_REGISTRY_MODE: "static"

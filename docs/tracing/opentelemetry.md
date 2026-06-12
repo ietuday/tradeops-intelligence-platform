@@ -88,6 +88,8 @@ TOKEN=<jwt> ./scripts/demo-otel-tracing.sh --create-order
 
 In Jaeger, search service `api-gateway` and operations such as `GET /api/orders/health` or `POST /api/orders`.
 
+Admin operations routes add span attributes for `admin.endpoint`, `tenant.id`, and `correlation.id` when tracing is enabled. This keeps `/api/admin` health and summary calls visible without adding high-cardinality metric labels.
+
 ## Known Limitations
 
 - Kafka propagation uses payload/header `traceparent`; full Kafka header instrumentation is future work.

@@ -2,13 +2,15 @@
 
 ## 60-Second Explanation
 
-TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, market data ingestion, order management, portfolio updates, strategy and risk analytics, configurable surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, event schema governance, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
+TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, admin operations APIs, market data ingestion, order management, portfolio updates, strategy and risk analytics, configurable surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, event schema governance, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
 
 ## 2-Minute Explanation
 
 The platform is organized around independent services. The API Gateway is the client entry point. Identity issues JWTs. The order service handles order creation with idempotency. A filled order emits an event that portfolio consumes to update holdings and publish portfolio updates. Risk and strategy services generate analytics and events. Surveillance consumes market, order, portfolio, risk, and strategy events, runs rules such as large order and abnormal price movement detection, supports dry-run simulation for proposed rule configs, and creates alert lifecycle events only in live processing. Notification consumes surveillance alert events, creates user notifications, supports preferences, and records delivery attempts. Audit consumes important user, business, and system events and stores searchable audit logs.
 
 Operationally, every service exposes health, readiness, and metrics endpoints. Prometheus scrapes the services, Grafana has dashboard exports for platform health, gateway traffic, event processing, surveillance/notifications, and audit/compliance, Jaeger shows OpenTelemetry traces for the gateway/order/surveillance/notification/audit path, and Docker Compose runs the full local stack with PostgreSQL, Redis, Mosquitto, Redpanda, and Jaeger.
+
+The API Gateway also exposes `/api/admin` for backend-only operations views: aggregated health, service and topic catalogs, DLQ guidance, audit/alert/notification summaries, rule config summary, and safe masked platform config.
 
 Correlation IDs provide lightweight tracing without a full tracing stack: the gateway accepts or generates `X-Correlation-ID`, services propagate `correlationId` into Kafka events, DLQ records keep the same ID, and audit-service stores it for querying.
 
@@ -43,6 +45,8 @@ The order service accepts an `Idempotency-Key` header during order creation. Rep
 ## How Observability Is Handled
 
 Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs, events, DLQ records, and audit logs can be connected across services. OpenTelemetry adds Jaeger traces for span-level timing across the primary order-to-alert-to-notification-to-audit flow.
+
+The admin operations APIs add an operator-friendly aggregation layer without adding a new service or UI. They are read-only by default, RBAC-protected, tenant-aware, and degrade gracefully if one downstream summary endpoint is unavailable.
 
 ## How Real-Time Streaming Works
 
@@ -93,14 +97,15 @@ The audit service consumes important platform events, maps them to normalized ac
 5. Run `TOKEN=<jwt> ./scripts/demo-rule-simulation.sh` to show a dry-run threshold comparison with no live alert side effects.
 6. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
 7. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
-8. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
-9. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
-10. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
-11. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
-12. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-13. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
-14. Run `./scripts/security-check.sh` to show safe repository security validation.
-15. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+8. Run `TOKEN=<jwt> ./scripts/demo-admin-ops.sh` to show backend admin operations APIs.
+9. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
+10. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
+11. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
+12. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
+13. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
+14. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
+15. Run `./scripts/security-check.sh` to show safe repository security validation.
+16. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
@@ -116,6 +121,7 @@ The audit service consumes important platform events, maps them to normalized ac
 - Deployment readiness is represented with a simple Helm chart while keeping Compose as the primary local runtime.
 - Event consumers are defensive so bad demo payloads do not crash the process.
 - Rule simulation shows how to test risk-control changes safely before mutating production behavior.
+- Admin operations APIs show how operators get health, catalog, DLQ, activity, and safe config visibility through the existing gateway boundary.
 - The gateway keeps external routing stable while services retain internal base paths.
 - Audit logging demonstrates compliance-style traceability without coupling business services to synchronous audit writes.
 - The project includes demo scripts, release notes, architecture docs, troubleshooting, and production-readiness documentation because operational clarity is part of engineering quality.

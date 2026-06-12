@@ -17,6 +17,22 @@ docker compose -f infrastructure/docker/docker-compose.yml ps
 
 Fix: Copy `infrastructure/docker/.env.example` to `infrastructure/docker/.env`, set required secrets, then rerun `make dev-up`.
 
+## Admin Health Summary Is Degraded
+
+Symptom: `GET /api/admin/health-summary` returns `DEGRADED` or `UNHEALTHY`.
+
+Possible cause: A downstream `/health` endpoint is failing, timing out, or unreachable from the API Gateway network.
+
+Useful command:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-admin-ops.sh
+docker compose -f infrastructure/docker/docker-compose.yml ps
+docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway order-service surveillance-service notification-service audit-service
+```
+
+Fix: Check the failing service listed in the admin response, verify its Compose service is healthy, and increase `ADMIN_HEALTH_TIMEOUT_MS` only if the service is healthy but slow in the local environment.
+
 ## PostgreSQL Not Ready
 
 Symptom: Services fail readiness checks or logs mention database connection failures.

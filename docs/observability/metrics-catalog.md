@@ -20,6 +20,9 @@ OpenTelemetry traces are available in Jaeger for selected services. Do not add `
 | `tradeops_api_gateway_websocket_messages_failed_total` | Counter | WebSocket message send failures. |
 | `tradeops_api_gateway_websocket_auth_failures_total` | Counter | WebSocket authentication failures by stream. |
 | `tradeops_api_gateway_websocket_kafka_events_consumed_total` | Counter | Kafka events consumed by the WebSocket stream layer. |
+| `tradeops_api_gateway_admin_requests_total` | Counter | Admin API request count by endpoint and status. |
+| `tradeops_api_gateway_admin_health_checks_total` | Counter | Admin health check outcomes by service and status. |
+| `tradeops_api_gateway_admin_health_check_duration_ms_bucket` | Histogram | Admin downstream health check latency in milliseconds. |
 
 ## Identity
 

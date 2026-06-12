@@ -10,13 +10,15 @@ v2.3.0 adds OpenTelemetry tracing for the primary API Gateway -> order -> survei
 
 v2.5.0 adds lightweight event schema governance. Core Kafka/Redpanda topics, DLQ payloads, and WebSocket stream messages now have versioned JSON Schemas under `schemas/events/`, with optional envelope metadata for `eventVersion`, `tenantId`, `correlationId`, and `traceparent`.
 
+v2.7.0 adds API Gateway admin operations APIs under `/api/admin` for service health, service/topic catalogs, DLQ guidance, audit/alert/notification/rule summaries, and safe platform config views without adding a frontend UI.
+
 v2.8.0 adds surveillance rule simulation: proposed rule configs can be evaluated in dry-run mode before changing live thresholds, with no live alert or notification side effects.
 
 ## Service List
 
 | Service | Purpose |
 | --- | --- |
-| `api-gateway` | Single external HTTP entry point and reverse proxy to backend services. |
+| `api-gateway` | Single external HTTP entry point, reverse proxy to backend services, WebSocket streaming host, and admin operations API surface. |
 | `identity-service` | Registration, login, JWT issuance, refresh tokens, and RBAC identity data. |
 | `market-data-service` | MQTT market tick ingestion, validation, storage, and Kafka publication. |
 | `order-service` | Order creation, validation, idempotency, status transitions, and order events. |

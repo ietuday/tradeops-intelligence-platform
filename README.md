@@ -22,6 +22,8 @@ v2.5.0 adds versioned JSON Schemas, an event envelope standard, a compatibility 
 
 v2.6.0 adds tenant-aware, database-backed surveillance rule configuration APIs for thresholds, severity, and enable/disable state with environment defaults as fallback. See [surveillance rule configuration](docs/surveillance/rule-configuration.md).
 
+v2.7.0 adds backend-only admin console APIs under `/api/admin` for health summaries, service/topic catalogs, DLQ guidance, audit/alert/notification/rule summaries, and safe platform config masking. See [admin console APIs](docs/admin/admin-console-apis.md).
+
 v2.8.0 adds dry-run surveillance rule simulation so proposed threshold changes can be evaluated against demo/historical-style events before changing live configs or creating alerts. See [surveillance rule simulation](docs/surveillance/rule-simulation.md).
 
 ## Tech Stack
@@ -61,6 +63,7 @@ v2.8.0 adds dry-run surveillance rule simulation so proposed threshold changes c
 - Event-driven trading workflow across orders, portfolio, risk, surveillance, notifications, and audit.
 - Go microservices for transactional domains, Python services for analytics-oriented domains, and a Node.js API Gateway.
 - Real-time WebSocket streams for market ticks, order events, alerts, notifications, and audit events.
+- Backend admin operations APIs for platform health, service/topic visibility, DLQ guidance, activity summaries, and safe runtime config views.
 - Tenant-aware APIs, events, audit logs, and WebSocket streams using `default-tenant` for local demos.
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
