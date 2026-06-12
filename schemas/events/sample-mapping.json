@@ -15,5 +15,6 @@
   "docs/examples/websocket/market-tick-stream-message.json": "schemas/events/common/websocket-stream-message.v1.json",
   "docs/examples/websocket/surveillance-alert-stream-message.json": "schemas/events/common/websocket-stream-message.v1.json",
   "docs/examples/websocket/notification-created-stream-message.json": "schemas/events/common/websocket-stream-message.v1.json",
-  "docs/examples/websocket/audit-log-created-stream-message.json": "schemas/events/common/websocket-stream-message.v1.json"
+  "docs/examples/websocket/audit-log-created-stream-message.json": "schemas/events/common/websocket-stream-message.v1.json",
+  "docs/examples/risk/risk-stress-test-completed-event.json": "schemas/events/risk/risk.stress_test.completed.v1.json"
 }

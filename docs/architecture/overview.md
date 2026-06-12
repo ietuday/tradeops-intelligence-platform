@@ -12,7 +12,7 @@ v2.5.0 adds lightweight event schema governance. Core Kafka/Redpanda topics, DLQ
 
 v2.7.0 adds API Gateway admin operations APIs under `/api/admin` for service health, service/topic catalogs, DLQ guidance, audit/alert/notification/rule summaries, and safe platform config views without adding a frontend UI.
 
-v2.8.0 adds surveillance rule simulation: proposed rule configs can be evaluated in dry-run mode before changing live thresholds, with no live alert or notification side effects.
+v2.8.0 adds advanced risk analytics: stress testing, named scenario analysis, concentration risk, drawdown trends, volatility shocks, and explainable recommendations.
 
 ## Service List
 
@@ -24,7 +24,7 @@ v2.8.0 adds surveillance rule simulation: proposed rule configs can be evaluated
 | `order-service` | Order creation, validation, idempotency, status transitions, and order events. |
 | `portfolio-service` | Consumes fills, updates holdings/cash, and publishes portfolio snapshots. |
 | `strategy-service` | Strategy CRUD, backtests, performance, generated signals, and strategy events. |
-| `risk-engine-service` | Portfolio risk score, VaR, volatility, drawdown, recommendations, and risk events. |
+| `risk-engine-service` | Portfolio risk score, VaR, volatility, drawdown, stress testing, scenario analysis, concentration risk, recommendations, and risk events. |
 | `surveillance-service` | Consumes trading/risk/market events, supports dry-run rule simulation, and creates alert lifecycle events in live processing. |
 | `notification-service` | Consumes surveillance alert events, creates notifications, and records delivery attempts. |
 | `audit-service` | Consumes platform events, stores searchable audit logs, and exposes summary/export APIs. |

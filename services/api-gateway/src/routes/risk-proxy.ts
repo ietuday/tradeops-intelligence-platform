@@ -15,8 +15,16 @@ const RISK_ROUTE_MAP: Record<RouteKey, string> = {
   'GET /portfolio/drawdown': '/risk/portfolio/drawdown',
   'GET /portfolio/var': '/risk/portfolio/var',
   'GET /recommendations': '/risk/recommendations',
-  'GET /anomalies': '/risk/anomalies'
+  'GET /anomalies': '/risk/anomalies',
+  'GET /scenarios': '/api/v1/risk/scenarios',
+  'POST /stress-test': '/api/v1/risk/stress-test',
+  'POST /scenarios/run': '/api/v1/risk/scenarios/run',
+  'POST /portfolio/concentration': '/api/v1/risk/portfolio/concentration',
+  'POST /portfolio/drawdown-trend': '/api/v1/risk/portfolio/drawdown-trend',
+  'POST /volatility-shock': '/api/v1/risk/volatility-shock'
 };
+
+const UUID_OR_SLUG_PATTERN = '[A-Za-z0-9._-]+';
 
 export function riskProxyRouter(
   riskServiceUrl = process.env.RISK_SERVICE_URL || DEFAULT_RISK_SERVICE_URL
@@ -54,16 +62,36 @@ function normalizeBaseUrl(riskServiceUrl: string): URL {
 }
 
 function resolveRiskPath(method: string, requestPath: string): string | undefined {
-  const routeKey = `${method.toUpperCase()} ${requestPath}` as RouteKey;
-  return RISK_ROUTE_MAP[routeKey];
+  const normalizedMethod = method.toUpperCase();
+  const routeKey = `${normalizedMethod} ${requestPath}` as RouteKey;
+  const mapped = RISK_ROUTE_MAP[routeKey];
+  if (mapped) {
+    return mapped;
+  }
+
+  const concentrationMatch = new RegExp(`^/portfolio/(${UUID_OR_SLUG_PATTERN})/concentration$`).exec(requestPath);
+  if (normalizedMethod === 'GET' && concentrationMatch) {
+    return `/api/v1/risk/portfolio/${concentrationMatch[1]}/concentration`;
+  }
+
+  const drawdownMatch = new RegExp(`^/portfolio/(${UUID_OR_SLUG_PATTERN})/drawdown-trend$`).exec(requestPath);
+  if (normalizedMethod === 'GET' && drawdownMatch) {
+    return `/api/v1/risk/portfolio/${drawdownMatch[1]}/drawdown-trend`;
+  }
+
+  return undefined;
 }
 
 function buildProxyHeaders(req: Request): HeadersInit {
   const headers: Record<string, string> = {
     accept: 'application/json'
   };
+  const contentType = req.header('content-type');
   const authorization = req.header('authorization');
   const correlationId = req.header('x-correlation-id');
+  if (contentType) {
+    headers['content-type'] = contentType;
+  }
   if (authorization) {
     headers.authorization = authorization;
   }
@@ -79,9 +107,12 @@ async function forwardToRiskService(
   baseUrl: URL,
   riskPath: string
 ): Promise<void> {
-  const upstream = await fetchUpstream('risk-engine-service', new URL(riskPath, baseUrl).toString(), {
+  const upstreamUrl = new URL(riskPath, baseUrl);
+  upstreamUrl.search = new URL(req.url, 'http://gateway.local').search;
+  const upstream = await fetchUpstream('risk-engine-service', upstreamUrl.toString(), {
     method: req.method,
-    headers: buildProxyHeaders(req)
+    headers: buildProxyHeaders(req),
+    body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined
   });
 
   const responseText = await upstream.text();
@@ -117,4 +148,8 @@ async function forwardToRiskService(
       message: 'Risk engine service returned an unsupported response type.'
     }
   });
+}
+
+function shouldForwardBody(method: string): boolean {
+  return !['GET', 'HEAD'].includes(method.toUpperCase());
 }

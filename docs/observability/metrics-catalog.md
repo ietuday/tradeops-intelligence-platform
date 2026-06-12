@@ -41,6 +41,8 @@ OpenTelemetry traces are available in Jaeger for selected services. Do not add `
 | Strategy | `strategies_created_total`, `backtests_started_total`, `backtests_completed_total`, `backtests_failed_total`, `strategy_signals_generated_total`, `backtest_duration_seconds_bucket`, `kafka_publish_errors_total` |
 | Risk | `risk_scores_calculated_total`, `risk_breaches_total`, `risk_anomalies_detected_total`, `risk_recommendations_created_total`, `risk_calculation_duration_seconds_bucket`, `risk_score_current`, `var_current`, `drawdown_current`, `kafka_publish_errors_total` |
 
+Advanced risk analytics adds `risk_stress_tests_total{status}`, `risk_scenarios_run_total{scenario,status}`, `risk_concentration_analyses_total{status}`, `risk_drawdown_analyses_total{status}`, `risk_recommendations_generated_total{severity}`, and `risk_analytics_duration_seconds_bucket{operation}`. These metrics avoid tenant, portfolio, user, trace, and correlation labels.
+
 ## Surveillance
 
 | Metric | Type | Purpose |

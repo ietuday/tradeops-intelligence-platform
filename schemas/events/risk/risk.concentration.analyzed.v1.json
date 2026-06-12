@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/risk/risk.concentration.analyzed.v1.json",
+  "title": "risk.concentration.analyzed v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["eventType", "portfolioId", "riskLevel", "generatedAt"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["risk.concentration.analyzed"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "riskLevel": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    "concentrationScore": { "type": "number" },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

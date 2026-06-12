@@ -189,6 +189,14 @@ Common endpoints:
 | `GET` | `/api/risk/portfolio/var` | Value at Risk calculation. |
 | `GET` | `/api/risk/recommendations` | Risk recommendations. |
 | `GET` | `/api/risk/anomalies` | Risk anomalies. |
+| `GET` | `/api/risk/scenarios` | Built-in stress/scenario catalog. |
+| `POST` | `/api/risk/stress-test` | Run supplied stress scenarios against positions. |
+| `POST` | `/api/risk/scenarios/run` | Run named scenarios against supplied positions. |
+| `GET` | `/api/risk/portfolio/{portfolioId}/concentration` | Demo/future integration concentration view. |
+| `POST` | `/api/risk/portfolio/concentration` | Calculate concentration from supplied positions. |
+| `GET` | `/api/risk/portfolio/{portfolioId}/drawdown-trend` | Demo/future integration drawdown trend view. |
+| `POST` | `/api/risk/portfolio/drawdown-trend` | Calculate drawdown trend from supplied historical values. |
+| `POST` | `/api/risk/volatility-shock` | Simulate volatility multiplier impact. |
 
 Example:
 
@@ -196,6 +204,8 @@ Example:
 curl http://localhost:8080/api/risk/portfolio/score \
   -H "Authorization: Bearer ${TOKEN}"
 ```
+
+See [advanced risk analytics](../risk/advanced-risk-analytics.md) for stress test formulas, risk levels, examples, and metrics.
 
 ## Surveillance APIs
 

@@ -99,6 +99,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] SLO-oriented dashboards are included for local demo workflows.
 - [x] Service and workflow alert thresholds are documented for local demos.
 - [x] Surveillance rule simulation exposes request, duration, match, and failure metrics without tenant labels.
+- [x] Advanced risk analytics exposes stress/scenario/concentration/drawdown/recommendation metrics without tenant labels.
 - [ ] Add business KPI dashboards for trading workflows.
 - [ ] Add Kafka consumer lag metrics.
 
@@ -118,6 +119,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Bash syntax checks are part of release validation.
 - [x] Docker Compose config validation is documented.
 - [x] Surveillance rule simulation service logic has unit coverage.
+- [x] Advanced risk analytics deterministic calculations have unit coverage.
 - [ ] Add full end-to-end automated test with containers.
 - [ ] Add contract tests for Kafka event payloads.
 - [x] Add lightweight event schema parsing and sample mapping validation.
@@ -179,6 +181,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - Event payload schemas are repository-local JSON Schemas, not enforced by a live schema registry.
 - Surveillance rule configuration is local-cache based; multi-instance deployments would need explicit cache invalidation or short TTL refresh.
 - Surveillance rule simulation uses deterministic demo/historical-style events, not a production historical event warehouse.
+- Advanced risk analytics uses supplied/demo positions and historical values, not a production market-risk warehouse.
 - Notification email delivery is mock/log-only.
 - Webhook delivery is intentionally simple.
 - Surveillance consumes some event types that do not trigger rules yet.

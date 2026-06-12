@@ -26,6 +26,10 @@ class KafkaProducer:
             self.settings.breached_topic,
             self.settings.anomaly_topic,
             self.settings.recommendation_topic,
+            self.settings.stress_test_completed_topic,
+            self.settings.scenario_completed_topic,
+            self.settings.concentration_analyzed_topic,
+            self.settings.drawdown_analyzed_topic,
         ]
         futures = self.admin.create_topics([NewTopic(topic, num_partitions=1, replication_factor=1) for topic in topics])
         for future in futures.values():
@@ -45,6 +49,18 @@ class KafkaProducer:
 
     def publish_recommendation(self, payload: dict[str, Any]) -> None:
         self._publish(self.settings.recommendation_topic, payload)
+
+    def publish_stress_test_completed(self, payload: dict[str, Any]) -> None:
+        self._publish(self.settings.stress_test_completed_topic, payload)
+
+    def publish_scenario_completed(self, payload: dict[str, Any]) -> None:
+        self._publish(self.settings.scenario_completed_topic, payload)
+
+    def publish_concentration_analyzed(self, payload: dict[str, Any]) -> None:
+        self._publish(self.settings.concentration_analyzed_topic, payload)
+
+    def publish_drawdown_analyzed(self, payload: dict[str, Any]) -> None:
+        self._publish(self.settings.drawdown_analyzed_topic, payload)
 
     def _publish(self, topic: str, payload: dict[str, Any]) -> None:
         try:

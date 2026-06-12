@@ -20,6 +20,11 @@
 - [Admin console APIs](admin/admin-console-apis.md)
 - [Platform operations](admin/platform-operations.md)
 
+## Risk
+
+- [Advanced risk analytics](risk/advanced-risk-analytics.md)
+- [Stress testing runbook](risk/stress-testing-runbook.md)
+
 ## Surveillance
 
 - [Rule configuration](surveillance/rule-configuration.md)
@@ -115,7 +120,7 @@
 
 ## Release Notes
 
-- [v2.8.0 Surveillance Rule Simulation & Dry-Run Engine](release-notes/v2.8.0.md)
+- [v2.8.0 Advanced Risk Analytics & Stress Testing](release-notes/v2.8.0.md)
 - [v2.7.0 Admin Console APIs & Platform Operations](release-notes/v2.7.0.md)
 - [v2.6.0 Rule Configuration Management](release-notes/v2.6.0.md)
 - [v2.5.0 Advanced Event Schema Governance](release-notes/v2.5.0.md)

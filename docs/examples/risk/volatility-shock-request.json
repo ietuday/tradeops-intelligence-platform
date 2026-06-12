@@ -1,0 +1,17 @@
+{
+  "portfolioId": "demo-portfolio-1",
+  "tenantId": "default-tenant",
+  "correlationId": "demo-correlation-123",
+  "volatilityMultiplier": 2,
+  "baseRiskScore": 30,
+  "positions": [
+    {
+      "symbol": "AAPL",
+      "quantity": 10,
+      "averagePrice": 150,
+      "currentPrice": 180,
+      "sector": "Technology",
+      "assetClass": "EQUITY"
+    }
+  ]
+}

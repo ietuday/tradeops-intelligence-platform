@@ -1,0 +1,11 @@
+{
+  "eventType": "risk.stress_test.completed",
+  "eventVersion": "1.0",
+  "tenantId": "default-tenant",
+  "correlationId": "demo-correlation-123",
+  "portfolioId": "demo-portfolio-1",
+  "riskLevel": "HIGH",
+  "worstScenario": "Technology drops 15%",
+  "pnlImpactPercent": -13.5294,
+  "generatedAt": "2026-06-12T10:00:00Z"
+}

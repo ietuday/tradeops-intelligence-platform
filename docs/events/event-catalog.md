@@ -19,6 +19,10 @@ The API Gateway admin endpoint `GET /api/admin/topics` exposes a static topic ca
 | `risk.breached` | `risk-engine-service` | `audit-service` | `schemas/events/risk/risk.breached.v1.json` | v1 | Risk threshold breach event. |
 | `risk.anomaly.detected` | `risk-engine-service` | None currently | `schemas/events/risk/risk.anomaly.detected.v1.json` | v1 | Risk anomaly event. |
 | `risk.recommendation.created` | `risk-engine-service` | None currently | `schemas/events/risk/risk.recommendation.created.v1.json` | v1 | Risk recommendation event. |
+| `risk.stress_test.completed` | `risk-engine-service` | Future audit/compliance integrations | `schemas/events/risk/risk.stress_test.completed.v1.json` | v1 | Stress test completed event. |
+| `risk.scenario.completed` | `risk-engine-service` | Future audit/compliance integrations | `schemas/events/risk/risk.scenario.completed.v1.json` | v1 | Scenario analysis completed event. |
+| `risk.concentration.analyzed` | `risk-engine-service` | Future audit/compliance integrations | `schemas/events/risk/risk.concentration.analyzed.v1.json` | v1 | Concentration risk analysis completed event. |
+| `risk.drawdown.analyzed` | `risk-engine-service` | Future audit/compliance integrations | `schemas/events/risk/risk.drawdown.analyzed.v1.json` | v1 | Drawdown trend analysis completed event. |
 | `surveillance.alert.created` | `surveillance-service` | `notification-service`, `audit-service`, API Gateway WebSocket | `schemas/events/surveillance/surveillance.alert.created.v1.json` | v1 | New surveillance alert event. |
 | `surveillance.alert.acknowledged` | `surveillance-service` | `notification-service`, `audit-service`, API Gateway WebSocket | `schemas/events/surveillance/surveillance.alert.acknowledged.v1.json` | v1 | Alert acknowledged event. |
 | `surveillance.alert.resolved` | `surveillance-service` | `notification-service`, `audit-service`, API Gateway WebSocket | `schemas/events/surveillance/surveillance.alert.resolved.v1.json` | v1 | Alert resolved event. |

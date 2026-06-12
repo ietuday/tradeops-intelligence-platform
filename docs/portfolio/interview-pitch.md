@@ -6,7 +6,7 @@ TradeOps is an event-driven trading microservices platform I built to demonstrat
 
 ## 60-Second Pitch
 
-TradeOps simulates a trading operations backend. The API Gateway exposes stable routes, identity issues JWTs, the order service handles idempotent order creation, portfolio consumes fills, surveillance detects alerts from order/market/risk events, notifications are created from alert lifecycle events, and audit records compliance-style logs. I added reliability patterns like retries and DLQ guidance, observability with Prometheus/Grafana/SLO docs, security docs and gateway hardening, backup/replay scripts, Helm deployment readiness, and local performance testing.
+TradeOps simulates a trading operations backend. The API Gateway exposes stable routes, identity issues JWTs, the order service handles idempotent order creation, portfolio consumes fills, risk analytics runs stress/scenario/concentration/drawdown checks, surveillance detects alerts from order/market/risk events, notifications are created from alert lifecycle events, and audit records compliance-style logs. I added reliability patterns like retries and DLQ guidance, observability with Prometheus/Grafana/SLO docs, security docs and gateway hardening, backup/replay scripts, Helm deployment readiness, and local performance testing.
 
 v2.2.0 adds shared-database multitenancy: JWT `tenantId`, `X-Tenant-ID` propagation, tenant-aware database columns, tenant-aware events, audit logs, and WebSocket filtering.
 
@@ -21,6 +21,8 @@ The goal was not to build a toy trading UI, but to show platform engineering jud
 Start with the API Gateway. It centralizes client access, forwards authorization and correlation headers, applies Helmet/CORS/body limits/rate limiting, and proxies to service-owned APIs. Identity issues JWTs. Go services handle transactional domains; Python services handle analytics-oriented strategy and risk; Node.js keeps the gateway lightweight.
 
 Events connect the system. Orders produce lifecycle topics, portfolio updates positions, risk emits scores, surveillance applies rules, notifications respond to alert lifecycle events, and audit normalizes important events into searchable logs. The platform uses sample payloads and replay scripts for repeatable demos.
+
+The risk engine also exposes deterministic stress testing, scenario analysis, concentration risk, drawdown trend, and volatility shock APIs. These are intentionally simple enough to explain in an interview while still showing production-style inputs, outputs, metrics, and event contracts.
 
 ## System Design Explanation
 

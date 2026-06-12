@@ -10,6 +10,12 @@ risk_score_current = Gauge("risk_score_current", "Most recent calculated risk sc
 var_current = Gauge("var_current", "Most recent calculated Value at Risk.")
 drawdown_current = Gauge("drawdown_current", "Most recent calculated max drawdown.")
 kafka_publish_errors_total = Counter("kafka_publish_errors_total", "Total Kafka publish errors.")
+risk_stress_tests_total = Counter("risk_stress_tests_total", "Total stress tests run.", ["status"])
+risk_scenarios_run_total = Counter("risk_scenarios_run_total", "Total named scenarios run.", ["scenario", "status"])
+risk_concentration_analyses_total = Counter("risk_concentration_analyses_total", "Total concentration risk analyses.", ["status"])
+risk_drawdown_analyses_total = Counter("risk_drawdown_analyses_total", "Total drawdown analyses.", ["status"])
+risk_recommendations_generated_total = Counter("risk_recommendations_generated_total", "Total advanced risk recommendations generated.", ["severity"])
+risk_analytics_duration_seconds = Histogram("risk_analytics_duration_seconds", "Advanced risk analytics duration in seconds.", ["operation"])
 
 
 def metrics_response() -> tuple[bytes, str]:

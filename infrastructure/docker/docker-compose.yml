@@ -243,6 +243,10 @@ services:
       RISK_BREACHED_TOPIC: ${RISK_BREACHED_TOPIC:-risk.breached}
       RISK_ANOMALY_TOPIC: ${RISK_ANOMALY_TOPIC:-risk.anomaly.detected}
       RISK_RECOMMENDATION_TOPIC: ${RISK_RECOMMENDATION_TOPIC:-risk.recommendation.created}
+      RISK_STRESS_TEST_COMPLETED_TOPIC: ${RISK_STRESS_TEST_COMPLETED_TOPIC:-risk.stress_test.completed}
+      RISK_SCENARIO_COMPLETED_TOPIC: ${RISK_SCENARIO_COMPLETED_TOPIC:-risk.scenario.completed}
+      RISK_CONCENTRATION_ANALYZED_TOPIC: ${RISK_CONCENTRATION_ANALYZED_TOPIC:-risk.concentration.analyzed}
+      RISK_DRAWDOWN_ANALYZED_TOPIC: ${RISK_DRAWDOWN_ANALYZED_TOPIC:-risk.drawdown.analyzed}
     ports:
       - "8089:8080"
     depends_on:

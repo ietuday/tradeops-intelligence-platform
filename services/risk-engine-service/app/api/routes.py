@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, Request
+from time import perf_counter
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.auth import UserContext, require_full_read, require_read
 from app.db import get_db
 from app.kafka.producer import KafkaProducer
 from app.main_dependencies import (
+    get_advanced_risk_analytics_service,
     get_anomaly_service,
     get_drawdown_service,
     get_kafka_producer,
@@ -15,7 +18,25 @@ from app.main_dependencies import (
 )
 from app.observability import metrics
 from app.repositories.risk_repository import RiskRepository
-from app.schemas import AnomalyResponse, DrawdownResponse, RecommendationResponse, RiskScoreResponse, VarResponse, VolatilityResponse
+from app.schemas import (
+    AnomalyResponse,
+    ConcentrationRiskRequest,
+    ConcentrationRiskResult,
+    DrawdownResponse,
+    DrawdownTrendRequest,
+    DrawdownTrendResult,
+    HistoricalValue,
+    RecommendationResponse,
+    RiskScoreResponse,
+    ScenarioRunRequest,
+    StressTestRequest,
+    StressTestResult,
+    VarResponse,
+    VolatilityResponse,
+    VolatilityShockRequest,
+    VolatilityShockResult,
+)
+from app.services.advanced_risk_analytics_service import AdvancedRiskAnalyticsService
 from app.services.anomaly_service import AnomalyService
 from app.services.drawdown_service import DrawdownService
 from app.services.recommendation_service import RecommendationService
@@ -25,6 +46,7 @@ from app.services.volatility_service import VolatilityService
 
 
 router = APIRouter()
+DEFAULT_TENANT_ID = "default-tenant"
 
 
 def repo(db: Session = Depends(get_db)) -> RiskRepository:
@@ -134,6 +156,141 @@ def anomalies(
     return [to_anomaly_response(item) for item in saved]
 
 
+@router.get("/api/v1/risk/scenarios")
+def built_in_scenarios(
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+):
+    return {"scenarios": analytics.built_in_scenarios()}
+
+
+@router.post("/api/v1/risk/stress-test", response_model=StressTestResult)
+def stress_test(
+    payload: StressTestRequest,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+    producer: KafkaProducer = Depends(get_kafka_producer),
+):
+    del user
+    tenant_id, correlation_id = tenant_and_correlation(request, payload.tenantId, payload.correlationId)
+    with metrics.risk_analytics_duration_seconds.labels(operation="stress_test").time():
+        result = analytics.stress_test(payload, tenant_id, correlation_id)
+    metrics.risk_stress_tests_total.labels(status="success").inc()
+    for recommendation in result.recommendations:
+        metrics.risk_recommendations_generated_total.labels(severity=recommendation.severity).inc()
+    producer.publish_stress_test_completed(risk_analytics_event("risk.stress_test.completed", result))
+    return result
+
+
+@router.post("/api/v1/risk/scenarios/run", response_model=StressTestResult)
+def run_scenarios(
+    payload: ScenarioRunRequest,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+    producer: KafkaProducer = Depends(get_kafka_producer),
+):
+    del user
+    scenarios = analytics.scenarios_by_name(payload.scenarioNames)
+    if len(scenarios) != len(payload.scenarioNames):
+        known = {scenario.name for scenario in scenarios}
+        unknown = [name for name in payload.scenarioNames if name not in known]
+        raise HTTPException(status_code=400, detail={"message": "Unknown scenario name.", "unknownScenarios": unknown})
+    tenant_id, correlation_id = tenant_and_correlation(request, payload.tenantId, payload.correlationId)
+    stress_payload = StressTestRequest(portfolioId=payload.portfolioId, positions=payload.positions, scenarios=scenarios, tenantId=tenant_id, correlationId=correlation_id)
+    with metrics.risk_analytics_duration_seconds.labels(operation="scenario_run").time():
+        result = analytics.stress_test(stress_payload, tenant_id, correlation_id)
+    for scenario in result.scenarioResults:
+        metrics.risk_scenarios_run_total.labels(scenario=scenario.scenarioName, status="success").inc()
+    for recommendation in result.recommendations:
+        metrics.risk_recommendations_generated_total.labels(severity=recommendation.severity).inc()
+    producer.publish_scenario_completed(risk_analytics_event("risk.scenario.completed", result))
+    return result
+
+
+@router.get("/api/v1/risk/portfolio/{portfolio_id}/concentration", response_model=ConcentrationRiskResult)
+def concentration_placeholder(
+    portfolio_id: str,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+    producer: KafkaProducer = Depends(get_kafka_producer),
+):
+    del user
+    tenant_id, correlation_id = tenant_and_correlation(request)
+    payload = ConcentrationRiskRequest(portfolioId=portfolio_id, positions=demo_positions(), tenantId=tenant_id, correlationId=correlation_id)
+    return concentration(payload, request, analytics=analytics, producer=producer)
+
+
+@router.post("/api/v1/risk/portfolio/concentration", response_model=ConcentrationRiskResult)
+def concentration(
+    payload: ConcentrationRiskRequest,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+    producer: KafkaProducer = Depends(get_kafka_producer),
+):
+    del user
+    tenant_id, correlation_id = tenant_and_correlation(request, payload.tenantId, payload.correlationId)
+    with metrics.risk_analytics_duration_seconds.labels(operation="concentration").time():
+        result = analytics.concentration(payload, tenant_id, correlation_id)
+    metrics.risk_concentration_analyses_total.labels(status="success").inc()
+    for recommendation in result.recommendations:
+        metrics.risk_recommendations_generated_total.labels(severity=recommendation.severity).inc()
+    producer.publish_concentration_analyzed(risk_analytics_event("risk.concentration.analyzed", result))
+    return result
+
+
+@router.get("/api/v1/risk/portfolio/{portfolio_id}/drawdown-trend", response_model=DrawdownTrendResult)
+def drawdown_trend_placeholder(
+    portfolio_id: str,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+    producer: KafkaProducer = Depends(get_kafka_producer),
+):
+    del user
+    tenant_id, correlation_id = tenant_and_correlation(request)
+    payload = DrawdownTrendRequest(portfolioId=portfolio_id, values=demo_history(), tenantId=tenant_id, correlationId=correlation_id)
+    return drawdown_trend(payload, request, analytics=analytics, producer=producer)
+
+
+@router.post("/api/v1/risk/portfolio/drawdown-trend", response_model=DrawdownTrendResult)
+def drawdown_trend(
+    payload: DrawdownTrendRequest,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+    producer: KafkaProducer = Depends(get_kafka_producer),
+):
+    del user
+    tenant_id, correlation_id = tenant_and_correlation(request, payload.tenantId, payload.correlationId)
+    with metrics.risk_analytics_duration_seconds.labels(operation="drawdown_trend").time():
+        result = analytics.drawdown_trend(payload, tenant_id, correlation_id)
+    metrics.risk_drawdown_analyses_total.labels(status="success").inc()
+    for recommendation in result.recommendations:
+        metrics.risk_recommendations_generated_total.labels(severity=recommendation.severity).inc()
+    producer.publish_drawdown_analyzed(risk_analytics_event("risk.drawdown.analyzed", result))
+    return result
+
+
+@router.post("/api/v1/risk/volatility-shock", response_model=VolatilityShockResult)
+def volatility_shock(
+    payload: VolatilityShockRequest,
+    request: Request,
+    user: UserContext = Depends(require_read),
+    analytics: AdvancedRiskAnalyticsService = Depends(get_advanced_risk_analytics_service),
+):
+    del user
+    tenant_id, correlation_id = tenant_and_correlation(request, payload.tenantId, payload.correlationId)
+    with metrics.risk_analytics_duration_seconds.labels(operation="volatility_shock").time():
+        result = analytics.volatility_shock(payload, tenant_id, correlation_id)
+    for recommendation in result.recommendations:
+        metrics.risk_recommendations_generated_total.labels(severity=recommendation.severity).inc()
+    return result
+
+
 def calculate_score(repository: RiskRepository, user_id: str, volatility_service: VolatilityService, drawdown_service: DrawdownService, score_service: RiskScoreService):
     portfolio = repository.get_portfolio(user_id)
     holdings = repository.get_holdings(user_id)
@@ -158,3 +315,52 @@ def to_recommendation_response(item) -> RecommendationResponse:
 
 def to_anomaly_response(item) -> AnomalyResponse:
     return AnomalyResponse(id=item.id, symbol=item.symbol, type=item.anomaly_type, severity=item.severity, value=item.value, zScore=item.z_score, eventTime=item.event_time, createdAt=item.created_at)
+
+
+def tenant_and_correlation(request: Request, tenant_id: str | None = None, correlation_id: str | None = None) -> tuple[str, str]:
+    resolved_tenant = tenant_id or request.headers.get("x-tenant-id") or DEFAULT_TENANT_ID
+    resolved_correlation = correlation_id or getattr(request.state, "correlation_id", None) or request.headers.get("x-correlation-id") or ""
+    return resolved_tenant, resolved_correlation
+
+
+def risk_analytics_event(event_type: str, result) -> dict:
+    payload = {
+        "eventType": event_type,
+        "eventVersion": "1.0",
+        "tenantId": result.tenantId,
+        "correlationId": result.correlationId,
+        "portfolioId": result.portfolioId,
+        "riskLevel": result.riskLevel if hasattr(result, "riskLevel") else worst_risk_level(result),
+        "worstScenario": getattr(result, "worstScenario", None),
+        "pnlImpactPercent": getattr(result, "pnlImpactPercent", 0.0),
+        "generatedAt": result.generatedAt,
+    }
+    if hasattr(result, "concentrationScore"):
+        payload["concentrationScore"] = result.concentrationScore
+    if hasattr(result, "maxDrawdownPercent"):
+        payload["maxDrawdownPercent"] = result.maxDrawdownPercent
+    return payload
+
+
+def worst_risk_level(result: StressTestResult) -> str:
+    order = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
+    worst = max(result.scenarioResults, key=lambda item: order[item.riskLevel], default=None)
+    return worst.riskLevel if worst else "LOW"
+
+
+def demo_positions():
+    return [
+        {"symbol": "AAPL", "quantity": 10, "averagePrice": 150, "currentPrice": 180, "sector": "Technology", "assetClass": "EQUITY"},
+        {"symbol": "MSFT", "quantity": 8, "averagePrice": 250, "currentPrice": 300, "sector": "Technology", "assetClass": "EQUITY"},
+        {"symbol": "JPM", "quantity": 5, "averagePrice": 140, "currentPrice": 150, "sector": "Financials", "assetClass": "EQUITY"},
+    ]
+
+
+def demo_history():
+    return [
+        HistoricalValue(value=10000),
+        HistoricalValue(value=11200),
+        HistoricalValue(value=9800),
+        HistoricalValue(value=9100),
+        HistoricalValue(value=10400),
+    ]

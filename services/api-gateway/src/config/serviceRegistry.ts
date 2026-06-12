@@ -45,7 +45,11 @@ export function serviceRegistry(): ServiceRegistryEntry[] {
       'risk.score.updated',
       'risk.breached',
       'risk.anomaly.detected',
-      'risk.recommendation.created'
+      'risk.recommendation.created',
+      'risk.stress_test.completed',
+      'risk.scenario.completed',
+      'risk.concentration.analyzed',
+      'risk.drawdown.analyzed'
     ], []),
     service('surveillance-service', 'go', 'surveillance', process.env.SURVEILLANCE_SERVICE_URL || 'http://surveillance-service:8090', true, false, [
       'surveillance.alert.created',
@@ -86,6 +90,10 @@ export const topicCatalog: TopicCatalogEntry[] = [
   topic('strategy.backtest.completed', 'strategy-service', [], 'schemas/events/strategy/strategy.backtest.completed.v1.json', 'Backtest completion event.'),
   topic('risk.score.updated', 'risk-engine-service', ['surveillance-service', 'audit-service'], 'schemas/events/risk/risk.score.updated.v1.json', 'Risk score update event.'),
   topic('risk.breached', 'risk-engine-service', ['audit-service'], 'schemas/events/risk/risk.breached.v1.json', 'Risk threshold breach event.'),
+  topic('risk.stress_test.completed', 'risk-engine-service', ['future audit/compliance integrations'], 'schemas/events/risk/risk.stress_test.completed.v1.json', 'Stress test completed event.'),
+  topic('risk.scenario.completed', 'risk-engine-service', ['future audit/compliance integrations'], 'schemas/events/risk/risk.scenario.completed.v1.json', 'Scenario analysis completed event.'),
+  topic('risk.concentration.analyzed', 'risk-engine-service', ['future audit/compliance integrations'], 'schemas/events/risk/risk.concentration.analyzed.v1.json', 'Concentration risk analysis completed event.'),
+  topic('risk.drawdown.analyzed', 'risk-engine-service', ['future audit/compliance integrations'], 'schemas/events/risk/risk.drawdown.analyzed.v1.json', 'Drawdown trend analysis completed event.'),
   topic('surveillance.alert.created', 'surveillance-service', ['notification-service', 'audit-service', 'api-gateway'], 'schemas/events/surveillance/surveillance.alert.created.v1.json', 'New surveillance alert event.'),
   topic('surveillance.rule_config.updated', 'surveillance-service', ['future audit/compliance integrations'], 'schemas/events/surveillance/surveillance.rule_config.updated.v1.json', 'Surveillance rule config changed event.'),
   topic('notification.created', 'notification-service', ['api-gateway'], 'schemas/events/notifications/notification.created.v1.json', 'Notification created event.'),

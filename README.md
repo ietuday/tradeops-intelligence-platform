@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.8.0` Surveillance Rule Simulation & Dry-Run Engine.
+Current release: `v2.8.0` Advanced Risk Analytics & Stress Testing.
 
 ## Architecture Summary
 
@@ -24,7 +24,7 @@ v2.6.0 adds tenant-aware, database-backed surveillance rule configuration APIs f
 
 v2.7.0 adds backend-only admin console APIs under `/api/admin` for health summaries, service/topic catalogs, DLQ guidance, audit/alert/notification/rule summaries, and safe platform config masking. See [admin console APIs](docs/admin/admin-console-apis.md).
 
-v2.8.0 adds dry-run surveillance rule simulation so proposed threshold changes can be evaluated against demo/historical-style events before changing live configs or creating alerts. See [surveillance rule simulation](docs/surveillance/rule-simulation.md).
+v2.8.0 adds advanced risk analytics and stress testing APIs for scenario analysis, concentration risk, drawdown trends, volatility shocks, and explainable recommendations. See [advanced risk analytics](docs/risk/advanced-risk-analytics.md).
 
 ## Tech Stack
 
@@ -53,7 +53,7 @@ v2.8.0 adds dry-run surveillance rule simulation so proposed threshold changes c
 | Order Service | Simulated order lifecycle, idempotency, order events | `8086` |
 | Portfolio Service | Consumes fills, updates holdings/cash, publishes snapshots | `8087` |
 | Strategy Service | Strategy CRUD, backtesting, generated signals | `8088` |
-| Risk Engine Service | Risk score, VaR, volatility, drawdown, recommendations | `8089` |
+| Risk Engine Service | Risk score, VaR, volatility, drawdown, stress testing, concentration analysis, recommendations | `8089` |
 | Surveillance Service | Rule-based alerts from order/market/risk events | `8090` |
 | Notification Service | Alert notifications, preferences, webhook/mock email delivery | `8091` |
 | Audit Service | Searchable audit logs, summaries, exports, compliance event trail | `8092` |
@@ -64,6 +64,7 @@ v2.8.0 adds dry-run surveillance rule simulation so proposed threshold changes c
 - Go microservices for transactional domains, Python services for analytics-oriented domains, and a Node.js API Gateway.
 - Real-time WebSocket streams for market ticks, order events, alerts, notifications, and audit events.
 - Backend admin operations APIs for platform health, service/topic visibility, DLQ guidance, activity summaries, and safe runtime config views.
+- Advanced risk analytics APIs for stress testing, scenario analysis, concentration risk, drawdown trends, and volatility shocks.
 - Tenant-aware APIs, events, audit logs, and WebSocket streams using `default-tenant` for local demos.
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
@@ -462,7 +463,7 @@ No screenshots are committed by default. Use the [portfolio screenshots guide](d
 
 ## Release Notes
 
-- [v2.8.0 Surveillance Rule Simulation & Dry-Run Engine](docs/release-notes/v2.8.0.md)
+- [v2.8.0 Advanced Risk Analytics & Stress Testing](docs/release-notes/v2.8.0.md)
 - [v2.6.0 Rule Configuration Management](docs/release-notes/v2.6.0.md)
 - [v2.1.0 Real-Time WebSocket Streaming Layer](docs/release-notes/v2.1.0.md)
 - [v2.0.0 Final Portfolio Release](docs/release-notes/v2.0.0.md)

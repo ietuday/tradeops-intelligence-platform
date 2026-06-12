@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/risk/risk.drawdown.analyzed.v1.json",
+  "title": "risk.drawdown.analyzed v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["eventType", "portfolioId", "riskLevel", "generatedAt"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["risk.drawdown.analyzed"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "traceparent": { "type": "string" },
+    "portfolioId": { "type": "string" },
+    "riskLevel": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    "maxDrawdownPercent": { "type": "number" },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  }
+}

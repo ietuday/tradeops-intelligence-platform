@@ -3,6 +3,7 @@ from functools import lru_cache
 from app.config import get_settings
 from app.kafka.producer import KafkaProducer
 from app.services.anomaly_service import AnomalyService
+from app.services.advanced_risk_analytics_service import AdvancedRiskAnalyticsService
 from app.services.drawdown_service import DrawdownService
 from app.services.recommendation_service import RecommendationService
 from app.services.risk_score_service import RiskScoreService
@@ -37,3 +38,7 @@ def get_risk_score_service() -> RiskScoreService:
 
 def get_recommendation_service() -> RecommendationService:
     return RecommendationService()
+
+
+def get_advanced_risk_analytics_service() -> AdvancedRiskAnalyticsService:
+    return AdvancedRiskAnalyticsService()

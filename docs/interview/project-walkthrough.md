@@ -2,7 +2,7 @@
 
 ## 60-Second Explanation
 
-TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, admin operations APIs, market data ingestion, order management, portfolio updates, strategy and risk analytics, configurable surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, event schema governance, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
+TradeOps Intelligence Platform is a local microservices trading intelligence system. It has an API Gateway, identity/auth, API security hardening, admin operations APIs, market data ingestion, order management, portfolio updates, strategy and advanced risk analytics, configurable surveillance alerting, notification delivery, audit trails, real-time WebSocket streaming, correlation ID tracing, Prometheus metrics, Grafana dashboards, data lifecycle scripts, optional Helm deployment manifests, event schema governance, and Redpanda/Kafka event flows. The project shows how trading workflows move from synchronous APIs into event-driven processing: orders publish events, portfolio and surveillance consume them, risk analytics can run stress/scenario/concentration/drawdown checks, surveillance creates alerts, notifications are created from alert lifecycle events, audit-service records a compliance-style event trail, and the gateway can stream selected topics to WebSocket clients.
 
 ## 2-Minute Explanation
 
@@ -47,6 +47,10 @@ The order service accepts an `Idempotency-Key` header during order creation. Rep
 Each service exposes `/health`, `/ready`, and `/metrics`. Prometheus scrapes all backend services through the Docker Compose network and loads local alert rules for availability, gateway errors/latency, event processing failures, DLQ events, notification delivery failures, and audit ingestion failures. Grafana reads Prometheus and includes SLO-oriented dashboards. The gateway propagates correlation IDs so logs, events, DLQ records, and audit logs can be connected across services. OpenTelemetry adds Jaeger traces for span-level timing across the primary order-to-alert-to-notification-to-audit flow.
 
 The admin operations APIs add an operator-friendly aggregation layer without adding a new service or UI. They are read-only by default, RBAC-protected, tenant-aware, and degrade gracefully if one downstream summary endpoint is unavailable.
+
+## How Advanced Risk Analytics Works
+
+The risk engine includes deterministic stress testing, named scenario analysis, concentration analysis, drawdown trend analysis, and volatility shock simulation. Callers can supply positions and historical values directly, which keeps demos self-contained without requiring a market data warehouse. Results include tenant/correlation IDs, risk levels, and explainable recommendations, and completion events are published through the existing risk Kafka producer.
 
 ## How Real-Time Streaming Works
 
@@ -97,15 +101,16 @@ The audit service consumes important platform events, maps them to normalized ac
 5. Run `TOKEN=<jwt> ./scripts/demo-rule-simulation.sh` to show a dry-run threshold comparison with no live alert side effects.
 6. Run `./scripts/demo-notifications.sh` to publish a surveillance alert event, list notifications, and mark one as read.
 7. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
-8. Run `TOKEN=<jwt> ./scripts/demo-admin-ops.sh` to show backend admin operations APIs.
-9. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
-10. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
-11. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
-12. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
-13. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-14. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
-15. Run `./scripts/security-check.sh` to show safe repository security validation.
-16. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+8. Run `TOKEN=<jwt> ./scripts/demo-risk-analytics.sh` to show advanced risk analytics examples.
+9. Run `TOKEN=<jwt> ./scripts/demo-admin-ops.sh` to show backend admin operations APIs.
+10. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
+11. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
+12. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
+13. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
+14. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
+15. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
+16. Run `./scripts/security-check.sh` to show safe repository security validation.
+17. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 
@@ -121,6 +126,7 @@ The audit service consumes important platform events, maps them to normalized ac
 - Deployment readiness is represented with a simple Helm chart while keeping Compose as the primary local runtime.
 - Event consumers are defensive so bad demo payloads do not crash the process.
 - Rule simulation shows how to test risk-control changes safely before mutating production behavior.
+- Advanced risk analytics shows stress/scenario/concentration/drawdown workflows with deterministic formulas and event contracts.
 - Admin operations APIs show how operators get health, catalog, DLQ, activity, and safe config visibility through the existing gateway boundary.
 - The gateway keeps external routing stable while services retain internal base paths.
 - Audit logging demonstrates compliance-style traceability without coupling business services to synchronous audit writes.

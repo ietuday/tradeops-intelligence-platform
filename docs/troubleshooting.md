@@ -141,6 +141,20 @@ docker compose -f infrastructure/docker/docker-compose.yml logs surveillance-ser
 
 Fix: Confirm Redpanda and consumers are healthy, inspect duplicate-skip metrics, and replay one known-good payload at a time.
 
+## Risk Analytics Returns Zero Impact
+
+Symptom: `/api/risk/stress-test`, `/api/risk/portfolio/concentration`, or `/api/risk/portfolio/drawdown-trend` returns zero baseline, zero PnL, or empty observations.
+
+Possible cause: The request omitted positions or historical values, or all supplied quantities/current prices are zero.
+
+Useful command:
+
+```bash
+TOKEN=<jwt> ./scripts/demo-risk-analytics.sh --run
+```
+
+Fix: Compare your request with `docs/examples/risk/`. For direct calculations, supply `positions` with non-negative `quantity` and `currentPrice`, or `values` for drawdown trend analysis.
+
 ## Surveillance Rule Does Not Trigger
 
 Symptom: A known-good event does not create the expected surveillance alert.

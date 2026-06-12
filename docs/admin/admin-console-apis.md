@@ -28,6 +28,8 @@ Tenant scope comes from the JWT `tenantId`. A `trading_admin` can pass `tenantId
 | `GET` | `/api/admin/ops-checklist` | Links to operational runbooks and checklists. |
 | `POST` | `/api/admin/cache/refresh` | Explicit safe admin action; no-op unless refresh hooks are configured. |
 
+Risk analytics APIs remain under `/api/risk`; operators can use the admin health and service registry endpoints to confirm `risk-engine-service` availability before running stress tests.
+
 ## Example
 
 ```bash

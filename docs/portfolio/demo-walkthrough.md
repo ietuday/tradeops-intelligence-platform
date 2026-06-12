@@ -27,6 +27,7 @@ Use this to tell the full story: gateway health, auth/token requirements, sample
 | Demo | Command | Story |
 | --- | --- | --- |
 | Admin operations | `TOKEN=<jwt> ./scripts/demo-admin-ops.sh` | Shows backend admin APIs for health, services, topics, DLQs, summaries, and safe platform config. |
+| Risk analytics | `TOKEN=<jwt> ./scripts/demo-risk-analytics.sh` | Shows stress testing, concentration risk, drawdown trend, and volatility shock API examples. |
 | Surveillance | `./scripts/demo-surveillance.sh` | Large order event creates alert and moves through lifecycle. |
 | Rule configuration | `TOKEN=<jwt> ./scripts/demo-rule-config.sh` | Shows tenant-aware surveillance rule thresholds and enable/disable APIs. |
 | Rule simulation | `TOKEN=<jwt> ./scripts/demo-rule-simulation.sh` | Compares proposed surveillance thresholds in dry-run mode without creating live alerts. |
@@ -53,6 +54,7 @@ Explain that Compose is the full local demo runtime, while Helm shows applicatio
 - Docker Compose services running.
 - API Gateway `/health`.
 - API Gateway `/api/admin/health-summary`.
+- Risk analytics stress test output.
 - Redpanda topics.
 - Prometheus targets.
 - Grafana platform and event dashboards.

@@ -31,6 +31,10 @@ v2.5.0 adds repository-local JSON Schemas for core Kafka/Redpanda topics, DLQ pa
 | `risk.score.updated` | `risk-engine-service` | `surveillance-service`, `audit-service` | Risk score update event. |
 | `risk.breached` | `risk-engine-service` | `audit-service` | Risk threshold breach event. |
 | `risk.anomaly.detected` | `risk-engine-service` | None currently | Risk anomaly event. |
+| `risk.stress_test.completed` | `risk-engine-service` | Future audit/compliance integrations | Stress test completed event. |
+| `risk.scenario.completed` | `risk-engine-service` | Future audit/compliance integrations | Named scenario analysis completed event. |
+| `risk.concentration.analyzed` | `risk-engine-service` | Future audit/compliance integrations | Concentration risk analysis completed event. |
+| `risk.drawdown.analyzed` | `risk-engine-service` | Future audit/compliance integrations | Drawdown trend analysis completed event. |
 | `surveillance.alert.created` | `surveillance-service` | `notification-service`, `audit-service` | New surveillance alert event. |
 | `surveillance.alert.acknowledged` | `surveillance-service` | `notification-service`, `audit-service` | Alert acknowledged event. |
 | `surveillance.alert.resolved` | `surveillance-service` | `notification-service`, `audit-service` | Alert resolved event. |
@@ -83,6 +87,7 @@ sequenceDiagram
 - Rule simulation runs through HTTP APIs and publishes `surveillance.rule_simulation.*` lifecycle events only; it does not publish live `surveillance.alert.*` events.
 - Notification payloads live under `docs/examples/notifications/`.
 - Audit payloads live under `docs/examples/audit/`.
+- Risk analytics payloads live under `docs/examples/risk/`.
 - WebSocket stream message examples live under `docs/examples/websocket/`.
 - Versioned event schemas live under `schemas/events/`.
 - Sample-to-schema mappings live in `schemas/events/sample-mapping.json`.

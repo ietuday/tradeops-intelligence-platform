@@ -12,6 +12,10 @@ class Settings:
     breached_topic: str
     anomaly_topic: str
     recommendation_topic: str
+    stress_test_completed_topic: str
+    scenario_completed_topic: str
+    concentration_analyzed_topic: str
+    drawdown_analyzed_topic: str
 
 
 def get_settings() -> Settings:
@@ -27,4 +31,8 @@ def get_settings() -> Settings:
         breached_topic=os.getenv("RISK_BREACHED_TOPIC", "risk.breached"),
         anomaly_topic=os.getenv("RISK_ANOMALY_TOPIC", "risk.anomaly.detected"),
         recommendation_topic=os.getenv("RISK_RECOMMENDATION_TOPIC", "risk.recommendation.created"),
+        stress_test_completed_topic=os.getenv("RISK_STRESS_TEST_COMPLETED_TOPIC", "risk.stress_test.completed"),
+        scenario_completed_topic=os.getenv("RISK_SCENARIO_COMPLETED_TOPIC", "risk.scenario.completed"),
+        concentration_analyzed_topic=os.getenv("RISK_CONCENTRATION_ANALYZED_TOPIC", "risk.concentration.analyzed"),
+        drawdown_analyzed_topic=os.getenv("RISK_DRAWDOWN_ANALYZED_TOPIC", "risk.drawdown.analyzed"),
     )
