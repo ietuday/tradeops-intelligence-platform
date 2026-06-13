@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS surveillance_alerts (
     dismissed_at TIMESTAMP WITH TIME ZONE NULL
 );
 
+ALTER TABLE surveillance_alerts ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+UPDATE surveillance_alerts SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_surveillance_alerts_status ON surveillance_alerts (status);
 CREATE INDEX IF NOT EXISTS idx_surveillance_alerts_tenant_status ON surveillance_alerts (tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_surveillance_alerts_tenant_created_at ON surveillance_alerts (tenant_id, created_at DESC);
@@ -37,8 +40,6 @@ CREATE TABLE IF NOT EXISTS surveillance_rule_executions (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE surveillance_alerts ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
 ALTER TABLE surveillance_rule_executions ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
-UPDATE surveillance_alerts SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
 UPDATE surveillance_rule_executions SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
 CREATE INDEX IF NOT EXISTS idx_surveillance_rule_executions_tenant_created_at ON surveillance_rule_executions (tenant_id, created_at DESC);

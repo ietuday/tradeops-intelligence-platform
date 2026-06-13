@@ -1,5 +1,25 @@
+FROM node:20-alpine AS build
+
+WORKDIR /app
+ARG VITE_API_BASE_URL=http://localhost:8080
+ARG VITE_WS_BASE_URL=ws://localhost:8080
+ARG VITE_GRAFANA_URL=http://localhost:3000
+ARG VITE_JAEGER_URL=http://localhost:16686
+ARG VITE_PROMETHEUS_URL=http://localhost:9090
+ARG VITE_DEFAULT_TENANT_ID=default-tenant
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_WS_BASE_URL=$VITE_WS_BASE_URL
+ENV VITE_GRAFANA_URL=$VITE_GRAFANA_URL
+ENV VITE_JAEGER_URL=$VITE_JAEGER_URL
+ENV VITE_PROMETHEUS_URL=$VITE_PROMETHEUS_URL
+ENV VITE_DEFAULT_TENANT_ID=$VITE_DEFAULT_TENANT_ID
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
 FROM nginxinc/nginx-unprivileged:1.25.4-alpine
 
-COPY index.html /usr/share/nginx/html/index.html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 8080

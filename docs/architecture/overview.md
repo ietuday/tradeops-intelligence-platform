@@ -14,6 +14,8 @@ v2.7.0 adds API Gateway admin operations APIs under `/api/admin` for service hea
 
 v2.8.0 adds advanced risk analytics: stress testing, named scenario analysis, concentration risk, drawdown trends, volatility shocks, and explainable recommendations.
 
+v2.9.0 upgrades the React dashboard placeholder into a lightweight real-time dashboard for admin summaries, WebSocket events, risk analytics demos, and observability links.
+
 ## Service List
 
 | Service | Purpose |

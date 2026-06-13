@@ -41,14 +41,26 @@ func (m *Metrics) Middleware(next http.Handler) http.Handler {
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
 		next.ServeHTTP(recorder, r)
-		route := r.URL.Path
-		if routePattern := chi.RouteContext(r.Context()).RoutePattern(); routePattern != "" {
-			route = routePattern
-		}
+		route := routePattern(r)
 		labels := prometheus.Labels{"method": r.Method, "route": route, "status_code": strconv.Itoa(recorder.status)}
 		m.RequestsTotal.With(labels).Inc()
 		m.RequestDuration.With(labels).Observe(time.Since(start).Seconds())
 	})
+}
+
+func routePattern(r *http.Request) string {
+	if r == nil {
+		return "unknown"
+	}
+	if rctx := chi.RouteContext(r.Context()); rctx != nil {
+		if pattern := rctx.RoutePattern(); pattern != "" {
+			return pattern
+		}
+	}
+	if r.URL != nil && r.URL.Path != "" {
+		return r.URL.Path
+	}
+	return "unknown"
 }
 
 type statusRecorder struct {

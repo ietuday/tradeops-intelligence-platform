@@ -28,6 +28,7 @@ Use this to tell the full story: gateway health, auth/token requirements, sample
 | --- | --- | --- |
 | Admin operations | `TOKEN=<jwt> ./scripts/demo-admin-ops.sh` | Shows backend admin APIs for health, services, topics, DLQs, summaries, and safe platform config. |
 | Risk analytics | `TOKEN=<jwt> ./scripts/demo-risk-analytics.sh` | Shows stress testing, concentration risk, drawdown trend, and volatility shock API examples. |
+| Dashboard | `./scripts/demo-dashboard.sh` | Shows how to run the React dashboard for admin, realtime, risk, and observability demos. |
 | Surveillance | `./scripts/demo-surveillance.sh` | Large order event creates alert and moves through lifecycle. |
 | Rule configuration | `TOKEN=<jwt> ./scripts/demo-rule-config.sh` | Shows tenant-aware surveillance rule thresholds and enable/disable APIs. |
 | Rule simulation | `TOKEN=<jwt> ./scripts/demo-rule-simulation.sh` | Compares proposed surveillance thresholds in dry-run mode without creating live alerts. |

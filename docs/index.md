@@ -20,6 +20,11 @@
 - [Admin console APIs](admin/admin-console-apis.md)
 - [Platform operations](admin/platform-operations.md)
 
+## Frontend
+
+- [Real-time dashboard](frontend/realtime-dashboard.md)
+- [Dashboard demo guide](frontend/dashboard-demo-guide.md)
+
 ## Risk
 
 - [Advanced risk analytics](risk/advanced-risk-analytics.md)
@@ -120,6 +125,7 @@
 
 ## Release Notes
 
+- [v2.9.0 Real-Time Dashboard Frontend Enhancement](release-notes/v2.9.0.md)
 - [v2.8.0 Advanced Risk Analytics & Stress Testing](release-notes/v2.8.0.md)
 - [v2.7.0 Admin Console APIs & Platform Operations](release-notes/v2.7.0.md)
 - [v2.6.0 Rule Configuration Management](release-notes/v2.6.0.md)

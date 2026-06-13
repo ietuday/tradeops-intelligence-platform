@@ -129,6 +129,8 @@ TOKEN=<jwt> ./scripts/demo-risk-analytics.sh --run
 
 Example payloads live under `docs/examples/risk/`.
 
+The React dashboard Risk Analytics page runs the same sample stress, concentration, drawdown, and volatility shock flows through the API Gateway.
+
 ## Limitations
 
 - Calculations use supplied/demo positions rather than live portfolio joins.

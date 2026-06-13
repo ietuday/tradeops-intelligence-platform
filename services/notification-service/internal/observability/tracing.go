@@ -52,10 +52,7 @@ func SetupTracing(ctx context.Context, serviceName string) (func(context.Context
 
 func HTTPHandler(serviceName string, handler http.Handler) http.Handler {
 	return otelhttp.NewHandler(handler, serviceName+".http", otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
-		if route := chi.RouteContext(r.Context()).RoutePattern(); route != "" {
-			return r.Method + " " + route
-		}
-		return r.Method + " " + r.URL.Path
+		return requestMethod(r) + " " + routePattern(r)
 	}))
 }
 
@@ -73,13 +70,33 @@ func TraceAttributes(serviceName string) func(http.Handler) http.Handler {
 				if userID := jwtSubject(r.Header.Get("Authorization")); userID != "" {
 					span.SetAttributes(attribute.String("user.id", userID))
 				}
-				if route := chi.RouteContext(r.Context()).RoutePattern(); route != "" {
-					span.SetAttributes(attribute.String("http.route", route))
-				}
+				span.SetAttributes(attribute.String("http.route", routePattern(r)))
 			}()
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func routePattern(r *http.Request) string {
+	if r == nil {
+		return "unknown"
+	}
+	if rctx := chi.RouteContext(r.Context()); rctx != nil {
+		if pattern := rctx.RoutePattern(); pattern != "" {
+			return pattern
+		}
+	}
+	if r.URL != nil && r.URL.Path != "" {
+		return r.URL.Path
+	}
+	return "unknown"
+}
+
+func requestMethod(r *http.Request) string {
+	if r == nil || r.Method == "" {
+		return "UNKNOWN"
+	}
+	return r.Method
 }
 
 func TraceParent(ctx context.Context) string {

@@ -33,6 +33,21 @@ docker compose -f infrastructure/docker/docker-compose.yml logs api-gateway orde
 
 Fix: Check the failing service listed in the admin response, verify its Compose service is healthy, and increase `ADMIN_HEALTH_TIMEOUT_MS` only if the service is healthy but slow in the local environment.
 
+## Dashboard Cannot Load Protected Data
+
+Symptom: The React dashboard shows `401`, `403`, or empty admin/risk panels.
+
+Possible cause: Missing JWT, a token without admin/risk roles, wrong tenant, or API Gateway not running.
+
+Useful command:
+
+```bash
+./scripts/demo-dashboard.sh
+curl http://localhost:8080/health
+```
+
+Fix: Paste a valid JWT into the dashboard Access panel, confirm `VITE_API_BASE_URL` points to the API Gateway, and use a role such as `trading_admin` or `risk_manager` for admin/risk views.
+
 ## PostgreSQL Not Ready
 
 Symptom: Services fail readiness checks or logs mention database connection failures.

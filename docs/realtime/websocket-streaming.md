@@ -116,6 +116,8 @@ TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts --publish-sample
 
 If `websocat` is unavailable, the script prints manual connection instructions.
 
+The React dashboard Realtime page provides a browser-based stream selector and event preview. See [real-time dashboard](../frontend/realtime-dashboard.md).
+
 ## Known Limitations
 
 - The WebSocket consumer runs inside the API Gateway for local/demo simplicity.

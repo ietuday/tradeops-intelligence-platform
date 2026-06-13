@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.8.0` Advanced Risk Analytics & Stress Testing.
+Current release: `v2.9.0` Real-Time Dashboard Frontend Enhancement.
 
 ## Architecture Summary
 
@@ -25,6 +25,8 @@ v2.6.0 adds tenant-aware, database-backed surveillance rule configuration APIs f
 v2.7.0 adds backend-only admin console APIs under `/api/admin` for health summaries, service/topic catalogs, DLQ guidance, audit/alert/notification/rule summaries, and safe platform config masking. See [admin console APIs](docs/admin/admin-console-apis.md).
 
 v2.8.0 adds advanced risk analytics and stress testing APIs for scenario analysis, concentration risk, drawdown trends, volatility shocks, and explainable recommendations. See [advanced risk analytics](docs/risk/advanced-risk-analytics.md).
+
+v2.9.0 adds a lightweight React real-time dashboard for admin summaries, WebSocket events, risk analytics demos, and observability links. See [real-time dashboard](docs/frontend/realtime-dashboard.md).
 
 ## Tech Stack
 
@@ -65,6 +67,7 @@ v2.8.0 adds advanced risk analytics and stress testing APIs for scenario analysi
 - Real-time WebSocket streams for market ticks, order events, alerts, notifications, and audit events.
 - Backend admin operations APIs for platform health, service/topic visibility, DLQ guidance, activity summaries, and safe runtime config views.
 - Advanced risk analytics APIs for stress testing, scenario analysis, concentration risk, drawdown trends, and volatility shocks.
+- Lightweight React dashboard for demoing admin operations, real-time streams, risk analytics, and observability links.
 - Tenant-aware APIs, events, audit logs, and WebSocket streams using `default-tenant` for local demos.
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
@@ -151,6 +154,8 @@ Run focused demos:
 ./scripts/demo-correlation-tracing.sh
 ./scripts/demo-otel-tracing.sh
 ./scripts/demo-db-migrations.sh
+./scripts/demo-risk-analytics.sh
+./scripts/demo-dashboard.sh
 ```
 
 Validate scripts without running the platform:
@@ -174,6 +179,8 @@ bash -n scripts/db-migrate.sh
 bash -n scripts/db-seed.sh
 bash -n scripts/demo-db-migrations.sh
 bash -n scripts/demo-websocket-streams.sh
+bash -n scripts/demo-risk-analytics.sh
+bash -n scripts/demo-dashboard.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh
@@ -192,7 +199,7 @@ bash -n scripts/validate-helm.sh
 | Grafana | http://localhost:3000 |
 | Jaeger | http://localhost:16686 |
 | Angular Shell Placeholder | http://localhost:4200 |
-| React Dashboard Placeholder | http://localhost:4300 |
+| React Real-Time Dashboard | http://localhost:4300 |
 
 ## Observability & SLOs
 

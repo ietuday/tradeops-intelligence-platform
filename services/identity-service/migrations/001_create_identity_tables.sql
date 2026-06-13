@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id TEXT;
+UPDATE users SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
@@ -68,6 +71,3 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO tenants (id, name, slug, status)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Default Tenant', 'default', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id TEXT;
-UPDATE users SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';

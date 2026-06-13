@@ -89,3 +89,5 @@ Admin routes attach OpenTelemetry span attributes for `admin.endpoint`, `tenant.
 TOKEN=<jwt> ./scripts/demo-admin-ops.sh
 TENANT_ID=default-tenant TOKEN=<jwt> ./scripts/demo-admin-ops.sh
 ```
+
+The React dashboard Admin Ops page visualizes these read-only endpoints for local demos. See `docs/frontend/realtime-dashboard.md`.

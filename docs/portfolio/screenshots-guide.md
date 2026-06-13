@@ -12,6 +12,9 @@ Do not commit secrets, tokens, or private URLs in screenshots. Redact JWTs and l
 | Prometheus targets | Services are scraped and observable. |
 | Grafana platform dashboard | Service health, request rate, latency, and errors. |
 | Grafana event processing dashboard | Retry, failure, duplicate, and DLQ visibility. |
+| React dashboard home | Admin health, alerts, notifications, DLQ, and rules summary in one UI. |
+| React realtime page | WebSocket connection status and event payload preview. |
+| React risk analytics page | Stress test results and recommendations. |
 | Surveillance alerts API | Rule-based alert output. |
 | Notifications API | Alert-to-notification workflow. |
 | Audit logs API | Compliance-style event trail. |

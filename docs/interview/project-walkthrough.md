@@ -52,6 +52,10 @@ The admin operations APIs add an operator-friendly aggregation layer without add
 
 The risk engine includes deterministic stress testing, named scenario analysis, concentration analysis, drawdown trend analysis, and volatility shock simulation. Callers can supply positions and historical values directly, which keeps demos self-contained without requiring a market data warehouse. Results include tenant/correlation IDs, risk levels, and explainable recommendations, and completion events are published through the existing risk Kafka producer.
 
+## How The Dashboard Works
+
+The React dashboard is a lightweight demo surface over existing backend APIs. It has token paste handling, admin summary cards, WebSocket event streaming, risk analytics samples, and links to Grafana, Jaeger, and Prometheus. It deliberately avoids a heavy frontend architecture so the backend/platform story remains the focus.
+
 ## How Real-Time Streaming Works
 
 The API Gateway attaches a WebSocket server to the existing HTTP server. It exposes `/ws` plus domain streams for market, orders, alerts, notifications, and audit. A lightweight Kafka consumer maps selected topics to streams, normalizes messages, preserves `correlationId`, sends heartbeat messages, and records WebSocket metrics.
@@ -103,14 +107,15 @@ The audit service consumes important platform events, maps them to normalized ac
 7. Run `./scripts/demo-audit.sh` to publish a source event, list audit logs, show summary, and export.
 8. Run `TOKEN=<jwt> ./scripts/demo-risk-analytics.sh` to show advanced risk analytics examples.
 9. Run `TOKEN=<jwt> ./scripts/demo-admin-ops.sh` to show backend admin operations APIs.
-10. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
-11. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
-12. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
-13. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
-14. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
-15. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
-16. Run `./scripts/security-check.sh` to show safe repository security validation.
-17. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
+10. Run `./scripts/demo-dashboard.sh` and open the React dashboard for the visual demo.
+11. Run `./scripts/demo-e2e-tradeops.sh` for a guided end-to-end platform story.
+12. Run `./scripts/demo-observability.sh` to walk through dashboards, alert rules, and safe Prometheus queries.
+13. Run `./scripts/db-backup.sh` and `./scripts/archive-old-data.sh` to show safe data lifecycle operations.
+14. Run `./scripts/validate-helm.sh` to show Kubernetes deployment-readiness validation.
+15. Run `./scripts/demo-correlation-tracing.sh` to show request/event correlation visibility.
+16. Run `TOKEN=<jwt> ./scripts/demo-websocket-streams.sh --alerts` to show live event streaming.
+17. Run `./scripts/security-check.sh` to show safe repository security validation.
+18. Open Prometheus at `http://localhost:9090` and Grafana at `http://localhost:3000`.
 
 ## Senior-Level Talking Points
 

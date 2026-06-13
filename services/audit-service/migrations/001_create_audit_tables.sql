@@ -18,6 +18,25 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS id UUID;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS event_type VARCHAR(150) NOT NULL DEFAULT 'unknown';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS service_name VARCHAR(100) NOT NULL DEFAULT 'unknown';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_user_id UUID NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_role VARCHAR(100) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(100) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS entity_id VARCHAR(150) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action VARCHAR(100) NOT NULL DEFAULT 'unknown';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS severity VARCHAR(30) NOT NULL DEFAULT 'INFO';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(150) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(100) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS source_event_key VARCHAR(255) NULL;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
+UPDATE audit_logs SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_created_at ON audit_logs(tenant_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_actor_user_id ON audit_logs(tenant_id, actor_user_id);
@@ -42,8 +61,13 @@ CREATE TABLE IF NOT EXISTS audit_export_requests (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS id UUID;
 ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
-UPDATE audit_logs SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS requested_by UUID NULL;
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS filters JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'COMPLETED';
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS file_name VARCHAR(255) NULL;
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS record_count INT NOT NULL DEFAULT 0;
+ALTER TABLE audit_export_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW();
 UPDATE audit_export_requests SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
 CREATE INDEX IF NOT EXISTS idx_audit_export_requests_tenant_created_at ON audit_export_requests(tenant_id, created_at DESC);

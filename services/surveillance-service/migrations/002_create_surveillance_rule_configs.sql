@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS surveillance_rule_configs (
     CONSTRAINT uq_surveillance_rule_configs_tenant_rule UNIQUE (tenant_id, rule_name)
 );
 
+ALTER TABLE surveillance_rule_configs ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NOT NULL DEFAULT 'default-tenant';
+UPDATE surveillance_rule_configs SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_surveillance_rule_configs_tenant_id ON surveillance_rule_configs (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_surveillance_rule_configs_rule_name ON surveillance_rule_configs (rule_name);
 CREATE INDEX IF NOT EXISTS idx_surveillance_rule_configs_enabled ON surveillance_rule_configs (enabled);

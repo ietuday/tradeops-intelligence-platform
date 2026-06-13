@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS notifications (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+UPDATE notifications SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant_user_created_at ON notifications (tenant_id, user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant_status ON notifications (tenant_id, status);
@@ -35,6 +38,9 @@ CREATE TABLE IF NOT EXISTS notification_delivery_attempts (
     attempted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE notification_delivery_attempts ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
+UPDATE notification_delivery_attempts SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_attempts_notification_id ON notification_delivery_attempts (notification_id);
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_attempts_tenant_id ON notification_delivery_attempts (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_attempts_status ON notification_delivery_attempts (status);
@@ -53,10 +59,6 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
-ALTER TABLE notification_delivery_attempts ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
 ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS tenant_id VARCHAR(100) NULL;
-UPDATE notifications SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
-UPDATE notification_delivery_attempts SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
 UPDATE notification_preferences SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
 CREATE INDEX IF NOT EXISTS idx_notification_preferences_tenant_user ON notification_preferences (tenant_id, user_id);
