@@ -1,0 +1,18 @@
+TradeOps {{ .Chart.AppVersion }} has been rendered for namespace {{ include "tradeops.namespace" . }}.
+
+Release status:
+  helm status {{ .Release.Name }} -n {{ include "tradeops.namespace" . }}
+
+Local access examples:
+  kubectl -n {{ include "tradeops.namespace" . }} port-forward svc/api-gateway 8080:8080
+  kubectl -n {{ include "tradeops.namespace" . }} port-forward svc/trading-dashboard-react 4300:8080
+
+Secrets:
+  The chart expects secret {{ include "tradeops.secretName" . }} with POSTGRES_PASSWORD, JWT_SECRET,
+  IDENTITY_JWT_SECRET, and IDENTITY_REFRESH_TOKEN_SECRET unless development inline secret creation
+  is explicitly enabled.
+
+Production reminder:
+  Local dependency mode is for demos only. Use external managed PostgreSQL, Redis, Kafka/Redpanda,
+  MQTT, and tracing backends for production deployments.
+

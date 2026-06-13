@@ -151,6 +151,13 @@ jobs:
           bash -n scripts/replay-sample-events.sh
           bash -n scripts/replay-dlq-events.sh
           bash -n scripts/validate-helm.sh
+          bash -n scripts/k8s-cluster-create.sh
+          bash -n scripts/k8s-deploy.sh
+          bash -n scripts/k8s-validate.sh
+          bash -n scripts/k8s-smoke-test.sh
+          bash -n scripts/k8s-status.sh
+          bash -n scripts/k8s-destroy-local.sh
+          bash -n scripts/demo-k8s-deployment.sh
 
       - name: Validate event schemas
         run: ./scripts/validate-event-schemas.sh
@@ -177,3 +184,16 @@ jobs:
 
       - name: Validate Helm chart
         run: ./scripts/validate-helm.sh
+
+  kubernetes-blueprint-validation:
+    name: Kubernetes blueprint validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Validate Kubernetes assets
+        run: ./scripts/k8s-validate.sh

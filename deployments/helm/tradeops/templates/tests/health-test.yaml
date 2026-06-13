@@ -1,0 +1,25 @@
+{{- if .Values.tests.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "tradeops.fullname" . }}-health-test
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image | quote }}
+      imagePullPolicy: IfNotPresent
+      command:
+        - sh
+        - -ec
+        - |
+          wget -qO- http://api-gateway:8080/health
+          wget -qO- http://trading-dashboard-react:8080/
+{{- end }}
+

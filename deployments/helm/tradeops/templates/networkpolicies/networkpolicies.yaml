@@ -1,0 +1,90 @@
+{{- if .Values.networkPolicies.enabled }}
+{{- if .Values.networkPolicies.defaultDenyIngress }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tradeops.fullname" . }}-default-deny-ingress
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+{{- end }}
+{{- if .Values.networkPolicies.defaultDenyEgress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tradeops.fullname" . }}-default-deny-egress
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "tradeops.fullname" . }}-application-traffic
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "tradeops.selectorLabels" . | nindent 6 }}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8090
+        - protocol: TCP
+          port: 8091
+        - protocol: TCP
+          port: 8092
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 1883
+        - protocol: TCP
+          port: 4318
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8090
+        - protocol: TCP
+          port: 8091
+        - protocol: TCP
+          port: 8092
+    {{- if .Values.networkPolicies.allowExternalEgress }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+    {{- end }}
+{{- end }}
+

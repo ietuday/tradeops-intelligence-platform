@@ -81,6 +81,17 @@
 
 ## Deployment
 
+- [Kubernetes deployment overview](deployment/kubernetes-overview.md)
+- [Helm chart](deployment/helm-chart.md)
+- [Local Kind deployment](deployment/local-kind.md)
+- [Production configuration](deployment/production-configuration.md)
+- [Deployment secrets management](deployment/secrets-management.md)
+- [Deployment observability](deployment/observability.md)
+- [Network security](deployment/network-security.md)
+- [Scaling and HA](deployment/scaling-and-ha.md)
+- [Database migrations in Kubernetes](deployment/database-migrations.md)
+- [Kubernetes troubleshooting](deployment/troubleshooting.md)
+- [Disaster recovery guidance](deployment/disaster-recovery.md)
 - [Kubernetes/Helm guide](deployment/kubernetes-helm.md)
 - [Deployment readiness](deployment/deployment-readiness.md)
 
@@ -125,6 +136,7 @@
 
 ## Release Notes
 
+- [v3.0.0 Cloud-Native Production Deployment Blueprint](releases/v3.0.0.md)
 - [v2.9.0 Real-Time Dashboard Frontend Enhancement](release-notes/v2.9.0.md)
 - [v2.8.0 Advanced Risk Analytics & Stress Testing](release-notes/v2.8.0.md)
 - [v2.7.0 Admin Console APIs & Platform Operations](release-notes/v2.7.0.md)

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: tradeops
+description: Cloud-native production deployment blueprint for the TradeOps Intelligence Platform.
+type: application
+version: 3.0.0
+appVersion: "3.0.0"
+home: https://github.com/ietuday/tradeops-intelligence-platform
+keywords:
+  - tradeops
+  - trading
+  - microservices
+  - kubernetes
+  - helm
+maintainers:
+  - name: TradeOps Maintainers
+

@@ -1,0 +1,39 @@
+{{- range $key, $app := .Values.applications }}
+{{- if and $app.enabled $app.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "tradeops.componentName" (dict "root" $ "component" $app) }}
+  namespace: {{ include "tradeops.namespace" $ }}
+  labels:
+    {{- include "tradeops.componentLabels" (dict "root" $ "component" $app) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "tradeops.componentName" (dict "root" $ "component" $app) }}
+  minReplicas: {{ $app.autoscaling.minReplicas }}
+  maxReplicas: {{ $app.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $app.autoscaling.targetCPUUtilizationPercentage }}
+    {{- if $app.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $app.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+  {{- with $app.autoscaling.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+

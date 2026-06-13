@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tradeops.runtimeConfigName" . }}
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+data:
+  runtime-config.json: |
+    {
+      "environment": {{ .Values.global.environment | quote }},
+      "apiBaseUrl": {{ .Values.frontend.runtimeConfig.apiBaseUrl | quote }},
+      "wsBaseUrl": {{ .Values.frontend.runtimeConfig.wsBaseUrl | quote }},
+      "grafanaUrl": {{ .Values.frontend.runtimeConfig.grafanaUrl | quote }},
+      "jaegerUrl": {{ .Values.frontend.runtimeConfig.jaegerUrl | quote }},
+      "prometheusUrl": {{ .Values.frontend.runtimeConfig.prometheusUrl | quote }},
+      "defaultTenantId": {{ .Values.global.defaultTenantId | quote }}
+    }
+

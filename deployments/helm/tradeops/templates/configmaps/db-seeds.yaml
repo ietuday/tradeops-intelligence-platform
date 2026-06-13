@@ -1,0 +1,13 @@
+{{- if .Values.seed.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tradeops.fullname" . }}-db-seeds
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-seed
+data:
+{{ (.Files.Glob "files/database/seeds/*.sql").AsConfig | indent 2 }}
+{{- end }}
+

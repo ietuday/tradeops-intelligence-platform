@@ -1,0 +1,129 @@
+global:
+  environment: production
+  imagePullPolicy: IfNotPresent
+
+namespace:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  resourceQuota:
+    enabled: true
+    hard:
+      requests.cpu: "6"
+      requests.memory: 12Gi
+      limits.cpu: "16"
+      limits.memory: 32Gi
+
+secrets:
+  create: false
+  allowInlineValues: false
+  existingSecretName: tradeops-production-secrets
+
+externalSecrets:
+  enabled: false
+  secretStoreRef:
+    name: production-secret-store
+    kind: ClusterSecretStore
+
+postgresql:
+  mode: external
+  sslMode: require
+  external:
+    host: postgresql.production.example.internal
+redis:
+  mode: external
+  external:
+    host: redis.production.example.internal
+kafka:
+  mode: external
+  external:
+    brokers: redpanda-0.production.example.internal:9092,redpanda-1.production.example.internal:9092,redpanda-2.production.example.internal:9092
+mqtt:
+  mode: external
+  external:
+    brokerUrl: tcp://mqtt.production.example.internal:8883
+
+ingress:
+  enabled: true
+  className: ""
+  tls:
+    - secretName: tradeops-production-tls
+      hosts:
+        - api.tradeops.example.com
+        - app.tradeops.example.com
+        - dashboard.tradeops.example.com
+  routes:
+    - name: api
+      enabled: true
+      host: api.tradeops.example.com
+      paths:
+        - path: /
+          serviceName: api-gateway
+          servicePort: 8080
+    - name: angular
+      enabled: true
+      host: app.tradeops.example.com
+      paths:
+        - path: /
+          serviceName: shell-angular
+          servicePort: 8080
+    - name: dashboard
+      enabled: true
+      host: dashboard.tradeops.example.com
+      paths:
+        - path: /
+          serviceName: trading-dashboard-react
+          servicePort: 8080
+
+networkPolicies:
+  enabled: true
+  defaultDenyIngress: true
+  defaultDenyEgress: false
+  allowExternalEgress: true
+
+seed:
+  enabled: false
+
+otel:
+  collector:
+    enabled: true
+    replicaCount: 2
+    exporterEndpoint: https://otel-gateway.production.example.internal
+
+applications:
+  apiGateway:
+    replicaCount: 3
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 10, targetCPUUtilizationPercentage: 65 }
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  identityService:
+    replicaCount: 3
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 8, targetCPUUtilizationPercentage: 70 }
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  orderService:
+    replicaCount: 3
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 10, targetCPUUtilizationPercentage: 70 }
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  portfolioService:
+    replicaCount: 3
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 8, targetCPUUtilizationPercentage: 70 }
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  riskEngineService:
+    replicaCount: 3
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 12, targetCPUUtilizationPercentage: 65 }
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  surveillanceService:
+    replicaCount: 3
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 10, targetCPUUtilizationPercentage: 70 }
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  notificationService:
+    replicaCount: 2
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  auditService:
+    replicaCount: 2
+    podDisruptionBudget: { enabled: true, maxUnavailable: 1 }
+  shellAngular:
+    replicaCount: 2
+  tradingDashboardReact:
+    replicaCount: 2
+

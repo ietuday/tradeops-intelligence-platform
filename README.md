@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v2.9.0` Real-Time Dashboard Frontend Enhancement.
+Current release: `v3.0.0` Cloud-Native Production Deployment Blueprint.
 
 ## Architecture Summary
 
@@ -28,6 +28,8 @@ v2.8.0 adds advanced risk analytics and stress testing APIs for scenario analysi
 
 v2.9.0 adds a lightweight React real-time dashboard for admin summaries, WebSocket events, risk analytics demos, and observability links. See [real-time dashboard](docs/frontend/realtime-dashboard.md).
 
+v3.0.0 adds a cloud-neutral Kubernetes/Helm deployment blueprint with local Kind workflow, external dependency modes, Secret references, migration jobs, Ingress, HPA, PDB, NetworkPolicy, and production readiness documentation. See [Kubernetes deployment overview](docs/deployment/kubernetes-overview.md).
+
 ## Tech Stack
 
 | Area | Technologies |
@@ -43,7 +45,7 @@ v2.9.0 adds a lightweight React real-time dashboard for admin summaries, WebSock
 | Multitenancy | Shared database tenant isolation, JWT `tenantId`, `X-Tenant-ID`, tenant-aware events |
 | Real-time | API Gateway WebSocket streams for market, order, alert, notification, and audit events |
 | Performance | Lightweight curl timing checks, optional k6 scenarios, capacity-planning docs |
-| Runtime | Docker Compose, optional Helm/Kubernetes manifests, Makefile, Bash demo/smoke scripts |
+| Runtime | Docker Compose, Helm/Kubernetes blueprint, Kind workflow, Makefile, Bash demo/smoke scripts |
 
 ## Services
 
@@ -72,7 +74,7 @@ v2.9.0 adds a lightweight React real-time dashboard for admin summaries, WebSock
 - JWT/RBAC, idempotent order creation, retries/DLQ guidance, audit exports, and correlation IDs.
 - Prometheus metrics, Grafana dashboards, SLO docs, observability runbooks, and performance testing scripts.
 - Jaeger/OpenTelemetry tracing for the primary order-to-alert-to-notification-to-audit path.
-- Docker Compose local runtime with optional Helm/Kubernetes deployment-readiness artifacts.
+- Docker Compose local runtime plus a v3 Helm/Kubernetes production deployment blueprint.
 
 ## Portfolio Pack
 
@@ -125,6 +127,12 @@ Validate Compose config in CI-style mode without relying on a local `.env`:
 
 ```bash
 docker compose --env-file infrastructure/docker/.env.example -f infrastructure/docker/docker-compose.yml config
+```
+
+Validate the Kubernetes/Helm blueprint when Helm is installed:
+
+```bash
+make k8s-validate
 ```
 
 Stop the platform:
@@ -200,6 +208,21 @@ bash -n scripts/validate-helm.sh
 | Jaeger | http://localhost:16686 |
 | Angular Shell Placeholder | http://localhost:4200 |
 | React Real-Time Dashboard | http://localhost:4300 |
+
+## Kubernetes Blueprint
+
+The v3 Helm chart lives under [deployments/helm/tradeops](deployments/helm/tradeops). It supports local, staging, and production values profiles without replacing Docker Compose.
+
+Local Kind workflow:
+
+```bash
+make k8s-create-local
+make k8s-deploy-local
+make k8s-smoke
+make k8s-status
+```
+
+Production customization starts from [production configuration](docs/deployment/production-configuration.md), [secrets management](docs/deployment/secrets-management.md), and [scaling and HA](docs/deployment/scaling-and-ha.md).
 
 ## Observability & SLOs
 

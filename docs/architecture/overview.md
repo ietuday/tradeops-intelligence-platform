@@ -16,6 +16,8 @@ v2.8.0 adds advanced risk analytics: stress testing, named scenario analysis, co
 
 v2.9.0 upgrades the React dashboard placeholder into a lightweight real-time dashboard for admin summaries, WebSocket events, risk analytics demos, and observability links.
 
+v3.0.0 adds a cloud-neutral Kubernetes deployment blueprint under `deployments/helm/tradeops`, with Helm values profiles for local Kind, staging, and production customization.
+
 ## Service List
 
 | Service | Purpose |
@@ -42,7 +44,7 @@ v2.9.0 upgrades the React dashboard placeholder into a lightweight real-time das
 | Messaging | Redpanda/Kafka, Mosquitto/MQTT |
 | Event contracts | JSON Schema, event catalog, compatibility rules |
 | Observability | Prometheus, Grafana, Jaeger, OpenTelemetry, alert rules, SLO docs, structured logs, correlation IDs |
-| Runtime | Docker Compose, optional Helm/Kubernetes deployment-readiness chart |
+| Runtime | Docker Compose, Helm/Kubernetes deployment blueprint, Kind workflow |
 
 ## High-Level Architecture
 
@@ -180,10 +182,10 @@ flowchart LR
 ## Deployment Readiness
 
 - Docker Compose remains the primary local runtime and demo path.
-- The optional Helm chart under `infrastructure/helm/tradeops-platform/` renders Kubernetes Deployments and Services for application services.
-- Kubernetes config separates non-secret values in a ConfigMap from placeholder secret values in a Secret.
-- Application pods include `/health` liveness probes, `/ready` readiness probes, resource requests/limits, and `terminationGracePeriodSeconds: 30`.
-- Stateful infrastructure such as PostgreSQL, Redis, Redpanda, Mosquitto, Prometheus, and Grafana is expected to be managed separately for Kubernetes deployments.
+- The v3 Helm chart under `deployments/helm/tradeops/` renders Kubernetes Deployments and Services for application services.
+- Kubernetes config separates non-secret values in ConfigMaps from Secret references, with inline development Secret creation limited to local profiles.
+- Application pods include health probes, startup probes, resource requests/limits, security contexts, and `terminationGracePeriodSeconds`.
+- Stateful infrastructure such as PostgreSQL, Redis, Redpanda/Kafka, MQTT, Prometheus, Grafana, and tracing backends can be local demo components or externally managed production dependencies.
 
 ## Security Flow
 

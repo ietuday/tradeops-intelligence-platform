@@ -1,0 +1,88 @@
+global:
+  environment: staging
+
+secrets:
+  create: false
+  allowInlineValues: false
+  existingSecretName: tradeops-staging-secrets
+
+postgresql:
+  mode: external
+  sslMode: require
+  external:
+    host: postgresql.staging.example.internal
+redis:
+  mode: external
+  external:
+    host: redis.staging.example.internal
+kafka:
+  mode: external
+  external:
+    brokers: redpanda-0.staging.example.internal:9092,redpanda-1.staging.example.internal:9092
+mqtt:
+  mode: external
+  external:
+    brokerUrl: tcp://mqtt.staging.example.internal:1883
+
+ingress:
+  enabled: true
+  className: ""
+  tls:
+    - secretName: tradeops-staging-tls
+      hosts:
+        - api.staging.tradeops.example.com
+        - app.staging.tradeops.example.com
+        - dashboard.staging.tradeops.example.com
+  routes:
+    - name: api
+      enabled: true
+      host: api.staging.tradeops.example.com
+      paths:
+        - path: /
+          serviceName: api-gateway
+          servicePort: 8080
+    - name: angular
+      enabled: true
+      host: app.staging.tradeops.example.com
+      paths:
+        - path: /
+          serviceName: shell-angular
+          servicePort: 8080
+    - name: dashboard
+      enabled: true
+      host: dashboard.staging.tradeops.example.com
+      paths:
+        - path: /
+          serviceName: trading-dashboard-react
+          servicePort: 8080
+
+networkPolicies:
+  enabled: true
+  defaultDenyIngress: false
+  defaultDenyEgress: false
+
+seed:
+  enabled: false
+
+applications:
+  apiGateway:
+    replicaCount: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    podDisruptionBudget:
+      enabled: true
+      maxUnavailable: 1
+  identityService:
+    replicaCount: 2
+  orderService:
+    replicaCount: 2
+  portfolioService:
+    replicaCount: 2
+  surveillanceService:
+    replicaCount: 2
+  notificationService:
+    replicaCount: 2
+

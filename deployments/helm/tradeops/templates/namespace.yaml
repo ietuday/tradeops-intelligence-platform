@@ -1,0 +1,41 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    tradeops.io/environment: {{ .Values.global.environment | quote }}
+    {{- with .Values.namespace.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+{{- if .Values.namespace.resourceQuota.enabled }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ include "tradeops.fullname" . }}-quota
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+spec:
+  hard:
+    {{- toYaml .Values.namespace.resourceQuota.hard | nindent 4 }}
+{{- end }}
+
+{{- if .Values.namespace.limitRange.enabled }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ include "tradeops.fullname" . }}-limits
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+spec:
+  limits:
+    {{- toYaml .Values.namespace.limitRange.limits | nindent 4 }}
+{{- end }}
+

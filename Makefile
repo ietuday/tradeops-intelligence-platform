@@ -1,12 +1,12 @@
 DOCKER_COMPOSE_FILE := infrastructure/docker/docker-compose.yml
 DOCKER_ENV_FILE := infrastructure/docker/.env
 DOCKER_ENV_EXAMPLE_FILE := infrastructure/docker/.env.example
-HELM_CHART := infrastructure/helm/tradeops-platform
+HELM_CHART := deployments/helm/tradeops
 
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
 PYTHON_SERVICES := strategy-service risk-engine-service
 
-.PHONY: help test test-go test-node test-python compose-config validate-scripts validate-event-schemas security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+.PHONY: help test test-go test-node test-python compose-config validate-scripts validate-event-schemas security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm k8s-validate k8s-create-local k8s-deploy-local k8s-smoke k8s-status k8s-destroy-local validate-k8s-scripts demo-k8s smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
 
 help:
 	@echo "TradeOps local commands"
@@ -23,6 +23,12 @@ help:
 	@echo "  make load-test-gateway    Run optional k6 gateway load test"
 	@echo "  make load-test-all        Run all optional k6 load tests with low defaults"
 	@echo "  make validate-helm        Validate optional Helm chart when Helm is installed"
+	@echo "  make k8s-validate         Validate v3 Helm/Kubernetes assets"
+	@echo "  make k8s-create-local     Create the local Kind cluster"
+	@echo "  make k8s-deploy-local     Deploy the v3 chart to local Kubernetes"
+	@echo "  make k8s-smoke            Run Kubernetes smoke checks"
+	@echo "  make k8s-status           Show Kubernetes status and recent warnings"
+	@echo "  make k8s-destroy-local    Delete the TradeOps namespace; set DELETE_KIND_CLUSTER=true for cluster deletion"
 	@echo "  make smoke                Run smoke test against a running stack"
 	@echo "  make demo-surveillance    Run surveillance demo"
 	@echo "  make demo-rule-config     Run surveillance rule config demo"
@@ -85,6 +91,13 @@ validate-scripts:
 	bash -n scripts/replay-sample-events.sh
 	bash -n scripts/replay-dlq-events.sh
 	bash -n scripts/validate-helm.sh
+	bash -n scripts/k8s-cluster-create.sh
+	bash -n scripts/k8s-deploy.sh
+	bash -n scripts/k8s-validate.sh
+	bash -n scripts/k8s-smoke-test.sh
+	bash -n scripts/k8s-status.sh
+	bash -n scripts/k8s-destroy-local.sh
+	bash -n scripts/demo-k8s-deployment.sh
 
 validate-event-schemas:
 	./scripts/validate-event-schemas.sh
@@ -105,10 +118,40 @@ helm-lint:
 	helm lint $(HELM_CHART)
 
 helm-template:
-	helm template tradeops $(HELM_CHART)
+	helm template tradeops $(HELM_CHART) -f $(HELM_CHART)/values-local.yaml
 
 validate-helm:
 	./scripts/validate-helm.sh
+
+k8s-validate:
+	./scripts/k8s-validate.sh
+
+validate-k8s-scripts:
+	bash -n scripts/k8s-cluster-create.sh
+	bash -n scripts/k8s-deploy.sh
+	bash -n scripts/k8s-validate.sh
+	bash -n scripts/k8s-smoke-test.sh
+	bash -n scripts/k8s-status.sh
+	bash -n scripts/k8s-destroy-local.sh
+	bash -n scripts/demo-k8s-deployment.sh
+
+k8s-create-local:
+	./scripts/k8s-cluster-create.sh
+
+k8s-deploy-local:
+	./scripts/k8s-deploy.sh
+
+k8s-smoke:
+	./scripts/k8s-smoke-test.sh
+
+k8s-status:
+	./scripts/k8s-status.sh
+
+k8s-destroy-local:
+	./scripts/k8s-destroy-local.sh
+
+demo-k8s:
+	./scripts/demo-k8s-deployment.sh
 
 smoke:
 	./scripts/smoke-test.sh

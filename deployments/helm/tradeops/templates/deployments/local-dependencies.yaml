@@ -1,0 +1,184 @@
+{{- if eq .Values.postgresql.mode "local" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tradeops.fullname" . }}-postgresql
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+    tradeops.io/dependency-mode: local-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tradeops.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.labels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgresql
+          image: {{ .Values.postgresql.local.image | quote }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tradeops.secretName" . }}
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.auth.username | quote }}, "-d", {{ .Values.postgresql.auth.database | quote }}]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.auth.username | quote }}, "-d", {{ .Values.postgresql.auth.database | quote }}]
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.postgresql.local.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+{{- end }}
+
+{{- if eq .Values.redis.mode "local" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tradeops.fullname" . }}-redis
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+    tradeops.io/dependency-mode: local-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tradeops.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.labels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redis
+          image: {{ .Values.redis.local.image | quote }}
+          args: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+          resources:
+            {{- toYaml .Values.redis.local.resources | nindent 12 }}
+{{- end }}
+
+{{- if eq .Values.kafka.mode "local" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tradeops.fullname" . }}-redpanda
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redpanda
+    tradeops.io/dependency-mode: local-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tradeops.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redpanda
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.labels" . | nindent 8 }}
+        app.kubernetes.io/component: redpanda
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redpanda
+          image: {{ .Values.kafka.local.image | quote }}
+          command:
+            - redpanda
+            - start
+            - --mode=dev-container
+            - --smp=1
+            - --memory=768M
+            - --reserve-memory=0M
+            - --overprovisioned
+            - --node-id=0
+            - --check=false
+            - --kafka-addr=internal://0.0.0.0:9092
+            - --advertise-kafka-addr=internal://{{ include "tradeops.fullname" . }}-redpanda:9092
+          ports:
+            - name: kafka
+              containerPort: 9092
+          resources:
+            {{- toYaml .Values.kafka.local.resources | nindent 12 }}
+{{- end }}
+
+{{- if eq .Values.mqtt.mode "local" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tradeops.fullname" . }}-mosquitto
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+    tradeops.io/dependency-mode: local-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "tradeops.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mosquitto
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.labels" . | nindent 8 }}
+        app.kubernetes.io/component: mosquitto
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: mosquitto
+          image: {{ .Values.mqtt.local.image | quote }}
+          ports:
+            - name: mqtt
+              containerPort: 1883
+          resources:
+            {{- toYaml .Values.mqtt.local.resources | nindent 12 }}
+{{- end }}
+

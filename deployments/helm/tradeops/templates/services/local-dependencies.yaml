@@ -1,0 +1,81 @@
+{{- if eq .Values.postgresql.mode "local" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tradeops.fullname" . }}-postgresql
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    {{- include "tradeops.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+{{- end }}
+{{- if eq .Values.redis.mode "local" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tradeops.fullname" . }}-redis
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+  selector:
+    {{- include "tradeops.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+{{- end }}
+{{- if eq .Values.kafka.mode "local" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tradeops.fullname" . }}-redpanda
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redpanda
+spec:
+  type: ClusterIP
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: kafka
+  selector:
+    {{- include "tradeops.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redpanda
+{{- end }}
+{{- if eq .Values.mqtt.mode "local" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tradeops.fullname" . }}-mosquitto
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+spec:
+  type: ClusterIP
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: mqtt
+  selector:
+    {{- include "tradeops.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+{{- end }}
+

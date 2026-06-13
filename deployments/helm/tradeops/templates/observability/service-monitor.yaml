@@ -1,0 +1,26 @@
+{{- if .Values.observability.serviceMonitor.enabled }}
+{{- range $key, $app := .Values.applications }}
+{{- if and $app.enabled $app.metrics.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "tradeops.componentName" (dict "root" $ "component" $app) }}
+  namespace: {{ include "tradeops.namespace" $ }}
+  labels:
+    {{- include "tradeops.componentLabels" (dict "root" $ "component" $app) | nindent 4 }}
+    {{- with $.Values.observability.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "tradeops.componentSelectorLabels" (dict "root" $ "component" $app) | nindent 6 }}
+  endpoints:
+    - port: http
+      path: {{ $app.metrics.path | quote }}
+      interval: {{ $.Values.observability.serviceMonitor.interval | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+

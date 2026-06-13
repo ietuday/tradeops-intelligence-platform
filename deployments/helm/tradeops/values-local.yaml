@@ -1,0 +1,49 @@
+global:
+  environment: local
+
+namespace:
+  name: tradeops
+  labels:
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+
+secrets:
+  create: true
+  allowInlineValues: true
+
+postgresql:
+  mode: local
+redis:
+  mode: local
+kafka:
+  mode: local
+mqtt:
+  mode: local
+
+ingress:
+  enabled: false
+
+networkPolicies:
+  enabled: false
+
+migrations:
+  enabled: true
+  useHelmHook: false
+
+seed:
+  enabled: true
+
+applications:
+  apiGateway:
+    replicaCount: 1
+  identityService:
+    replicaCount: 1
+  orderService:
+    replicaCount: 1
+  portfolioService:
+    replicaCount: 1
+  riskEngineService:
+    replicaCount: 1
+  surveillanceService:
+    replicaCount: 1
+

@@ -1,0 +1,79 @@
+{{- $otelEndpoint := .Values.otel.exporterOtlpEndpoint -}}
+{{- if .Values.otel.collector.enabled -}}
+{{- $otelEndpoint = printf "http://%s-otel-collector:4318" (include "tradeops.fullname" .) -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tradeops.configName" . }}
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT_NAME: {{ .Values.global.environment | quote }}
+  DEFAULT_TENANT_ID: {{ .Values.global.defaultTenantId | quote }}
+  TENANT_ENFORCEMENT_ENABLED: {{ .Values.global.tenantEnforcementEnabled | quote }}
+  POSTGRES_HOST: {{ include "tradeops.postgresqlHost" . | quote }}
+  POSTGRES_PORT: {{ .Values.postgresql.port | quote }}
+  POSTGRES_DB: {{ .Values.postgresql.auth.database | quote }}
+  POSTGRES_USER: {{ .Values.postgresql.auth.username | quote }}
+  POSTGRES_SSL_MODE: {{ .Values.postgresql.sslMode | quote }}
+  DATABASE_URL: {{ include "tradeops.databaseUrl" . | quote }}
+  PYTHON_DATABASE_URL: {{ include "tradeops.pythonDatabaseUrl" . | quote }}
+  REDIS_ADDR: {{ printf "%s:%v" (include "tradeops.redisHost" .) (.Values.redis.port | int) | quote }}
+  KAFKA_BROKERS: {{ include "tradeops.kafkaBrokers" . | quote }}
+  MQTT_BROKER_URL: {{ include "tradeops.mqttBroker" . | quote }}
+  OTEL_ENABLED: {{ .Values.otel.enabled | quote }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ $otelEndpoint | quote }}
+  OTEL_SERVICE_VERSION: {{ .Values.otel.serviceVersion | quote }}
+  OTEL_TRACES_SAMPLER: {{ .Values.otel.tracesSampler | quote }}
+  OTEL_TRACES_SAMPLER_ARG: {{ .Values.otel.tracesSamplerArg | quote }}
+  CORS_ORIGIN: {{ join "," .Values.apiGateway.corsOrigins | quote }}
+  WS_ALLOWED_ORIGINS: {{ join "," .Values.apiGateway.websocket.allowedOrigins | quote }}
+  PROXY_TIMEOUT_MS: {{ .Values.apiGateway.proxyTimeoutMs | quote }}
+  REQUEST_BODY_LIMIT: {{ .Values.apiGateway.requestBodyLimit | quote }}
+  RATE_LIMIT_WINDOW_MS: {{ .Values.apiGateway.rateLimit.windowMs | quote }}
+  RATE_LIMIT_MAX_REQUESTS: {{ .Values.apiGateway.rateLimit.maxRequests | quote }}
+  ADMIN_API_ENABLED: {{ .Values.apiGateway.admin.enabled | quote }}
+  ADMIN_HEALTH_TIMEOUT_MS: {{ .Values.apiGateway.admin.healthTimeoutMs | quote }}
+  ADMIN_SERVICE_REGISTRY_MODE: {{ .Values.apiGateway.admin.serviceRegistryMode | quote }}
+  WS_ENABLED: {{ .Values.apiGateway.websocket.enabled | quote }}
+  WS_REQUIRE_AUTH: {{ .Values.apiGateway.websocket.requireAuth | quote }}
+  WS_KAFKA_GROUP_ID: {{ .Values.apiGateway.websocket.kafkaGroupId | quote }}
+  WS_MAX_CONNECTIONS: {{ .Values.apiGateway.websocket.maxConnections | quote }}
+  WS_HEARTBEAT_INTERVAL_MS: {{ .Values.apiGateway.websocket.heartbeatIntervalMs | quote }}
+  EVENT_PROCESSING_MAX_RETRIES: {{ .Values.eventProcessing.maxRetries | quote }}
+  EVENT_PROCESSING_RETRY_BACKOFF_MS: {{ .Values.eventProcessing.retryBackoffMs | quote }}
+  EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER: {{ .Values.eventProcessing.retryBackoffMultiplier | quote }}
+  MARKET_DATA_MQTT_TOPIC: {{ .Values.marketData.mqttTopic | quote }}
+  MARKET_DATA_KAFKA_TOPIC: {{ .Values.marketData.kafkaTopic | quote }}
+  MARKET_SIMULATOR_ENABLED: {{ .Values.marketData.simulator.enabled | quote }}
+  MARKET_SIMULATOR_INTERVAL_MS: {{ .Values.marketData.simulator.intervalMs | quote }}
+  PORTFOLIO_ORDER_FILLED_TOPIC: {{ .Values.portfolio.topics.orderFilled | quote }}
+  PORTFOLIO_UPDATED_TOPIC: {{ .Values.portfolio.topics.updated | quote }}
+  PORTFOLIO_SNAPSHOT_TOPIC: {{ .Values.portfolio.topics.snapshotCreated | quote }}
+  PORTFOLIO_INITIAL_CASH: {{ .Values.portfolio.initialCash | quote }}
+  STRATEGY_SIGNAL_TOPIC: {{ .Values.strategy.topics.signalGenerated | quote }}
+  STRATEGY_BACKTEST_COMPLETED_TOPIC: {{ .Values.strategy.topics.backtestCompleted | quote }}
+  RISK_SCORE_UPDATED_TOPIC: {{ .Values.risk.topics.scoreUpdated | quote }}
+  RISK_BREACHED_TOPIC: {{ .Values.risk.topics.breached | quote }}
+  RISK_ANOMALY_TOPIC: {{ .Values.risk.topics.anomalyDetected | quote }}
+  RISK_RECOMMENDATION_TOPIC: {{ .Values.risk.topics.recommendationCreated | quote }}
+  RISK_STRESS_TEST_COMPLETED_TOPIC: {{ .Values.risk.topics.stressTestCompleted | quote }}
+  RISK_SCENARIO_COMPLETED_TOPIC: {{ .Values.risk.topics.scenarioCompleted | quote }}
+  RISK_CONCENTRATION_ANALYZED_TOPIC: {{ .Values.risk.topics.concentrationAnalyzed | quote }}
+  RISK_DRAWDOWN_ANALYZED_TOPIC: {{ .Values.risk.topics.drawdownAnalyzed | quote }}
+  SURVEILLANCE_KAFKA_TOPICS: {{ join "," .Values.surveillance.kafkaTopics | quote }}
+  SURVEILLANCE_LARGE_ORDER_THRESHOLD: {{ .Values.surveillance.rules.largeOrderThreshold | quote }}
+  SURVEILLANCE_RAPID_ORDER_LIMIT: {{ .Values.surveillance.rules.rapidOrderLimit | quote }}
+  SURVEILLANCE_RAPID_ORDER_WINDOW_SECONDS: {{ .Values.surveillance.rules.rapidOrderWindowSeconds | quote }}
+  SURVEILLANCE_HIGH_CANCEL_LIMIT: {{ .Values.surveillance.rules.highCancelLimit | quote }}
+  SURVEILLANCE_HIGH_CANCEL_WINDOW_SECONDS: {{ .Values.surveillance.rules.highCancelWindowSeconds | quote }}
+  SURVEILLANCE_RISK_SCORE_THRESHOLD: {{ .Values.surveillance.rules.riskScoreThreshold | quote }}
+  SURVEILLANCE_ABNORMAL_PRICE_MOVEMENT_PERCENT: {{ .Values.surveillance.rules.abnormalPriceMovementPercent | quote }}
+  SURVEILLANCE_RULE_CONFIG_CACHE_TTL_SECONDS: {{ .Values.surveillance.ruleConfigCacheTtlSeconds | quote }}
+  NOTIFICATION_KAFKA_TOPICS: {{ join "," .Values.notification.kafkaTopics | quote }}
+  NOTIFICATION_WEBHOOK_TIMEOUT_SECONDS: {{ .Values.notification.webhook.timeoutSeconds | quote }}
+  NOTIFICATION_WEBHOOK_MAX_RETRIES: {{ .Values.notification.webhook.maxRetries | quote }}
+  AUDIT_KAFKA_GROUP_ID: {{ .Values.audit.kafkaGroupId | quote }}
+  AUDIT_KAFKA_TOPICS: {{ join "," .Values.audit.kafkaTopics | quote }}

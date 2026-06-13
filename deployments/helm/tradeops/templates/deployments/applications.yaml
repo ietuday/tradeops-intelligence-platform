@@ -1,0 +1,175 @@
+{{- range $key, $app := .Values.applications }}
+{{- if $app.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tradeops.componentName" (dict "root" $ "component" $app) }}
+  namespace: {{ include "tradeops.namespace" $ }}
+  labels:
+    {{- include "tradeops.componentLabels" (dict "root" $ "component" $app) | nindent 4 }}
+spec:
+  replicas: {{ $app.replicaCount }}
+  revisionHistoryLimit: {{ default 3 $app.revisionHistoryLimit }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ default "25%" $app.rollingUpdate.maxUnavailable | quote }}
+      maxSurge: {{ default "25%" $app.rollingUpdate.maxSurge | quote }}
+  selector:
+    matchLabels:
+      {{- include "tradeops.componentSelectorLabels" (dict "root" $ "component" $app) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.componentLabels" (dict "root" $ "component" $app) | nindent 8 }}
+      annotations:
+        checksum/config: {{ toJson $.Values | sha256sum }}
+        {{- if and $.Values.observability.prometheus.annotations.enabled $app.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ $app.metrics.path | default "/metrics" | quote }}
+        prometheus.io/port: {{ $app.service.port | quote }}
+        {{- end }}
+        {{- with $app.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "tradeops.serviceAccountName" (dict "root" $ "component" $app) }}
+      automountServiceAccountToken: {{ default false $app.serviceAccount.automountServiceAccountToken }}
+      terminationGracePeriodSeconds: {{ default $.Values.global.terminationGracePeriodSeconds $app.terminationGracePeriodSeconds }}
+      {{- with $.Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $app.nodeSelector | default $.Values.scheduling.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $app.tolerations | default $.Values.scheduling.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $app.affinity | default $.Values.scheduling.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $app.topologySpreadConstraints | default $.Values.scheduling.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $app.priorityClassName | default $.Values.scheduling.priorityClassName }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      securityContext:
+        {{- toYaml (default $.Values.podSecurityContext $app.podSecurityContext) | nindent 8 }}
+      containers:
+        - name: {{ $app.name }}
+          image: "{{ default $.Values.global.imageRegistry $app.image.registry }}{{ $app.image.repository }}:{{ $app.image.tag }}"
+          imagePullPolicy: {{ default $.Values.global.imagePullPolicy $app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $app.containerPort }}
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" $ }}
+                  key: ENVIRONMENT_NAME
+            - name: DEFAULT_TENANT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" $ }}
+                  key: DEFAULT_TENANT_ID
+            {{- if or (not (hasKey $app "injectCoreSecrets")) $app.injectCoreSecrets }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tradeops.secretName" $ }}
+                  key: POSTGRES_PASSWORD
+                  optional: false
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tradeops.secretName" $ }}
+                  key: JWT_SECRET
+                  optional: false
+            {{- end }}
+            {{- range $envName, $envValue := $app.env }}
+            - name: {{ $envName }}
+              value: {{ tpl ($envValue | toString) $ | quote }}
+            {{- end }}
+            {{- range $envName, $keyName := $app.configMapEnv }}
+            - name: {{ $envName }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" $ }}
+                  key: {{ $keyName }}
+            {{- end }}
+            {{- range $envName, $keyName := $app.secretEnv }}
+            - name: {{ $envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tradeops.secretName" $ }}
+                  key: {{ $keyName }}
+                  optional: false
+            {{- end }}
+          {{- if $app.probes.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ $app.probes.liveness.path | quote }}
+              port: http
+            initialDelaySeconds: {{ $app.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ $app.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ $app.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ $app.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ $app.probes.readiness.path | quote }}
+              port: http
+            initialDelaySeconds: {{ $app.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ $app.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ $app.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ $app.probes.readiness.failureThreshold }}
+          startupProbe:
+            httpGet:
+              path: {{ $app.probes.startup.path | quote }}
+              port: http
+            periodSeconds: {{ $app.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ $app.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ $app.probes.startup.failureThreshold }}
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 2"]
+          securityContext:
+            {{- toYaml (default $.Values.containerSecurityContext $app.containerSecurityContext) | nindent 12 }}
+          resources:
+            {{- toYaml $app.resources | nindent 12 }}
+          {{- if $app.runtimeConfigMount.enabled }}
+          volumeMounts:
+            - name: runtime-config
+              mountPath: {{ $app.runtimeConfigMount.mountPath | quote }}
+              readOnly: true
+          {{- else if $app.emptyDirMounts }}
+          volumeMounts:
+            {{- range $app.emptyDirMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath | quote }}
+            {{- end }}
+          {{- end }}
+      {{- if or $app.runtimeConfigMount.enabled $app.emptyDirMounts }}
+      volumes:
+        {{- if $app.runtimeConfigMount.enabled }}
+        - name: runtime-config
+          configMap:
+            name: {{ include "tradeops.runtimeConfigName" $ }}
+        {{- end }}
+        {{- range $app.emptyDirMounts }}
+        - name: {{ .name }}
+          emptyDir: {}
+        {{- end }}
+      {{- end }}
+{{- end }}
+{{- end }}

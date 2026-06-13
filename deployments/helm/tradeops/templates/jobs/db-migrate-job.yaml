@@ -1,0 +1,82 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "tradeops.fullname" . }}-db-migrate
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-migrate
+  {{- if .Values.migrations.useHelmHook }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  {{- end }}
+spec:
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "tradeops.labels" . | nindent 8 }}
+        app.kubernetes.io/component: db-migrate
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: db-migrate
+          image: {{ .Values.migrations.image | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tradeops.secretName" . }}
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" . }}
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" . }}
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" . }}
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "tradeops.configName" . }}
+                  key: POSTGRES_USER
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              echo "Running TradeOps database migrations"
+              for file in /migrations/*.sql; do
+                echo "Applying ${file}"
+                psql -v ON_ERROR_STOP=1 \
+                  -h "${POSTGRES_HOST}" \
+                  -p "${POSTGRES_PORT}" \
+                  -U "${POSTGRES_USER}" \
+                  -d "${POSTGRES_DB}" \
+                  -f "${file}"
+              done
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      volumes:
+        - name: migrations
+          configMap:
+            name: {{ include "tradeops.fullname" . }}-db-migrations
+{{- end }}
+

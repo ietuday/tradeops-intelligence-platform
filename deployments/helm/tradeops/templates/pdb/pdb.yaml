@@ -1,0 +1,22 @@
+{{- range $key, $app := .Values.applications }}
+{{- if and $app.enabled $app.podDisruptionBudget.enabled (gt (int $app.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "tradeops.componentName" (dict "root" $ "component" $app) }}
+  namespace: {{ include "tradeops.namespace" $ }}
+  labels:
+    {{- include "tradeops.componentLabels" (dict "root" $ "component" $app) | nindent 4 }}
+spec:
+  {{- if $app.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ $app.podDisruptionBudget.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ default 1 $app.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tradeops.componentSelectorLabels" (dict "root" $ "component" $app) | nindent 6 }}
+{{- end }}
+{{- end }}
+
