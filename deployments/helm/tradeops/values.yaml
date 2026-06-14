@@ -26,11 +26,17 @@ serviceAccount:
 
 podSecurityContext:
   runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
   seccompProfile:
     type: RuntimeDefault
 
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
   readOnlyRootFilesystem: true
   capabilities:
     drop:
@@ -311,7 +317,7 @@ migrations:
   useHelmHook: false
   image: postgres:16.2
   backoffLimit: 1
-  ttlSecondsAfterFinished: 600
+  ttlSecondsAfterFinished: 3600
   resources:
     requests:
       cpu: 50m
@@ -324,7 +330,7 @@ seed:
   enabled: false
   image: postgres:16.2
   backoffLimit: 1
-  ttlSecondsAfterFinished: 600
+  ttlSecondsAfterFinished: 3600
   resources:
     requests:
       cpu: 50m
@@ -745,8 +751,18 @@ applications:
     rollingUpdate: *defaultRolling
     containerSecurityContext:
       allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      runAsUser: 101
+      runAsGroup: 101
       readOnlyRootFilesystem: false
       capabilities: { drop: ["ALL"] }
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+      runAsGroup: 101
+      fsGroup: 101
+      seccompProfile:
+        type: RuntimeDefault
     runtimeConfigMount:
       enabled: true
       mountPath: /usr/share/nginx/html/config
@@ -779,8 +795,18 @@ applications:
     rollingUpdate: *defaultRolling
     containerSecurityContext:
       allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      runAsUser: 101
+      runAsGroup: 101
       readOnlyRootFilesystem: false
       capabilities: { drop: ["ALL"] }
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+      runAsGroup: 101
+      fsGroup: 101
+      seccompProfile:
+        type: RuntimeDefault
     runtimeConfigMount:
       enabled: true
       mountPath: /usr/share/nginx/html/config

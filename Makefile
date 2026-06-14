@@ -6,7 +6,7 @@ HELM_CHART := deployments/helm/tradeops
 GO_SERVICES := identity-service market-data-service order-service portfolio-service surveillance-service notification-service
 PYTHON_SERVICES := strategy-service risk-engine-service
 
-.PHONY: help test test-go test-node test-python compose-config validate-scripts validate-event-schemas security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm k8s-validate k8s-create-local k8s-deploy-local k8s-smoke k8s-status k8s-destroy-local validate-k8s-scripts demo-k8s smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
+.PHONY: help test test-go test-node test-python compose-config validate-scripts validate-event-schemas security-check perf-smoke load-test-gateway load-test-all helm-lint helm-template validate-helm k8s-validate k8s-build-images k8s-load-images k8s-create-local k8s-deploy-local k8s-smoke k8s-status k8s-destroy-local validate-k8s-scripts validate-container-users demo-k8s smoke demo-surveillance demo-notifications demo-e2e docker-build clean clean-local dev-up dev-down logs ps
 
 help:
 	@echo "TradeOps local commands"
@@ -24,6 +24,8 @@ help:
 	@echo "  make load-test-all        Run all optional k6 load tests with low defaults"
 	@echo "  make validate-helm        Validate optional Helm chart when Helm is installed"
 	@echo "  make k8s-validate         Validate v3 Helm/Kubernetes assets"
+	@echo "  make k8s-build-images     Build local images for Kind"
+	@echo "  make k8s-load-images      Load local images into Kind"
 	@echo "  make k8s-create-local     Create the local Kind cluster"
 	@echo "  make k8s-deploy-local     Deploy the v3 chart to local Kubernetes"
 	@echo "  make k8s-smoke            Run Kubernetes smoke checks"
@@ -97,6 +99,8 @@ validate-scripts:
 	bash -n scripts/k8s-smoke-test.sh
 	bash -n scripts/k8s-status.sh
 	bash -n scripts/k8s-destroy-local.sh
+	bash -n scripts/k8s-load-images.sh
+	bash -n scripts/validate-container-users.sh
 	bash -n scripts/demo-k8s-deployment.sh
 
 validate-event-schemas:
@@ -133,10 +137,17 @@ validate-k8s-scripts:
 	bash -n scripts/k8s-smoke-test.sh
 	bash -n scripts/k8s-status.sh
 	bash -n scripts/k8s-destroy-local.sh
+	bash -n scripts/k8s-load-images.sh
 	bash -n scripts/demo-k8s-deployment.sh
 
 k8s-create-local:
 	./scripts/k8s-cluster-create.sh
+
+k8s-build-images:
+	K8S_BUILD_IMAGES=true K8S_LOAD_IMAGES=false ./scripts/k8s-load-images.sh
+
+k8s-load-images:
+	K8S_BUILD_IMAGES=false ./scripts/k8s-load-images.sh
 
 k8s-deploy-local:
 	./scripts/k8s-deploy.sh
@@ -152,6 +163,9 @@ k8s-destroy-local:
 
 demo-k8s:
 	./scripts/demo-k8s-deployment.sh
+
+validate-container-users:
+	./scripts/validate-container-users.sh
 
 smoke:
 	./scripts/smoke-test.sh

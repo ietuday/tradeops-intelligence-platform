@@ -23,7 +23,8 @@ spec:
     spec:
       automountServiceAccountToken: false
       securityContext:
-        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgresql
           image: {{ .Values.postgresql.local.image | quote }}
@@ -85,10 +86,25 @@ spec:
         app.kubernetes.io/component: redis
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: {{ .Values.redis.local.image | quote }}
           args: ["redis-server", "--appendonly", "yes"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: redis
               containerPort: 6379
@@ -100,6 +116,12 @@ spec:
               command: ["redis-cli", "ping"]
           resources:
             {{- toYaml .Values.redis.local.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
 {{- end }}
 
 {{- if eq .Values.kafka.mode "local" }}
@@ -126,29 +148,60 @@ spec:
         app.kubernetes.io/component: redpanda
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redpanda
           image: {{ .Values.kafka.local.image | quote }}
           command:
+            - rpk
             - redpanda
             - start
             - --mode=dev-container
-            - --smp=1
-            - --memory=768M
-            - --reserve-memory=0M
-            - --overprovisioned
-            - --node-id=0
-            - --check=false
             - --kafka-addr=internal://0.0.0.0:9092
             - --advertise-kafka-addr=internal://{{ include "tradeops.fullname" . }}-redpanda:9092
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: kafka
               containerPort: 9092
           resources:
             {{- toYaml .Values.kafka.local.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/redpanda
+      volumes:
+        - name: data
+          emptyDir: {}
 {{- end }}
 
 {{- if eq .Values.mqtt.mode "local" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "tradeops.fullname" . }}-mosquitto-config
+  namespace: {{ include "tradeops.namespace" . }}
+  labels:
+    {{- include "tradeops.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mosquitto
+    tradeops.io/dependency-mode: local-demo
+data:
+  mosquitto.conf: |
+    listener 1883 0.0.0.0
+    allow_anonymous true
+    persistence false
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -172,13 +225,44 @@ spec:
         app.kubernetes.io/component: mosquitto
     spec:
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1883
+        runAsGroup: 1883
+        fsGroup: 1883
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: mosquitto
           image: {{ .Values.mqtt.local.image | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1883
+            runAsGroup: 1883
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: mqtt
               containerPort: 1883
           resources:
             {{- toYaml .Values.mqtt.local.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /mosquitto/config/mosquitto.conf
+              subPath: mosquitto.conf
+              readOnly: true
+            - name: data
+              mountPath: /mosquitto/data
+            - name: log
+              mountPath: /mosquitto/log
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "tradeops.fullname" . }}-mosquitto-config
+        - name: data
+          emptyDir: {}
+        - name: log
+          emptyDir: {}
 {{- end }}
-

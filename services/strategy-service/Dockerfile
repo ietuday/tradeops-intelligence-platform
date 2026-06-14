@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system tradeops && adduser --system --ingroup tradeops tradeops
+RUN groupadd --system --gid 10001 tradeops \
+    && useradd --system --uid 10001 --gid 10001 --home-dir /app --shell /usr/sbin/nologin tradeops
 
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r /app/requirements.txt
@@ -13,7 +14,7 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r /a
 COPY app /app/app
 COPY migrations /app/migrations
 
-USER tradeops
+USER 10001:10001
 
 EXPOSE 8080
 

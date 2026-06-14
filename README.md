@@ -218,9 +218,11 @@ Local Kind workflow:
 ```bash
 make k8s-create-local
 make k8s-deploy-local
-make k8s-smoke
 make k8s-status
+make k8s-smoke
 ```
+
+`make k8s-deploy-local` builds the required `tradeops/*` images, loads them into the `tradeops-local` Kind cluster, validates Helm rendering, and installs or upgrades the release. Backend images use numeric non-root `10001:10001` metadata so Kubernetes can enforce `runAsNonRoot`.
 
 Production customization starts from [production configuration](docs/deployment/production-configuration.md), [secrets management](docs/deployment/secrets-management.md), and [scaling and HA](docs/deployment/scaling-and-ha.md).
 

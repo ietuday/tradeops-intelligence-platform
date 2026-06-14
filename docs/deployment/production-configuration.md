@@ -28,3 +28,10 @@ helm upgrade --install tradeops deployments/helm/tradeops \
 
 Do not enable inline Secrets or demo seed data in production.
 
+Security context notes:
+
+- First-party backend containers use numeric UID/GID `10001:10001`.
+- Frontend nginx-unprivileged containers use UID/GID `101:101`.
+- Local demo dependencies use image-compatible hardening where possible. Redis uses `999:1000`, Redpanda uses `101:101`, and Mosquitto uses `1883:1883`.
+- Local PostgreSQL keeps the official image entrypoint user behavior because first initialization needs to change data-directory permissions. This is a local-demo exception and one reason production should use a managed or operator-owned PostgreSQL deployment.
+- Production should continue to prefer managed PostgreSQL, Redis, Kafka/Redpanda, and MQTT services rather than the local demo dependency Deployments.

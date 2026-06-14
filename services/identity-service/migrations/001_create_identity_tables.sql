@@ -53,6 +53,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id TEXT;
 UPDATE users SET tenant_id = 'default-tenant' WHERE tenant_id IS NULL OR tenant_id = '';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_id UUID;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'audit_logs'
+      AND column_name = 'actor_user_id'
+  ) THEN
+    UPDATE audit_logs SET user_id = actor_user_id WHERE user_id IS NULL AND actor_user_id IS NOT NULL;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);

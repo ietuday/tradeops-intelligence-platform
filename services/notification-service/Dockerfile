@@ -8,9 +8,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/server ./cmd/server
 
 FROM alpine:3.19
 WORKDIR /app
-RUN adduser -D -g '' appuser
+RUN addgroup -S -g 10001 tradeops && adduser -S -D -H -u 10001 -G tradeops tradeops
 COPY --from=build /out/server /app/server
 COPY migrations /app/migrations
-USER appuser
+USER 10001:10001
 EXPOSE 8091
 CMD ["/app/server"]

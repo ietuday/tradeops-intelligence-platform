@@ -18,10 +18,26 @@ spec:
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: db-seed
           image: {{ .Values.seed.image | quote }}
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: PGPASSWORD
               valueFrom:
@@ -68,9 +84,12 @@ spec:
             - name: seeds
               mountPath: /seeds
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: seeds
           configMap:
             name: {{ include "tradeops.fullname" . }}-db-seeds
+        - name: tmp
+          emptyDir: {}
 {{- end }}
-
