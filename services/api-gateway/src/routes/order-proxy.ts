@@ -65,10 +65,37 @@ function resolveOrderPath(method: string, requestPath: string): string | undefin
   if (normalizedMethod === 'GET' && orderMatch) {
     return `/orders/${orderMatch[1]}`;
   }
+  if (normalizedMethod === 'PATCH' && orderMatch) {
+    return `/orders/${orderMatch[1]}`;
+  }
 
   const cancelMatch = new RegExp(`^/(${UUID_PATTERN})/cancel$`).exec(requestPath);
   if (normalizedMethod === 'POST' && cancelMatch) {
     return `/orders/${cancelMatch[1]}/cancel`;
+  }
+
+  const executionsMatch = new RegExp(`^/(${UUID_PATTERN})/executions$`).exec(requestPath);
+  if (normalizedMethod === 'GET' && executionsMatch) {
+    return `/orders/${executionsMatch[1]}/executions`;
+  }
+
+  const bookMatch = /^\/order-books\/([A-Za-z0-9._-]+)$/.exec(requestPath);
+  if (normalizedMethod === 'GET' && bookMatch) {
+    return `/order-books/${encodeURIComponent(bookMatch[1])}`;
+  }
+
+  const depthMatch = /^\/order-books\/([A-Za-z0-9._-]+)\/depth$/.exec(requestPath);
+  if (normalizedMethod === 'GET' && depthMatch) {
+    return `/order-books/${encodeURIComponent(depthMatch[1])}/depth`;
+  }
+
+  if (normalizedMethod === 'GET' && requestPath === '/trades') {
+    return '/trades';
+  }
+
+  const tradeMatch = new RegExp(`^/trades/(${UUID_PATTERN})$`).exec(requestPath);
+  if (normalizedMethod === 'GET' && tradeMatch) {
+    return `/trades/${tradeMatch[1]}`;
   }
 
   return undefined;
@@ -108,7 +135,9 @@ async function forwardToOrderService(
   baseUrl: URL,
   orderPath: string
 ): Promise<void> {
-  const upstream = await fetchUpstream('order-service', new URL(orderPath, baseUrl).toString(), {
+  const upstreamUrl = new URL(orderPath, baseUrl);
+  const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  const upstream = await fetchUpstream('order-service', `${upstreamUrl.toString()}${query}`, {
     method: req.method,
     headers: buildProxyHeaders(req),
     body: shouldForwardBody(req.method) ? JSON.stringify(req.body ?? {}) : undefined

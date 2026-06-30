@@ -168,6 +168,21 @@ marketData:
     enabled: "true"
     intervalMs: "1000"
 
+orderManagement:
+  matchingEngineEnabled: "true"
+  preTradeRiskEnabled: "false"
+  preTradeRiskUrl: http://risk-engine-service:8080
+  preTradeRiskTimeoutMs: "1500"
+  preTradeRiskFailOpen: "false"
+  expiryEnabled: "false"
+  expiryPollInterval: 10s
+  expiryBatchSize: "100"
+  outboxEnabled: "true"
+  outboxPollInterval: 2s
+  outboxBatchSize: "100"
+  outboxMaxAttempts: "10"
+  orderBookMaxDepth: "100"
+
 portfolio:
   initialCash: "100000"
   topics:
@@ -395,6 +410,19 @@ applications:
       OTEL_SERVICE_VERSION: OTEL_SERVICE_VERSION
       OTEL_TRACES_SAMPLER: OTEL_TRACES_SAMPLER
       OTEL_TRACES_SAMPLER_ARG: OTEL_TRACES_SAMPLER_ARG
+      MATCHING_ENGINE_ENABLED: MATCHING_ENGINE_ENABLED
+      PRE_TRADE_RISK_ENABLED: PRE_TRADE_RISK_ENABLED
+      PRE_TRADE_RISK_URL: PRE_TRADE_RISK_URL
+      PRE_TRADE_RISK_TIMEOUT_MS: PRE_TRADE_RISK_TIMEOUT_MS
+      PRE_TRADE_RISK_FAIL_OPEN: PRE_TRADE_RISK_FAIL_OPEN
+      ORDER_EXPIRY_ENABLED: ORDER_EXPIRY_ENABLED
+      ORDER_EXPIRY_POLL_INTERVAL: ORDER_EXPIRY_POLL_INTERVAL
+      ORDER_EXPIRY_BATCH_SIZE: ORDER_EXPIRY_BATCH_SIZE
+      OUTBOX_ENABLED: OUTBOX_ENABLED
+      OUTBOX_POLL_INTERVAL: OUTBOX_POLL_INTERVAL
+      OUTBOX_BATCH_SIZE: OUTBOX_BATCH_SIZE
+      OUTBOX_MAX_ATTEMPTS: OUTBOX_MAX_ATTEMPTS
+      ORDERBOOK_MAX_DEPTH: ORDERBOOK_MAX_DEPTH
     secretEnv: {}
     probes: &defaultProbes
       enabled: true

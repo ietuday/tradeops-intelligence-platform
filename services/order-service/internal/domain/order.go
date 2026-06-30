@@ -6,43 +6,96 @@ const (
 	SideBuy  = "BUY"
 	SideSell = "SELL"
 
-	OrderTypeMarket   = "MARKET"
-	OrderTypeLimit    = "LIMIT"
-	OrderTypeStopLoss = "STOP_LOSS"
+	OrderTypeMarket    = "MARKET"
+	OrderTypeLimit     = "LIMIT"
+	OrderTypeStop      = "STOP"
+	OrderTypeStopLimit = "STOP_LIMIT"
+	OrderTypeStopLoss  = "STOP_LOSS"
 
-	StatusCreated   = "created"
-	StatusValidated = "validated"
-	StatusAccepted  = "accepted"
-	StatusFilled    = "filled"
-	StatusRejected  = "rejected"
-	StatusCancelled = "cancelled"
+	TimeInForceDay = "DAY"
+	TimeInForceGTC = "GTC"
+	TimeInForceGTD = "GTD"
+	TimeInForceIOC = "IOC"
+	TimeInForceFOK = "FOK"
+
+	StatusCreated         = "created"
+	StatusValidated       = "validated"
+	StatusRiskPending     = "risk_pending"
+	StatusRiskRejected    = "risk_rejected"
+	StatusAccepted        = "accepted"
+	StatusPartiallyFilled = "partially_filled"
+	StatusFilled          = "filled"
+	StatusRejected        = "rejected"
+	StatusCancelled       = "cancelled"
+	StatusExpired         = "expired"
 )
 
 type Order struct {
-	ID            string     `json:"id"`
-	TenantID      string     `json:"tenantId"`
-	UserID        string     `json:"userId"`
-	Symbol        string     `json:"symbol"`
-	Side          string     `json:"side"`
-	OrderType     string     `json:"orderType"`
-	Quantity      float64    `json:"quantity"`
-	LimitPrice    *float64   `json:"limitPrice"`
-	StopPrice     *float64   `json:"stopPrice"`
-	Status        string     `json:"status"`
-	FillPrice     *float64   `json:"fillPrice"`
-	RejectReason  *string    `json:"rejectReason"`
-	CorrelationID string     `json:"correlationId"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
-	CancelledAt   *time.Time `json:"cancelledAt"`
-	FilledAt      *time.Time `json:"filledAt"`
+	ID                string     `json:"id"`
+	TenantID          string     `json:"tenantId"`
+	UserID            string     `json:"userId"`
+	Symbol            string     `json:"symbol"`
+	Side              string     `json:"side"`
+	OrderType         string     `json:"orderType"`
+	Quantity          float64    `json:"quantity"`
+	FilledQuantity    float64    `json:"filledQuantity"`
+	RemainingQuantity float64    `json:"remainingQuantity"`
+	LimitPrice        *float64   `json:"limitPrice"`
+	StopPrice         *float64   `json:"stopPrice"`
+	AverageFillPrice  *float64   `json:"averageFillPrice"`
+	TimeInForce       string     `json:"timeInForce"`
+	ExpiresAt         *time.Time `json:"expiresAt"`
+	Version           int        `json:"version"`
+	RiskDecisionID    *string    `json:"riskDecisionId"`
+	LastExecutionAt   *time.Time `json:"lastExecutionAt"`
+	Status            string     `json:"status"`
+	FillPrice         *float64   `json:"fillPrice"`
+	RejectReason      *string    `json:"rejectReason"`
+	CorrelationID     string     `json:"correlationId"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
+	CancelledAt       *time.Time `json:"cancelledAt"`
+	FilledAt          *time.Time `json:"filledAt"`
 }
 
 type CreateOrderRequest struct {
-	Symbol     string   `json:"symbol"`
-	Side       string   `json:"side"`
-	OrderType  string   `json:"orderType"`
-	Quantity   float64  `json:"quantity"`
-	LimitPrice *float64 `json:"limitPrice"`
-	StopPrice  *float64 `json:"stopPrice"`
+	Symbol      string     `json:"symbol"`
+	Side        string     `json:"side"`
+	OrderType   string     `json:"orderType"`
+	Quantity    float64    `json:"quantity"`
+	LimitPrice  *float64   `json:"limitPrice"`
+	StopPrice   *float64   `json:"stopPrice"`
+	TimeInForce string     `json:"timeInForce"`
+	ExpiresAt   *time.Time `json:"expiresAt"`
+}
+
+type AmendOrderRequest struct {
+	Quantity        *float64   `json:"quantity"`
+	LimitPrice      *float64   `json:"limitPrice"`
+	StopPrice       *float64   `json:"stopPrice"`
+	ExpiresAt       *time.Time `json:"expiresAt"`
+	ExpectedVersion int        `json:"expectedVersion"`
+}
+
+type Execution struct {
+	ID            string    `json:"id"`
+	TenantID      string    `json:"tenantId"`
+	BuyOrderID    string    `json:"buyOrderId"`
+	SellOrderID   string    `json:"sellOrderId"`
+	Symbol        string    `json:"symbol"`
+	Quantity      float64   `json:"quantity"`
+	Price         float64   `json:"price"`
+	BuyerUserID   string    `json:"buyerUserId,omitempty"`
+	SellerUserID  string    `json:"sellerUserId,omitempty"`
+	CorrelationID string    `json:"correlationId"`
+	ExecutedAt    time.Time `json:"executedAt"`
+}
+
+func (o Order) IsTerminal() bool {
+	switch o.Status {
+	case StatusFilled, StatusCancelled, StatusRejected, StatusRiskRejected, StatusExpired:
+		return true
+	default:
+		return false
+	}
 }

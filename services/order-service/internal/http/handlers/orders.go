@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/domain"
 	httpmiddleware "github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/http/middleware"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/service"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/tenant"
@@ -89,6 +92,83 @@ func (h *OrderHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	httpmiddleware.WriteJSON(w, http.StatusOK, order)
 }
 
+func (h *OrderHandler) Amend(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContext(r)
+	if !ok {
+		httpmiddleware.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var req domain.AmendOrderRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
+		httpmiddleware.WriteError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	order, err := h.service.AmendOrder(r.Context(), user, chi.URLParam(r, "id"), req, httpmiddleware.GetCorrelationID(r.Context()))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	httpmiddleware.WriteJSON(w, http.StatusOK, order)
+}
+
+func (h *OrderHandler) Executions(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContext(r)
+	if !ok {
+		httpmiddleware.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	executions, err := h.service.ListExecutionsForOrder(r.Context(), user, chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{"executions": executions})
+}
+
+func (h *OrderHandler) Trades(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContext(r)
+	if !ok {
+		httpmiddleware.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	trades, err := h.service.ListTrades(r.Context(), user, limit)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{"trades": trades})
+}
+
+func (h *OrderHandler) Trade(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContext(r)
+	if !ok {
+		httpmiddleware.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	trade, err := h.service.GetTrade(r.Context(), user, chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	httpmiddleware.WriteJSON(w, http.StatusOK, trade)
+}
+
+func (h *OrderHandler) OrderBookDepth(w http.ResponseWriter, r *http.Request) {
+	user, ok := userContext(r)
+	if !ok {
+		httpmiddleware.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	depth, _ := strconv.Atoi(r.URL.Query().Get("depth"))
+	book, err := h.service.OrderBookDepth(r.Context(), user, chi.URLParam(r, "symbol"), depth)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	httpmiddleware.WriteJSON(w, http.StatusOK, book)
+}
+
 func userContext(r *http.Request) (service.UserContext, bool) {
 	claims, ok := httpmiddleware.Claims(r.Context())
 	if !ok {
@@ -111,6 +191,10 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		httpmiddleware.WriteError(w, http.StatusNotFound, "not found")
 	case errors.Is(err, service.ErrOrderNotCancellable):
 		httpmiddleware.WriteError(w, http.StatusConflict, "order cannot be cancelled")
+	case errors.Is(err, service.ErrVersionConflict):
+		httpmiddleware.WriteError(w, http.StatusConflict, "stale order version")
+	case errors.Is(err, service.ErrInvalidOrder):
+		httpmiddleware.WriteError(w, http.StatusBadRequest, err.Error())
 	default:
 		httpmiddleware.WriteError(w, http.StatusInternalServerError, "internal error")
 	}

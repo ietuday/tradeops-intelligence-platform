@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/orders/order.amended.v1.json",
+  "title": "order.amended v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["eventId", "eventType", "tenantId", "orderId", "userId", "symbol", "quantity", "remainingQuantity", "status", "version"],
+  "properties": {
+    "eventId": { "type": "string" },
+    "eventType": { "type": "string", "enum": ["order.amended"] },
+    "eventVersion": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "orderId": { "type": "string" },
+    "userId": { "type": "string" },
+    "symbol": { "type": "string" },
+    "side": { "type": "string", "enum": ["BUY", "SELL"] },
+    "orderType": { "type": "string" },
+    "timeInForce": { "type": "string" },
+    "quantity": { "type": "number" },
+    "remainingQuantity": { "type": "number" },
+    "status": { "type": "string" },
+    "version": { "type": "integer" }
+  }
+}

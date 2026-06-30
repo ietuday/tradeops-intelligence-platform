@@ -49,6 +49,19 @@ data:
   MARKET_DATA_KAFKA_TOPIC: {{ .Values.marketData.kafkaTopic | quote }}
   MARKET_SIMULATOR_ENABLED: {{ .Values.marketData.simulator.enabled | quote }}
   MARKET_SIMULATOR_INTERVAL_MS: {{ .Values.marketData.simulator.intervalMs | quote }}
+  MATCHING_ENGINE_ENABLED: {{ .Values.orderManagement.matchingEngineEnabled | quote }}
+  PRE_TRADE_RISK_ENABLED: {{ .Values.orderManagement.preTradeRiskEnabled | quote }}
+  PRE_TRADE_RISK_URL: {{ .Values.orderManagement.preTradeRiskUrl | quote }}
+  PRE_TRADE_RISK_TIMEOUT_MS: {{ .Values.orderManagement.preTradeRiskTimeoutMs | quote }}
+  PRE_TRADE_RISK_FAIL_OPEN: {{ .Values.orderManagement.preTradeRiskFailOpen | quote }}
+  ORDER_EXPIRY_ENABLED: {{ .Values.orderManagement.expiryEnabled | quote }}
+  ORDER_EXPIRY_POLL_INTERVAL: {{ .Values.orderManagement.expiryPollInterval | quote }}
+  ORDER_EXPIRY_BATCH_SIZE: {{ .Values.orderManagement.expiryBatchSize | quote }}
+  OUTBOX_ENABLED: {{ .Values.orderManagement.outboxEnabled | quote }}
+  OUTBOX_POLL_INTERVAL: {{ .Values.orderManagement.outboxPollInterval | quote }}
+  OUTBOX_BATCH_SIZE: {{ .Values.orderManagement.outboxBatchSize | quote }}
+  OUTBOX_MAX_ATTEMPTS: {{ .Values.orderManagement.outboxMaxAttempts | quote }}
+  ORDERBOOK_MAX_DEPTH: {{ .Values.orderManagement.orderBookMaxDepth | quote }}
   PORTFOLIO_ORDER_FILLED_TOPIC: {{ .Values.portfolio.topics.orderFilled | quote }}
   PORTFOLIO_UPDATED_TOPIC: {{ .Values.portfolio.topics.updated | quote }}
   PORTFOLIO_SNAPSHOT_TOPIC: {{ .Values.portfolio.topics.snapshotCreated | quote }}

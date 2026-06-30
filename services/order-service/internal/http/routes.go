@@ -37,7 +37,13 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Post("/orders", orders.Create)
 		r.Get("/orders", orders.List)
 		r.Get("/orders/{id}", orders.Get)
+		r.Patch("/orders/{id}", orders.Amend)
 		r.Post("/orders/{id}/cancel", orders.Cancel)
+		r.Get("/orders/{id}/executions", orders.Executions)
+		r.Get("/order-books/{symbol}", orders.OrderBookDepth)
+		r.Get("/order-books/{symbol}/depth", orders.OrderBookDepth)
+		r.Get("/trades", orders.Trades)
+		r.Get("/trades/{id}", orders.Trade)
 	})
 
 	return observability.HTTPHandler("order-service", router)
