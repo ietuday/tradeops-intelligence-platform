@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v3.0.0` Cloud-Native Production Deployment Blueprint.
+Current release: `v3.1.1` Transactional Outbox Publisher.
 
 ## Architecture Summary
 
@@ -29,6 +29,8 @@ v2.8.0 adds advanced risk analytics and stress testing APIs for scenario analysi
 v2.9.0 adds a lightweight React real-time dashboard for admin summaries, WebSocket events, risk analytics demos, and observability links. See [real-time dashboard](docs/frontend/realtime-dashboard.md).
 
 v3.0.0 adds a cloud-neutral Kubernetes/Helm deployment blueprint with local Kind workflow, external dependency modes, Secret references, migration jobs, Ingress, HPA, PDB, NetworkPolicy, and production readiness documentation. See [Kubernetes deployment overview](docs/deployment/kubernetes-overview.md).
+
+v3.1.1 adds the Order Service transactional outbox publisher with PostgreSQL lease-based claiming, retry backoff, terminal failures, Kafka metadata propagation, Prometheus metrics, and operational runbooks. See [transactional outbox](docs/architecture/transactional-outbox.md) and [order outbox runbook](docs/runbooks/order-outbox.md).
 
 ## Tech Stack
 

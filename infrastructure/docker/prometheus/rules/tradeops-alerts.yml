@@ -64,6 +64,49 @@ groups:
           summary: "Event retry spike"
           description: "Event retry volume is above the local demo threshold."
 
+  - name: tradeops-order-outbox
+    rules:
+      - alert: OrderOutboxBacklogHigh
+        expr: tradeops_outbox_pending > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order outbox backlog is high"
+          description: "Pending Order Service outbox rows exceeded the local threshold."
+      - alert: OrderOutboxOldestPendingTooOld
+        expr: tradeops_outbox_oldest_pending_age_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Oldest order outbox event is too old"
+          description: "The oldest pending outbox row is older than 5 minutes."
+      - alert: OrderOutboxPublishFailuresHigh
+        expr: sum(rate(tradeops_outbox_publish_errors_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order outbox publish failures are elevated"
+          description: "Order outbox publish errors are above the demo threshold."
+      - alert: OrderOutboxTerminalFailuresPresent
+        expr: tradeops_outbox_failed > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Order outbox terminal failures present"
+          description: "One or more outbox rows require manual inspection."
+      - alert: OrderOutboxNoSuccessfulPublishesWithBacklog
+        expr: tradeops_outbox_pending > 0 and sum(increase(tradeops_outbox_published_total[10m])) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order outbox backlog is not draining"
+          description: "Pending outbox rows exist and no successful publishes occurred for 10 minutes."
+
   - name: tradeops-surveillance-notification-audit
     rules:
       - alert: SurveillanceAlertSpike

@@ -15,6 +15,7 @@ import (
 	httpapi "github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/http"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/observability"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/outbox"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/repository"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/service"
@@ -54,10 +55,30 @@ func main() {
 	defer producer.Close()
 
 	orderService := service.NewOrderService(repository.NewOrderRepository(pool), producer, metrics)
+	var outboxDone chan struct{}
+	var outboxPublisher *outbox.Publisher
+	if cfg.Outbox.Enabled {
+		publisher, err := outbox.NewPublisher(outbox.NewRepository(pool), producer, metrics, logger, cfg.Outbox)
+		if err != nil {
+			logger.Error("outbox publisher initialization failed", "error", err)
+			os.Exit(1)
+		}
+		outboxPublisher = publisher
+		outboxDone = make(chan struct{})
+		go func() {
+			defer close(outboxDone)
+			if err := publisher.Run(ctx); err != nil {
+				logger.Error("outbox publisher failed", "error", err)
+			}
+		}()
+	} else {
+		logger.Info("outbox publishing disabled")
+	}
 	router := httpapi.NewRouter(httpapi.Dependencies{
 		DB:           pool,
 		KafkaBrokers: cfg.KafkaBrokers,
 		Metrics:      metrics,
+		Outbox:       outboxPublisher,
 		Service:      orderService,
 		Validator:    security.NewValidator([]byte(cfg.JWTSecret)),
 	})
@@ -77,11 +98,20 @@ func main() {
 	}()
 
 	<-ctx.Done()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
+	}
+	if outboxDone != nil {
+		outboxCtx, outboxCancel := context.WithTimeout(context.Background(), cfg.Outbox.ShutdownTimeout)
+		defer outboxCancel()
+		select {
+		case <-outboxDone:
+		case <-outboxCtx.Done():
+			logger.Warn("outbox publisher shutdown timed out")
+		}
 	}
 	if err := shutdownTracing(shutdownCtx); err != nil {
 		logger.Warn("opentelemetry shutdown failed", "error", err)

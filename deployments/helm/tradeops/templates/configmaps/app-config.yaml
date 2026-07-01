@@ -60,7 +60,14 @@ data:
   OUTBOX_ENABLED: {{ .Values.orderManagement.outboxEnabled | quote }}
   OUTBOX_POLL_INTERVAL: {{ .Values.orderManagement.outboxPollInterval | quote }}
   OUTBOX_BATCH_SIZE: {{ .Values.orderManagement.outboxBatchSize | quote }}
+  OUTBOX_PUBLISH_CONCURRENCY: {{ .Values.orderManagement.outboxPublishConcurrency | quote }}
+  OUTBOX_PUBLISH_TIMEOUT: {{ .Values.orderManagement.outboxPublishTimeout | quote }}
+  OUTBOX_SHUTDOWN_TIMEOUT: {{ .Values.orderManagement.outboxShutdownTimeout | quote }}
+  OUTBOX_LEASE_DURATION: {{ .Values.orderManagement.outboxLeaseDuration | quote }}
+  OUTBOX_BASE_BACKOFF: {{ .Values.orderManagement.outboxBaseBackoff | quote }}
+  OUTBOX_MAX_BACKOFF: {{ .Values.orderManagement.outboxMaxBackoff | quote }}
   OUTBOX_MAX_ATTEMPTS: {{ .Values.orderManagement.outboxMaxAttempts | quote }}
+  OUTBOX_ERROR_MAX_LENGTH: {{ .Values.orderManagement.outboxErrorMaxLength | quote }}
   ORDERBOOK_MAX_DEPTH: {{ .Values.orderManagement.orderBookMaxDepth | quote }}
   PORTFOLIO_ORDER_FILLED_TOPIC: {{ .Values.portfolio.topics.orderFilled | quote }}
   PORTFOLIO_UPDATED_TOPIC: {{ .Values.portfolio.topics.updated | quote }}

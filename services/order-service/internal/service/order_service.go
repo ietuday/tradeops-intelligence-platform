@@ -31,13 +31,13 @@ type UserContext struct {
 }
 
 type OrderService struct {
-	repo     *repository.OrderRepository
-	producer *kafka.Producer
-	metrics  *observability.Metrics
+	repo    *repository.OrderRepository
+	metrics *observability.Metrics
 }
 
 func NewOrderService(repo *repository.OrderRepository, producer *kafka.Producer, metrics *observability.Metrics) *OrderService {
-	return &OrderService{repo: repo, producer: producer, metrics: metrics}
+	_ = producer
+	return &OrderService{repo: repo, metrics: metrics}
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempotencyKey string, requestBody []byte, correlationID string) (domain.Order, bool, error) {
@@ -73,12 +73,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempo
 		return domain.Order{}, false, err
 	}
 	s.recordMetrics(created.Status)
-	for _, event := range events {
-		event.OrderID = created.ID
-		if err := s.producer.Publish(ctx, event); err != nil {
-			s.metrics.KafkaPublishErrors.Inc()
-		}
-	}
 	return created, false, nil
 }
 
@@ -133,10 +127,6 @@ func (s *OrderService) CancelOrder(ctx context.Context, user UserContext, id, co
 	}
 	if err != nil {
 		return domain.Order{}, err
-	}
-	event.OrderID = cancelled.ID
-	if err := s.producer.Publish(ctx, event); err != nil {
-		s.metrics.KafkaPublishErrors.Inc()
 	}
 	s.metrics.OrdersCancelled.Inc()
 	return cancelled, nil

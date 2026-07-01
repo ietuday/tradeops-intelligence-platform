@@ -64,6 +64,19 @@ networkPolicies:
 seed:
   enabled: false
 
+orderManagement:
+  outboxEnabled: "true"
+  outboxPollInterval: 1s
+  outboxBatchSize: "75"
+  outboxPublishConcurrency: "5"
+  outboxPublishTimeout: 5s
+  outboxShutdownTimeout: 15s
+  outboxLeaseDuration: 30s
+  outboxBaseBackoff: 1s
+  outboxMaxBackoff: 5m
+  outboxMaxAttempts: "12"
+  outboxErrorMaxLength: "512"
+
 applications:
   apiGateway:
     replicaCount: 2
@@ -85,4 +98,3 @@ applications:
     replicaCount: 2
   notificationService:
     replicaCount: 2
-

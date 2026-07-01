@@ -9,18 +9,31 @@ import (
 )
 
 type Metrics struct {
-	Registry           *prometheus.Registry
-	OrdersCreated      prometheus.Counter
-	OrdersAccepted     prometheus.Counter
-	OrdersFilled       prometheus.Counter
-	OrdersRejected     prometheus.Counter
-	OrdersCancelled    prometheus.Counter
-	OrdersAmended      prometheus.Counter
-	OrdersPartial      prometheus.Counter
-	TradesExecuted     prometheus.Counter
-	IdempotencyReplays prometheus.Counter
-	KafkaPublishErrors prometheus.Counter
-	ProcessingDuration prometheus.Histogram
+	Registry               *prometheus.Registry
+	OrdersCreated          prometheus.Counter
+	OrdersAccepted         prometheus.Counter
+	OrdersFilled           prometheus.Counter
+	OrdersRejected         prometheus.Counter
+	OrdersCancelled        prometheus.Counter
+	OrdersAmended          prometheus.Counter
+	OrdersPartial          prometheus.Counter
+	TradesExecuted         prometheus.Counter
+	IdempotencyReplays     prometheus.Counter
+	KafkaPublishErrors     prometheus.Counter
+	ProcessingDuration     prometheus.Histogram
+	OutboxClaimed          prometheus.Counter
+	OutboxPublished        *prometheus.CounterVec
+	OutboxPublishErrors    *prometheus.CounterVec
+	OutboxTerminalFailures *prometheus.CounterVec
+	OutboxPending          prometheus.Gauge
+	OutboxProcessing       prometheus.Gauge
+	OutboxFailed           prometheus.Gauge
+	OutboxOldestPendingAge prometheus.Gauge
+	OutboxPublishDuration  *prometheus.HistogramVec
+	OutboxBatchSize        prometheus.Histogram
+	OutboxClaimDuration    prometheus.Histogram
+	OutboxRetryDelay       prometheus.Histogram
+	OutboxLeaseRecoveries  prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -73,8 +86,64 @@ func NewMetrics() *Metrics {
 			Help:    "Order processing duration in seconds.",
 			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2},
 		}),
+		OutboxClaimed: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_outbox_claimed_total",
+			Help: "Total outbox rows claimed for publishing.",
+		}),
+		OutboxPublished: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_outbox_published_total",
+			Help: "Total outbox events published successfully.",
+		}, []string{"event_type", "topic"}),
+		OutboxPublishErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_outbox_publish_errors_total",
+			Help: "Total outbox publish errors.",
+		}, []string{"event_type", "topic", "result"}),
+		OutboxTerminalFailures: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_outbox_terminal_failures_total",
+			Help: "Total outbox events moved to terminal failure.",
+		}, []string{"event_type", "topic"}),
+		OutboxPending: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_outbox_pending",
+			Help: "Current pending outbox rows.",
+		}),
+		OutboxProcessing: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_outbox_processing",
+			Help: "Current processing outbox rows.",
+		}),
+		OutboxFailed: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_outbox_failed",
+			Help: "Current terminally failed outbox rows.",
+		}),
+		OutboxOldestPendingAge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_outbox_oldest_pending_age_seconds",
+			Help: "Age of the oldest pending outbox row in seconds.",
+		}),
+		OutboxPublishDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "tradeops_outbox_publish_duration_seconds",
+			Help:    "Outbox Kafka publish duration in seconds.",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5},
+		}, []string{"event_type", "topic", "result"}),
+		OutboxBatchSize: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "tradeops_outbox_batch_size",
+			Help:    "Outbox claimed batch size.",
+			Buckets: []float64{0, 1, 5, 10, 25, 50, 100, 250},
+		}),
+		OutboxClaimDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "tradeops_outbox_claim_duration_seconds",
+			Help:    "Outbox claim duration in seconds.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
+		}),
+		OutboxRetryDelay: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "tradeops_outbox_retry_delay_seconds",
+			Help:    "Outbox retry delay in seconds.",
+			Buckets: []float64{1, 2, 5, 10, 30, 60, 120, 300},
+		}),
+		OutboxLeaseRecoveries: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_outbox_lease_recoveries_total",
+			Help: "Total outbox rows recovered after an expired lease.",
+		}),
 	}
-	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration)
+	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries)
 	return metrics
 }
 

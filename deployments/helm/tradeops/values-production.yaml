@@ -91,6 +91,19 @@ otel:
     replicaCount: 2
     exporterEndpoint: https://otel-gateway.production.example.internal
 
+orderManagement:
+  outboxEnabled: "true"
+  outboxPollInterval: 1s
+  outboxBatchSize: "100"
+  outboxPublishConcurrency: "10"
+  outboxPublishTimeout: 5s
+  outboxShutdownTimeout: 20s
+  outboxLeaseDuration: 30s
+  outboxBaseBackoff: 1s
+  outboxMaxBackoff: 5m
+  outboxMaxAttempts: "12"
+  outboxErrorMaxLength: "512"
+
 applications:
   apiGateway:
     replicaCount: 3
@@ -126,4 +139,3 @@ applications:
     replicaCount: 2
   tradingDashboardReact:
     replicaCount: 2
-

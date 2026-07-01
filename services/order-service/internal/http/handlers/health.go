@@ -6,17 +6,23 @@ import (
 	"time"
 
 	httpmiddleware "github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/http/middleware"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/outbox"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 )
 
+type OutboxStatusProvider interface {
+	Status() outbox.Stats
+}
+
 type HealthHandler struct {
 	db           *pgxpool.Pool
 	kafkaBrokers []string
+	outbox       OutboxStatusProvider
 }
 
-func NewHealthHandler(db *pgxpool.Pool, kafkaBrokers []string) *HealthHandler {
-	return &HealthHandler{db: db, kafkaBrokers: kafkaBrokers}
+func NewHealthHandler(db *pgxpool.Pool, kafkaBrokers []string, outbox OutboxStatusProvider) *HealthHandler {
+	return &HealthHandler{db: db, kafkaBrokers: kafkaBrokers, outbox: outbox}
 }
 
 func (h *HealthHandler) Health(w http.ResponseWriter, _ *http.Request) {
@@ -37,4 +43,23 @@ func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = conn.Close()
 	httpmiddleware.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready", "service": "order-service"})
+}
+
+func (h *HealthHandler) OutboxStatus(w http.ResponseWriter, _ *http.Request) {
+	if h.outbox == nil {
+		httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{"enabled": false})
+		return
+	}
+	status := h.outbox.Status()
+	httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{
+		"enabled":                 true,
+		"pending":                 status.Pending,
+		"processing":              status.Processing,
+		"failed":                  status.Failed,
+		"oldestPendingAgeSeconds": status.OldestPendingAge.Seconds(),
+		"consecutiveErrors":       status.ConsecutiveErrors,
+		"lastPoll":                status.LastPoll,
+		"lastPublished":           status.LastPublished,
+		"lastError":               status.LastError,
+	})
 }

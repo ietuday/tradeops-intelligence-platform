@@ -3,6 +3,25 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.1.1] - Transactional Outbox Publisher
+
+### Added
+
+- Background Order Service outbox publisher with lease-based multi-replica claiming, retry backoff, terminal failures, and graceful shutdown.
+- Additive `009` migration for `locked_by`, `locked_at`, `lease_until`, and `failed_at` on `order_outbox`.
+- Kafka publication from stored outbox payloads with stable `tenantID:aggregateID` keys and correlation/trace headers.
+- Prometheus `tradeops_outbox_*` metrics and `GET /internal/outbox/status` operational visibility.
+- Compose and Helm configuration for publisher polling, timeout, lease, backoff, attempts, and error length settings.
+- Architecture, runbook, and consumer idempotency documentation.
+
+### Changed
+
+- Order Service no longer publishes order events inline after DB commit; the outbox publisher owns Kafka delivery.
+
+### Delivery Semantics
+
+- Database state and event intent are committed atomically. Kafka delivery is at-least-once. Consumers must be idempotent.
+
 ## [v3.1.0] - Smart Order Execution and OMS Enhancement
 
 ### Added
