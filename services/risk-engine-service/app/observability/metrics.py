@@ -16,6 +16,11 @@ risk_concentration_analyses_total = Counter("risk_concentration_analyses_total",
 risk_drawdown_analyses_total = Counter("risk_drawdown_analyses_total", "Total drawdown analyses.", ["status"])
 risk_recommendations_generated_total = Counter("risk_recommendations_generated_total", "Total advanced risk recommendations generated.", ["severity"])
 risk_analytics_duration_seconds = Histogram("risk_analytics_duration_seconds", "Advanced risk analytics duration in seconds.", ["operation"])
+tradeops_risk_pretrade_evaluations_total = Counter("tradeops_risk_pretrade_evaluations_total", "Total pre-trade risk evaluations.", ["result", "reason_code"])
+tradeops_risk_pretrade_rejections_total = Counter("tradeops_risk_pretrade_rejections_total", "Total pre-trade risk rejections.", ["reason_code"])
+tradeops_risk_pretrade_evaluation_duration_seconds = Histogram("tradeops_risk_pretrade_evaluation_duration_seconds", "Pre-trade risk evaluation duration in seconds.", ["result"])
+tradeops_risk_policy_lookup_errors_total = Counter("tradeops_risk_policy_lookup_errors_total", "Total pre-trade policy lookup errors.")
+tradeops_risk_daily_limit_query_errors_total = Counter("tradeops_risk_daily_limit_query_errors_total", "Total pre-trade daily limit query errors.")
 
 
 def metrics_response() -> tuple[bytes, str]:

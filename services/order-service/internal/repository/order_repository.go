@@ -48,10 +48,10 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order domain.Order, e
 	defer tx.Rollback(ctx)
 
 	err = tx.QueryRow(ctx, `
-		INSERT INTO orders (tenant_id, user_id, symbol, side, order_type, quantity, filled_quantity, remaining_quantity, limit_price, stop_price, average_fill_price, time_in_force, expires_at, version, risk_decision_id, last_execution_at, status, fill_price, reject_reason, correlation_id, cancelled_at, filled_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+		INSERT INTO orders (tenant_id, user_id, symbol, side, order_type, quantity, filled_quantity, remaining_quantity, limit_price, stop_price, average_fill_price, time_in_force, expires_at, version, risk_decision_id, risk_status, risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at, status, fill_price, reject_reason, correlation_id, cancelled_at, filled_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
 		RETURNING id::text, created_at, updated_at
-	`, order.TenantID, order.UserID, order.Symbol, order.Side, order.OrderType, order.Quantity, order.FilledQuantity, order.RemainingQuantity, order.LimitPrice, order.StopPrice, order.AverageFillPrice, order.TimeInForce, order.ExpiresAt, order.Version, order.RiskDecisionID, order.LastExecutionAt, order.Status, order.FillPrice, order.RejectReason, order.CorrelationID, order.CancelledAt, order.FilledAt).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+	`, order.TenantID, order.UserID, order.Symbol, order.Side, order.OrderType, order.Quantity, order.FilledQuantity, order.RemainingQuantity, order.LimitPrice, order.StopPrice, order.AverageFillPrice, order.TimeInForce, order.ExpiresAt, order.Version, order.RiskDecisionID, order.RiskStatus, order.RiskReasonCode, order.RiskReasonMessage, order.RiskEvaluatedAt, order.LastExecutionAt, order.Status, order.FillPrice, order.RejectReason, order.CorrelationID, order.CancelledAt, order.FilledAt).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
 	if err != nil {
 		return domain.Order{}, nil, err
 	}
@@ -93,13 +93,120 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order domain.Order, e
 	return order, events, nil
 }
 
+func (r *OrderRepository) ApplyRiskDecision(ctx context.Context, tenantID, orderID string, decision domain.RiskDecision, approvedEvents []domain.OrderEvent, rejectedEvent domain.OrderEvent) (domain.Order, []domain.OrderEvent, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return domain.Order{}, nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	order, err := loadOrderForUpdate(ctx, tx, tenantID, orderID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.Order{}, nil, ErrNotFound
+		}
+		return domain.Order{}, nil, err
+	}
+	if order.Status != domain.StatusRiskPending {
+		return order, nil, nil
+	}
+	if err := insertRiskDecision(ctx, tx, decision); err != nil {
+		return domain.Order{}, nil, err
+	}
+
+	now := decision.EvaluatedAt
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+	order.RiskDecisionID = &decision.DecisionID
+	order.RiskReasonCode = &decision.ReasonCode
+	order.RiskReasonMessage = &decision.ReasonMessage
+	order.RiskEvaluatedAt = &now
+	order.CorrelationID = decision.CorrelationID
+
+	var events []domain.OrderEvent
+	if decision.Approved {
+		order.Status = domain.StatusAccepted
+		order.RiskStatus = "APPROVED"
+		events = append(events, approvedEvents...)
+		if _, err := tx.Exec(ctx, `
+			UPDATE orders
+			SET status = $2,
+			    risk_decision_id = $3,
+			    risk_status = $4,
+			    risk_reason_code = $5,
+			    risk_reason_message = $6,
+			    risk_evaluated_at = $7,
+			    correlation_id = $8,
+			    updated_at = now(),
+			    version = version + 1
+			WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $9
+		`, order.ID, order.Status, order.RiskDecisionID, order.RiskStatus, order.RiskReasonCode, order.RiskReasonMessage, order.RiskEvaluatedAt, order.CorrelationID, order.TenantID); err != nil {
+			return domain.Order{}, nil, err
+		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, order.TenantID+":"+order.Symbol); err != nil {
+			return domain.Order{}, nil, err
+		}
+		var matchEvents []domain.OrderEvent
+		order, matchEvents, err = r.matchAcceptedOrder(ctx, tx, order)
+		if err != nil {
+			return domain.Order{}, nil, err
+		}
+		events = append(events, matchEvents...)
+	} else {
+		order.Status = domain.StatusRiskRejected
+		order.RiskStatus = "REJECTED"
+		if decision.Decision == "UNAVAILABLE" || decision.Decision == "INVALID_RESPONSE" {
+			order.Status = domain.StatusRiskError
+			order.RiskStatus = "ERROR"
+		}
+		order.RejectReason = &decision.ReasonMessage
+		events = append(events, rejectedEvent)
+		if _, err := tx.Exec(ctx, `
+			UPDATE orders
+			SET status = $2,
+			    risk_decision_id = $3,
+			    risk_status = $4,
+			    risk_reason_code = $5,
+			    risk_reason_message = $6,
+			    risk_evaluated_at = $7,
+			    reject_reason = $8,
+			    correlation_id = $9,
+			    updated_at = now(),
+			    version = version + 1
+			WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $10
+		`, order.ID, order.Status, order.RiskDecisionID, order.RiskStatus, order.RiskReasonCode, order.RiskReasonMessage, order.RiskEvaluatedAt, order.RejectReason, order.CorrelationID, order.TenantID); err != nil {
+			return domain.Order{}, nil, err
+		}
+	}
+
+	for i := range events {
+		if events[i].OrderID == "" {
+			events[i].OrderID = order.ID
+		}
+		if events[i].UserID == "" {
+			events[i].UserID = order.UserID
+		}
+		if err := insertEvent(ctx, tx, events[i]); err != nil {
+			return domain.Order{}, nil, err
+		}
+		if err := insertOutbox(ctx, tx, events[i]); err != nil {
+			return domain.Order{}, nil, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Order{}, nil, err
+	}
+	return order, events, nil
+}
+
 func (r *OrderRepository) GetOrder(ctx context.Context, tenantID, id string) (domain.Order, error) {
 	var order domain.Order
 	err := r.db.QueryRow(ctx, `
-		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, COALESCE(risk_status, 'NOT_EVALUATED'), risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
 		FROM orders
 		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
-	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
+	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.RiskStatus, &order.RiskReasonCode, &order.RiskReasonMessage, &order.RiskEvaluatedAt, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -111,7 +218,7 @@ func (r *OrderRepository) GetOrder(ctx context.Context, tenantID, id string) (do
 
 func (r *OrderRepository) ListOrders(ctx context.Context, tenantID, userID string, includeAll bool) ([]domain.Order, error) {
 	query := `
-		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, COALESCE(risk_status, 'NOT_EVALUATED'), risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
 		FROM orders
 	`
 	args := []any{tenantID}
@@ -130,7 +237,7 @@ func (r *OrderRepository) ListOrders(ctx context.Context, tenantID, userID strin
 	var orders []domain.Order
 	for rows.Next() {
 		var order domain.Order
-		if err := rows.Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason); err != nil {
+		if err := rows.Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.RiskStatus, &order.RiskReasonCode, &order.RiskReasonMessage, &order.RiskEvaluatedAt, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason); err != nil {
 			return nil, err
 		}
 		orders = append(orders, order)
@@ -150,8 +257,8 @@ func (r *OrderRepository) CancelOrder(ctx context.Context, tenantID, id, correla
 		UPDATE orders
 		SET status = $2, remaining_quantity = 0, cancelled_at = now(), updated_at = now(), correlation_id = $3, version = version + 1
 		WHERE id = $1 AND status IN ($4, $5) AND COALESCE(tenant_id, 'default-tenant') = $6
-		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
-	`, id, domain.StatusCancelled, correlationID, domain.StatusAccepted, domain.StatusPartiallyFilled, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, COALESCE(risk_status, 'NOT_EVALUATED'), risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+	`, id, domain.StatusCancelled, correlationID, domain.StatusAccepted, domain.StatusPartiallyFilled, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.RiskStatus, &order.RiskReasonCode, &order.RiskReasonMessage, &order.RiskEvaluatedAt, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -192,8 +299,8 @@ func (r *OrderRepository) AmendOrder(ctx context.Context, tenantID, id string, r
 		  AND version = $8
 		  AND status IN ($9, $10)
 		  AND ($3::numeric IS NULL OR $3::numeric >= filled_quantity)
-		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
-	`, id, tenantID, req.Quantity, req.LimitPrice, req.StopPrice, req.ExpiresAt, correlationID, req.ExpectedVersion, domain.StatusAccepted, domain.StatusPartiallyFilled).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, COALESCE(risk_status, 'NOT_EVALUATED'), risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+	`, id, tenantID, req.Quantity, req.LimitPrice, req.StopPrice, req.ExpiresAt, correlationID, req.ExpectedVersion, domain.StatusAccepted, domain.StatusPartiallyFilled).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.RiskStatus, &order.RiskReasonCode, &order.RiskReasonMessage, &order.RiskEvaluatedAt, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -407,11 +514,11 @@ func loadRestingOrders(ctx context.Context, tx pgx.Tx, incoming domain.Order) ([
 func loadOrderForUpdate(ctx context.Context, tx pgx.Tx, tenantID, id string) (domain.Order, error) {
 	var order domain.Order
 	err := tx.QueryRow(ctx, `
-		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, COALESCE(risk_status, 'NOT_EVALUATED'), risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
 		FROM orders
 		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
 		FOR UPDATE
-	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
+	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.RiskStatus, &order.RiskReasonCode, &order.RiskReasonMessage, &order.RiskEvaluatedAt, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	return order, err
 }
 
@@ -477,6 +584,31 @@ func insertExecution(ctx context.Context, tx pgx.Tx, tenantID, correlationID str
 		INSERT INTO order_executions (id, tenant_id, buy_order_id, sell_order_id, symbol, execution_quantity, execution_price, buyer_user_id, seller_user_id, correlation_id, executed_at)
 		VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8, $9, $10, $11)
 	`, exec.ID, tenantID, exec.BuyOrderID, exec.SellOrderID, exec.Symbol, matching.RatString(exec.Quantity), matching.RatString(exec.Price), exec.BuyerUserID, exec.SellerUserID, correlationID, exec.ExecutedAt)
+	return err
+}
+
+func insertRiskDecision(ctx context.Context, tx pgx.Tx, decision domain.RiskDecision) error {
+	evaluatedLimits, err := json.Marshal(decision.EvaluatedLimits)
+	if err != nil {
+		return err
+	}
+	requestSnapshot, err := json.Marshal(decision.RequestSnapshot)
+	if err != nil {
+		return err
+	}
+	responseSnapshot, err := json.Marshal(decision.ResponseSnapshot)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO order_risk_decisions (
+		  id, tenant_id, order_id, user_id, policy_id, policy_version, decision, approved,
+		  reason_code, reason_message, estimated_price, estimated_notional,
+		  evaluated_limits, request_snapshot, response_snapshot, correlation_id, traceparent, evaluated_at
+		)
+		VALUES ($1, $2, $3, $4, NULLIF($5, '')::uuid, $6, $7, $8, $9, $10, $11::numeric, $12::numeric, $13, $14, $15, $16, $17, $18)
+		ON CONFLICT (order_id) WHERE decision IN ('APPROVED', 'REJECTED', 'UNAVAILABLE', 'INVALID_RESPONSE') DO NOTHING
+	`, decision.DecisionID, decision.TenantID, decision.OrderID, decision.UserID, decision.PolicyID, decision.PolicyVersion, decision.Decision, decision.Approved, decision.ReasonCode, decision.ReasonMessage, decision.EstimatedPrice, decision.EstimatedNotional, evaluatedLimits, requestSnapshot, responseSnapshot, decision.CorrelationID, decision.TraceParent, decision.EvaluatedAt)
 	return err
 }
 

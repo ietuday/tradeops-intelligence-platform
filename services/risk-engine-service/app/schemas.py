@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -235,3 +236,45 @@ class VolatilityShockResult(BaseModel):
     riskLevel: RiskLevel
     recommendations: list[RiskRecommendation]
     generatedAt: datetime
+
+
+class PreTradeRiskRequest(BaseModel):
+    tenantId: str
+    userId: str
+    orderId: str
+    symbol: str
+    side: str
+    orderType: str
+    quantity: Decimal
+    limitPrice: Decimal | None = None
+    stopPrice: Decimal | None = None
+    estimatedPrice: Decimal
+    estimatedNotional: Decimal
+    timeInForce: str
+    currency: str = "USD"
+    submittedAt: datetime
+    correlationId: str | None = None
+
+    @field_validator("symbol")
+    @classmethod
+    def symbol_must_be_normalized(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @field_validator("quantity", "estimatedPrice", "estimatedNotional")
+    @classmethod
+    def decimal_must_be_positive(cls, value: Decimal) -> Decimal:
+        if value <= 0:
+            raise ValueError("value must be positive")
+        return value
+
+
+class PreTradeRiskDecision(BaseModel):
+    decisionId: str
+    approved: bool
+    decision: str
+    reasonCode: str
+    reasonMessage: str
+    evaluatedLimits: dict[str, str]
+    evaluatedAt: datetime
+    policyId: str | None = None
+    policyVersion: str

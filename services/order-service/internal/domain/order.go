@@ -22,6 +22,7 @@ const (
 	StatusValidated       = "validated"
 	StatusRiskPending     = "risk_pending"
 	StatusRiskRejected    = "risk_rejected"
+	StatusRiskError       = "risk_error"
 	StatusAccepted        = "accepted"
 	StatusPartiallyFilled = "partially_filled"
 	StatusFilled          = "filled"
@@ -47,6 +48,10 @@ type Order struct {
 	ExpiresAt         *time.Time `json:"expiresAt"`
 	Version           int        `json:"version"`
 	RiskDecisionID    *string    `json:"riskDecisionId"`
+	RiskStatus        string     `json:"riskStatus"`
+	RiskReasonCode    *string    `json:"riskReasonCode"`
+	RiskReasonMessage *string    `json:"riskReasonMessage"`
+	RiskEvaluatedAt   *time.Time `json:"riskEvaluatedAt"`
 	LastExecutionAt   *time.Time `json:"lastExecutionAt"`
 	Status            string     `json:"status"`
 	FillPrice         *float64   `json:"fillPrice"`
@@ -93,9 +98,30 @@ type Execution struct {
 	ExecutedAt    time.Time `json:"executedAt"`
 }
 
+type RiskDecision struct {
+	DecisionID        string
+	TenantID          string
+	OrderID           string
+	UserID            string
+	PolicyID          string
+	PolicyVersion     string
+	Decision          string
+	Approved          bool
+	ReasonCode        string
+	ReasonMessage     string
+	EstimatedPrice    float64
+	EstimatedNotional float64
+	EvaluatedLimits   map[string]string
+	RequestSnapshot   map[string]any
+	ResponseSnapshot  map[string]any
+	CorrelationID     string
+	TraceParent       string
+	EvaluatedAt       time.Time
+}
+
 func (o Order) IsTerminal() bool {
 	switch o.Status {
-	case StatusFilled, StatusCancelled, StatusRejected, StatusRiskRejected, StatusExpired:
+	case StatusFilled, StatusCancelled, StatusRejected, StatusRiskRejected, StatusRiskError, StatusExpired:
 		return true
 	default:
 		return false

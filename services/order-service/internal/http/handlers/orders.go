@@ -195,6 +195,12 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		httpmiddleware.WriteError(w, http.StatusConflict, "stale order version")
 	case errors.Is(err, service.ErrInvalidOrder):
 		httpmiddleware.WriteError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, service.ErrPreTradeRiskRejected):
+		httpmiddleware.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{"error": map[string]any{"code": "PRE_TRADE_RISK_REJECTED", "message": err.Error()}})
+	case errors.Is(err, service.ErrPreTradeRiskUnavailable):
+		httpmiddleware.WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"error": map[string]any{"code": "PRE_TRADE_RISK_UNAVAILABLE", "message": err.Error()}})
+	case errors.Is(err, service.ErrPreTradeRiskInvalidResponse):
+		httpmiddleware.WriteJSON(w, http.StatusBadGateway, map[string]any{"error": map[string]any{"code": "PRE_TRADE_RISK_INVALID_RESPONSE", "message": err.Error()}})
 	default:
 		httpmiddleware.WriteError(w, http.StatusInternalServerError, "internal error")
 	}

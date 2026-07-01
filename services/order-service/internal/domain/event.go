@@ -23,6 +23,13 @@ type OrderEvent struct {
 	SellerUserID      string     `json:"sellerUserId,omitempty"`
 	Currency          string     `json:"currency,omitempty"`
 	Source            string     `json:"source,omitempty"`
+	EstimatedPrice    *float64   `json:"estimatedPrice,omitempty"`
+	EstimatedNotional *float64   `json:"estimatedNotional,omitempty"`
+	DecisionID        string     `json:"decisionId,omitempty"`
+	ReasonCode        string     `json:"reasonCode,omitempty"`
+	ReasonMessage     string     `json:"reasonMessage,omitempty"`
+	PolicyVersion     string     `json:"policyVersion,omitempty"`
+	EvaluatedAt       *time.Time `json:"evaluatedAt,omitempty"`
 	AverageFillPrice  *float64   `json:"averageFillPrice,omitempty"`
 	Status            string     `json:"status"`
 	Version           int        `json:"version,omitempty"`

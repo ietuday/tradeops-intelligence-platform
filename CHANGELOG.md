@@ -3,6 +3,20 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.1.4] - Remote Pre-Trade Risk Evaluation
+
+### Added
+
+- Order Service remote pre-trade risk workflow: persist `risk_pending`, call Risk Engine outside the DB transaction, then atomically approve/match or reject.
+- Risk Engine `POST /api/v1/risk/pre-trade/evaluate` with tenant/default policy lookup, max quantity/notional, allowed/restricted symbols, and daily approved-notional checks.
+- Additive `012` migration for pre-trade risk policies, richer order risk metadata, and final decision ledger constraints/indexes.
+- `order.risk_rejected` transactional outbox event schema and bounded pre-trade metrics on both services.
+- Compose/Helm configuration for fail-closed risk evaluation, low retries, timeout, and development-only fail-open.
+
+### Known Limitations
+
+- Market and stop-only orders fail closed with `REFERENCE_PRICE_UNAVAILABLE` until a reliable reference price source is wired into the synchronous order path.
+
 ## [v3.1.3] - Order Expiry Worker for DAY and GTD Orders
 
 ### Added

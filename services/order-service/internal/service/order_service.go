@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/observability"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/repository"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/risk"
 )
 
 var ErrForbidden = errors.New("forbidden")
@@ -24,6 +26,9 @@ var ErrOrderNotCancellable = errors.New("order cannot be cancelled")
 var ErrInvalidOrder = errors.New("invalid order")
 var ErrVersionConflict = errors.New("stale order version")
 var ErrNotFound = errors.New("not found")
+var ErrPreTradeRiskRejected = errors.New("pre-trade risk rejected")
+var ErrPreTradeRiskUnavailable = errors.New("pre-trade risk unavailable")
+var ErrPreTradeRiskInvalidResponse = errors.New("pre-trade risk invalid response")
 
 type UserContext struct {
 	UserID   string
@@ -35,11 +40,26 @@ type OrderService struct {
 	repo     *repository.OrderRepository
 	metrics  *observability.Metrics
 	calendar expiry.TradingCalendar
+	risk     risk.PreTradeRiskChecker
+	riskCfg  RiskOptions
 }
 
-func NewOrderService(repo *repository.OrderRepository, producer *kafka.Producer, metrics *observability.Metrics, calendar expiry.TradingCalendar) *OrderService {
+type RiskOptions struct {
+	Enabled  bool
+	FailOpen bool
+}
+
+func NewOrderService(repo *repository.OrderRepository, producer *kafka.Producer, metrics *observability.Metrics, calendar expiry.TradingCalendar, opts ...RiskOptions) *OrderService {
 	_ = producer
-	return &OrderService{repo: repo, metrics: metrics, calendar: calendar}
+	riskCfg := RiskOptions{}
+	if len(opts) > 0 {
+		riskCfg = opts[0]
+	}
+	return &OrderService{repo: repo, metrics: metrics, calendar: calendar, riskCfg: riskCfg}
+}
+
+func (s *OrderService) SetRiskChecker(checker risk.PreTradeRiskChecker) {
+	s.risk = checker
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempotencyKey string, requestBody []byte, correlationID string) (domain.Order, bool, error) {
@@ -59,7 +79,19 @@ func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempo
 		}
 		s.metrics.IdempotencyReplays.Inc()
 		order, err := s.repo.GetOrder(ctx, user.TenantID, record.OrderID)
-		return order, true, err
+		if err != nil {
+			return order, true, err
+		}
+		if order.Status == domain.StatusRiskRejected {
+			return order, true, fmt.Errorf("%w: %s", ErrPreTradeRiskRejected, stringValue(order.RiskReasonMessage, "Risk rejected order"))
+		}
+		if order.Status == domain.StatusRiskError {
+			if stringValue(order.RiskReasonCode, "") == risk.ReasonResponseInvalid {
+				return order, true, fmt.Errorf("%w: %s", ErrPreTradeRiskInvalidResponse, stringValue(order.RiskReasonMessage, "Risk response invalid"))
+			}
+			return order, true, fmt.Errorf("%w: %s", ErrPreTradeRiskUnavailable, stringValue(order.RiskReasonMessage, "Risk Engine unavailable"))
+		}
+		return order, true, nil
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return domain.Order{}, false, err
 	}
@@ -73,9 +105,16 @@ func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempo
 	if err != nil {
 		return domain.Order{}, false, err
 	}
-	created, events, err := s.repo.CreateOrder(ctx, order, events, idempotencyKey, requestHash)
+	created, _, err := s.repo.CreateOrder(ctx, order, events, idempotencyKey, requestHash)
 	if err != nil {
 		return domain.Order{}, false, err
+	}
+	if created.Status == domain.StatusRiskPending {
+		finalized, err := s.evaluateAndApplyRisk(ctx, created)
+		if err != nil {
+			return finalized, false, err
+		}
+		created = finalized
 	}
 	s.recordMetrics(created.Status)
 	return created, false, nil
@@ -236,6 +275,7 @@ func (s *OrderService) buildOrder(ctx context.Context, userID, tenantID string, 
 		ExpiresAt:         expiresAt,
 		Version:           1,
 		Status:            domain.StatusCreated,
+		RiskStatus:        "NOT_EVALUATED",
 		CorrelationID:     correlationID,
 		CreatedAt:         now,
 		UpdatedAt:         now,
@@ -260,9 +300,200 @@ func (s *OrderService) buildOrder(ctx context.Context, userID, tenantID string, 
 		order.ExpiresAt = &dayExpiry
 	}
 	events = append(events, makeEvent(order, "order.validated", domain.StatusValidated, correlationID))
+	if s.riskCfg.Enabled && s.risk != nil {
+		order.Status = domain.StatusRiskPending
+		order.RiskStatus = "PENDING"
+		events = append(events, makeEvent(order, "order.risk_pending", domain.StatusRiskPending, correlationID))
+		return order, events, nil
+	}
 	order.Status = domain.StatusAccepted
+	order.RiskStatus = "NOT_EVALUATED"
 	events = append(events, makeEvent(order, "order.accepted", domain.StatusAccepted, correlationID))
 	return order, events, nil
+}
+
+func (s *OrderService) evaluateAndApplyRisk(ctx context.Context, order domain.Order) (domain.Order, error) {
+	start := time.Now()
+	s.metrics.PreTradeRiskInflight.Inc()
+	defer s.metrics.PreTradeRiskInflight.Dec()
+	s.metrics.PreTradeRiskRequests.WithLabelValues(order.OrderType, order.Side).Inc()
+	req, estimatedPrice, estimatedNotional, reason := s.buildRiskRequest(order)
+	if reason != "" {
+		decision := risk.PreTradeRiskDecision{
+			DecisionID:       uuid.NewString(),
+			Decision:         risk.DecisionRejected,
+			Approved:         false,
+			ReasonCode:       risk.ReasonReferenceUnavailable,
+			ReasonMessage:    reason,
+			EvaluatedAt:      time.Now().UTC(),
+			PolicyVersion:    "pretrade-v1",
+			EvaluatedLimits:  map[string]string{},
+			RequestSnapshot:  requestSnapshot(req),
+			ResponseSnapshot: map[string]any{"decision": risk.DecisionRejected, "reasonCode": risk.ReasonReferenceUnavailable},
+		}
+		s.observeRiskDecision(start, order, decision, ErrPreTradeRiskRejected)
+		return s.persistRiskDecision(ctx, order, decision, estimatedPrice, estimatedNotional, ErrPreTradeRiskRejected)
+	}
+	decision, err := s.risk.Evaluate(ctx, req)
+	if decision.DecisionID == "" {
+		decision.DecisionID = uuid.NewString()
+	}
+	if decision.RequestSnapshot == nil {
+		decision.RequestSnapshot = requestSnapshot(req)
+	}
+	if err != nil && s.riskCfg.FailOpen && (errors.Is(err, risk.ErrUnavailable) || errors.Is(err, risk.ErrTimeout)) {
+		decision = risk.PreTradeRiskDecision{
+			DecisionID:       uuid.NewString(),
+			Approved:         true,
+			Decision:         risk.DecisionApproved,
+			ReasonCode:       risk.ReasonServiceBypassed,
+			ReasonMessage:    "Risk Engine unavailable; fail-open bypass applied",
+			EvaluatedLimits:  map[string]string{},
+			EvaluatedAt:      time.Now().UTC(),
+			PolicyVersion:    "fail-open",
+			RequestSnapshot:  requestSnapshot(req),
+			ResponseSnapshot: map[string]any{"decision": risk.DecisionApproved, "reasonCode": risk.ReasonServiceBypassed},
+		}
+		err = nil
+	}
+	applyErr := error(nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, risk.ErrRejected):
+			applyErr = ErrPreTradeRiskRejected
+		case errors.Is(err, risk.ErrInvalidResponse):
+			applyErr = ErrPreTradeRiskInvalidResponse
+		default:
+			applyErr = ErrPreTradeRiskUnavailable
+		}
+	}
+	s.observeRiskDecision(start, order, decision, applyErr)
+	return s.persistRiskDecision(ctx, order, decision, estimatedPrice, estimatedNotional, applyErr)
+}
+
+func (s *OrderService) observeRiskDecision(start time.Time, order domain.Order, decision risk.PreTradeRiskDecision, err error) {
+	result := "approved"
+	if err != nil || !decision.Approved {
+		result = "rejected"
+	}
+	if errors.Is(err, ErrPreTradeRiskUnavailable) {
+		result = "unavailable"
+	}
+	if errors.Is(err, ErrPreTradeRiskInvalidResponse) {
+		result = "invalid_response"
+	}
+	reasonCode := decision.ReasonCode
+	if reasonCode == "" {
+		reasonCode = "UNKNOWN"
+	}
+	s.metrics.PreTradeRiskDuration.WithLabelValues(result, reasonCode, order.OrderType, order.Side).Observe(time.Since(start).Seconds())
+	switch {
+	case decision.ReasonCode == risk.ReasonServiceBypassed:
+		s.metrics.PreTradeRiskBypassed.Inc()
+		s.metrics.PreTradeRiskApproved.WithLabelValues(reasonCode, order.OrderType, order.Side).Inc()
+	case decision.Approved && err == nil:
+		s.metrics.PreTradeRiskApproved.WithLabelValues(reasonCode, order.OrderType, order.Side).Inc()
+	case errors.Is(err, ErrPreTradeRiskUnavailable):
+		s.metrics.PreTradeRiskErrors.WithLabelValues(result, reasonCode, order.OrderType, order.Side).Inc()
+		if decision.ReasonCode == risk.ReasonServiceTimeout {
+			s.metrics.PreTradeRiskTimeouts.Inc()
+		}
+	case errors.Is(err, ErrPreTradeRiskInvalidResponse):
+		s.metrics.PreTradeRiskErrors.WithLabelValues(result, reasonCode, order.OrderType, order.Side).Inc()
+	default:
+		s.metrics.PreTradeRiskRejected.WithLabelValues(reasonCode, order.OrderType, order.Side).Inc()
+	}
+}
+
+func (s *OrderService) persistRiskDecision(ctx context.Context, order domain.Order, decision risk.PreTradeRiskDecision, estimatedPrice, estimatedNotional float64, resultErr error) (domain.Order, error) {
+	domainDecision := domain.RiskDecision{
+		DecisionID:        decision.DecisionID,
+		TenantID:          order.TenantID,
+		OrderID:           order.ID,
+		UserID:            order.UserID,
+		PolicyID:          decision.PolicyID,
+		PolicyVersion:     decision.PolicyVersion,
+		Decision:          decision.Decision,
+		Approved:          decision.Approved,
+		ReasonCode:        decision.ReasonCode,
+		ReasonMessage:     decision.ReasonMessage,
+		EstimatedPrice:    estimatedPrice,
+		EstimatedNotional: estimatedNotional,
+		EvaluatedLimits:   decision.EvaluatedLimits,
+		RequestSnapshot:   decision.RequestSnapshot,
+		ResponseSnapshot:  decision.ResponseSnapshot,
+		CorrelationID:     order.CorrelationID,
+		EvaluatedAt:       decision.EvaluatedAt,
+	}
+	accepted := makeEvent(order, "order.accepted", domain.StatusAccepted, order.CorrelationID)
+	eventType := "order.risk_rejected"
+	status := domain.StatusRiskRejected
+	if decision.Decision == risk.DecisionUnavailable || decision.Decision == risk.DecisionInvalidResponse {
+		eventType = "order.risk_error"
+		status = domain.StatusRiskError
+	}
+	rejected := makeEvent(order, eventType, status, order.CorrelationID)
+	rejected.DecisionID = decision.DecisionID
+	rejected.ReasonCode = decision.ReasonCode
+	rejected.ReasonMessage = decision.ReasonMessage
+	rejected.PolicyVersion = decision.PolicyVersion
+	rejected.EvaluatedAt = &decision.EvaluatedAt
+	rejected.EstimatedPrice = &estimatedPrice
+	rejected.EstimatedNotional = &estimatedNotional
+	rejected.Source = "order-service"
+	finalized, _, err := s.repo.ApplyRiskDecision(ctx, order.TenantID, order.ID, domainDecision, []domain.OrderEvent{accepted}, rejected)
+	if err != nil {
+		return domain.Order{}, err
+	}
+	if resultErr != nil {
+		return finalized, fmt.Errorf("%w: %s", resultErr, decision.ReasonMessage)
+	}
+	return finalized, nil
+}
+
+func (s *OrderService) buildRiskRequest(order domain.Order) (risk.PreTradeRiskRequest, float64, float64, string) {
+	estimatedPrice := 0.0
+	if order.LimitPrice != nil && (order.OrderType == domain.OrderTypeLimit || order.OrderType == domain.OrderTypeStopLimit) {
+		estimatedPrice = *order.LimitPrice
+	}
+	if estimatedPrice <= 0 {
+		return risk.PreTradeRiskRequest{}, 0, 0, "Reference price unavailable for pre-trade risk evaluation"
+	}
+	estimatedNotional := estimatedPrice * order.Quantity
+	if estimatedNotional <= 0 {
+		return risk.PreTradeRiskRequest{}, estimatedPrice, estimatedNotional, "Estimated notional is invalid"
+	}
+	req := risk.PreTradeRiskRequest{
+		TenantID:          order.TenantID,
+		UserID:            order.UserID,
+		OrderID:           order.ID,
+		Symbol:            order.Symbol,
+		Side:              order.Side,
+		OrderType:         order.OrderType,
+		Quantity:          formatDecimal(order.Quantity),
+		EstimatedPrice:    formatDecimal(estimatedPrice),
+		EstimatedNotional: formatDecimal(estimatedNotional),
+		TimeInForce:       order.TimeInForce,
+		Currency:          "USD",
+		SubmittedAt:       order.CreatedAt,
+		CorrelationID:     order.CorrelationID,
+	}
+	if order.LimitPrice != nil {
+		value := formatDecimal(*order.LimitPrice)
+		req.LimitPrice = &value
+	}
+	if order.StopPrice != nil {
+		value := formatDecimal(*order.StopPrice)
+		req.StopPrice = &value
+	}
+	return req, estimatedPrice, estimatedNotional, ""
+}
+
+func requestSnapshot(req risk.PreTradeRiskRequest) map[string]any {
+	body, _ := json.Marshal(req)
+	var snapshot map[string]any
+	_ = json.Unmarshal(body, &snapshot)
+	return snapshot
 }
 
 func (s *OrderService) recordMetrics(status string) {
@@ -274,6 +505,8 @@ func (s *OrderService) recordMetrics(status string) {
 		s.metrics.OrdersAccepted.Inc()
 		s.metrics.OrdersFilled.Inc()
 	case domain.StatusRejected:
+		s.metrics.OrdersRejected.Inc()
+	case domain.StatusRiskRejected, domain.StatusRiskError:
 		s.metrics.OrdersRejected.Inc()
 	}
 }
@@ -374,6 +607,10 @@ func normalizeOrderType(value string) string {
 	return value
 }
 
+func formatDecimal(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
+}
+
 func hashRequest(requestBody []byte) string {
 	sum := sha256.Sum256(requestBody)
 	return hex.EncodeToString(sum[:])
@@ -388,4 +625,11 @@ func hasAnyRole(roles []string, allowed ...string) bool {
 		}
 	}
 	return false
+}
+
+func stringValue(value *string, fallback string) string {
+	if value == nil || *value == "" {
+		return fallback
+	}
+	return *value
 }

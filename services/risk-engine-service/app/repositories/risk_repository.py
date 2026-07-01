@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import text
@@ -167,3 +168,48 @@ class RiskRepository:
             .limit(50)
             .all()
         )
+
+    def get_pre_trade_policy(self, tenant_id: str) -> dict[str, Any]:
+        row = self.db.execute(
+            text(
+                """
+                SELECT id::text, tenant_id, enabled, version,
+                       max_order_quantity, max_order_notional,
+                       max_daily_user_notional, max_daily_tenant_notional,
+                       max_open_orders, allowed_symbols, restricted_symbols,
+                       currency, risk_timezone
+                FROM pre_trade_risk_policies
+                WHERE enabled = TRUE
+                  AND (tenant_id = :tenant_id OR tenant_id IS NULL)
+                  AND effective_from <= now()
+                  AND (effective_until IS NULL OR effective_until > now())
+                ORDER BY CASE WHEN tenant_id = :tenant_id THEN 0 ELSE 1 END, effective_from DESC
+                LIMIT 1
+                """
+            ),
+            {"tenant_id": tenant_id},
+        ).first()
+        if not row:
+            raise LookupError("No active pre-trade risk policy is configured.")
+        return dict(row._mapping)
+
+    def approved_notional_for_day(self, tenant_id: str, user_id: str, day_start: datetime, day_end: datetime) -> tuple[Decimal, Decimal]:
+        row = self.db.execute(
+            text(
+                """
+                SELECT
+                  COALESCE(SUM(estimated_notional) FILTER (WHERE user_id = :user_id), 0) AS user_notional,
+                  COALESCE(SUM(estimated_notional), 0) AS tenant_notional
+                FROM order_risk_decisions
+                WHERE tenant_id = :tenant_id
+                  AND approved = TRUE
+                  AND decision = 'APPROVED'
+                  AND evaluated_at >= :day_start
+                  AND evaluated_at < :day_end
+                """
+            ),
+            {"tenant_id": tenant_id, "user_id": user_id, "day_start": day_start, "day_end": day_end},
+        ).first()
+        if not row:
+            return Decimal("0"), Decimal("0")
+        return Decimal(str(row.user_notional)), Decimal(str(row.tenant_notional))

@@ -40,6 +40,15 @@ func (o *Order) RiskReject(decisionID, reason string) error {
 	return nil
 }
 
+func (o *Order) RiskError(decisionID, reason string) error {
+	if err := o.transition(StatusRiskError); err != nil {
+		return err
+	}
+	o.RiskDecisionID = &decisionID
+	o.RejectReason = &reason
+	return nil
+}
+
 func (o *Order) ApplyFill(quantity, price float64, at time.Time) error {
 	if o.IsTerminal() {
 		return fmt.Errorf("%w: %s", ErrTerminalOrder, o.Status)
@@ -136,6 +145,7 @@ func (o *Order) transition(next string) error {
 		StatusRiskPending: {
 			StatusAccepted:     true,
 			StatusRiskRejected: true,
+			StatusRiskError:    true,
 			StatusRejected:     true,
 		},
 		StatusAccepted: {

@@ -16,6 +16,7 @@ type Config struct {
 	JWTSecret       string
 	Outbox          OutboxConfig
 	Expiry          ExpiryConfig
+	PreTradeRisk    PreTradeRiskConfig
 	ShutdownTimeout time.Duration
 }
 
@@ -42,6 +43,15 @@ type ExpiryConfig struct {
 	ShutdownTimeout   time.Duration
 	DayTimezone       string
 	DayCloseTime      string
+}
+
+type PreTradeRiskConfig struct {
+	Enabled        bool
+	URL            string
+	Timeout        time.Duration
+	MaxRetries     int
+	RetryBaseDelay time.Duration
+	FailOpen       bool
 }
 
 func Load() (Config, error) {
@@ -74,6 +84,14 @@ func Load() (Config, error) {
 			DayTimezone:       getenv("ORDER_DAY_TIMEZONE", "America/New_York"),
 			DayCloseTime:      getenv("ORDER_DAY_CLOSE_TIME", "16:00"),
 		},
+		PreTradeRisk: PreTradeRiskConfig{
+			Enabled:        boolEnv("PRE_TRADE_RISK_ENABLED", true),
+			URL:            getenv("PRE_TRADE_RISK_URL", "http://risk-engine-service:8080"),
+			Timeout:        durationEnv("PRE_TRADE_RISK_TIMEOUT", durationEnv("PRE_TRADE_RISK_TIMEOUT_MS", 1500*time.Millisecond)),
+			MaxRetries:     intEnv("PRE_TRADE_RISK_MAX_RETRIES", 1),
+			RetryBaseDelay: durationEnv("PRE_TRADE_RISK_RETRY_BASE_DELAY", 100*time.Millisecond),
+			FailOpen:       boolEnv("PRE_TRADE_RISK_FAIL_OPEN", false),
+		},
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("ORDER_DATABASE_URL is required")
@@ -90,10 +108,32 @@ func Load() (Config, error) {
 	if err := validateExpiry(cfg.Expiry); err != nil {
 		return cfg, err
 	}
+	if err := validatePreTradeRisk(cfg.PreTradeRisk); err != nil {
+		return cfg, err
+	}
 	if cfg.ShutdownTimeout <= 0 {
 		return cfg, errors.New("ORDER_SHUTDOWN_TIMEOUT must be positive")
 	}
 	return cfg, nil
+}
+
+func validatePreTradeRisk(cfg PreTradeRiskConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if strings.TrimSpace(cfg.URL) == "" {
+		return errors.New("PRE_TRADE_RISK_URL is required when PRE_TRADE_RISK_ENABLED=true")
+	}
+	if cfg.Timeout <= 0 {
+		return errors.New("PRE_TRADE_RISK_TIMEOUT must be positive")
+	}
+	if cfg.MaxRetries < 0 {
+		return errors.New("PRE_TRADE_RISK_MAX_RETRIES must be non-negative")
+	}
+	if cfg.RetryBaseDelay <= 0 {
+		return errors.New("PRE_TRADE_RISK_RETRY_BASE_DELAY must be positive")
+	}
+	return nil
 }
 
 func validateExpiry(cfg ExpiryConfig) error {

@@ -45,6 +45,15 @@ type Metrics struct {
 	OrderExpiryLag                  prometheus.Histogram
 	OrderExpiryOldestDueAge         prometheus.Gauge
 	OrderExpiryReconciliationErrors prometheus.Counter
+	PreTradeRiskRequests            *prometheus.CounterVec
+	PreTradeRiskApproved            *prometheus.CounterVec
+	PreTradeRiskRejected            *prometheus.CounterVec
+	PreTradeRiskErrors              *prometheus.CounterVec
+	PreTradeRiskTimeouts            prometheus.Counter
+	PreTradeRiskRetries             prometheus.Counter
+	PreTradeRiskBypassed            prometheus.Counter
+	PreTradeRiskDuration            *prometheus.HistogramVec
+	PreTradeRiskInflight            prometheus.Gauge
 }
 
 func NewMetrics() *Metrics {
@@ -200,8 +209,45 @@ func NewMetrics() *Metrics {
 			Name: "tradeops_order_expiry_reconciliation_errors_total",
 			Help: "Total malformed order records skipped by expiry reconciliation.",
 		}),
+		PreTradeRiskRequests: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_requests_total",
+			Help: "Total pre-trade risk requests.",
+		}, []string{"order_type", "side"}),
+		PreTradeRiskApproved: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_approved_total",
+			Help: "Total approved pre-trade risk decisions.",
+		}, []string{"reason_code", "order_type", "side"}),
+		PreTradeRiskRejected: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_rejected_total",
+			Help: "Total rejected pre-trade risk decisions.",
+		}, []string{"reason_code", "order_type", "side"}),
+		PreTradeRiskErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_errors_total",
+			Help: "Total pre-trade risk dependency or response errors.",
+		}, []string{"result", "reason_code", "order_type", "side"}),
+		PreTradeRiskTimeouts: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_timeouts_total",
+			Help: "Total pre-trade risk timeouts.",
+		}),
+		PreTradeRiskRetries: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_retries_total",
+			Help: "Total pre-trade risk retries.",
+		}),
+		PreTradeRiskBypassed: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_pretrade_risk_bypassed_total",
+			Help: "Total fail-open pre-trade risk bypass decisions.",
+		}),
+		PreTradeRiskDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "tradeops_pretrade_risk_duration_seconds",
+			Help:    "Pre-trade risk request duration in seconds.",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 5},
+		}, []string{"result", "reason_code", "order_type", "side"}),
+		PreTradeRiskInflight: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_pretrade_risk_inflight",
+			Help: "Current in-flight pre-trade risk evaluations.",
+		}),
 	}
-	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries, metrics.OrderExpiryPolls, metrics.OrderExpiryDueOrders, metrics.OrderExpiryClaimed, metrics.OrdersExpired, metrics.OrderExpiryErrors, metrics.OrderExpiryConflicts, metrics.OrderExpiryDuration, metrics.OrderExpiryBatchSize, metrics.OrderExpiryLag, metrics.OrderExpiryOldestDueAge, metrics.OrderExpiryReconciliationErrors)
+	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries, metrics.OrderExpiryPolls, metrics.OrderExpiryDueOrders, metrics.OrderExpiryClaimed, metrics.OrdersExpired, metrics.OrderExpiryErrors, metrics.OrderExpiryConflicts, metrics.OrderExpiryDuration, metrics.OrderExpiryBatchSize, metrics.OrderExpiryLag, metrics.OrderExpiryOldestDueAge, metrics.OrderExpiryReconciliationErrors, metrics.PreTradeRiskRequests, metrics.PreTradeRiskApproved, metrics.PreTradeRiskRejected, metrics.PreTradeRiskErrors, metrics.PreTradeRiskTimeouts, metrics.PreTradeRiskRetries, metrics.PreTradeRiskBypassed, metrics.PreTradeRiskDuration, metrics.PreTradeRiskInflight)
 	return metrics
 }
 

@@ -170,9 +170,11 @@ marketData:
 
 orderManagement:
   matchingEngineEnabled: "true"
-  preTradeRiskEnabled: "false"
+  preTradeRiskEnabled: "true"
   preTradeRiskUrl: http://risk-engine-service:8080
   preTradeRiskTimeoutMs: "1500"
+  preTradeRiskMaxRetries: "1"
+  preTradeRiskRetryBaseDelay: 100ms
   preTradeRiskFailOpen: "false"
   expiryEnabled: "true"
   expiryPollInterval: 5s
@@ -431,6 +433,8 @@ applications:
       PRE_TRADE_RISK_ENABLED: PRE_TRADE_RISK_ENABLED
       PRE_TRADE_RISK_URL: PRE_TRADE_RISK_URL
       PRE_TRADE_RISK_TIMEOUT_MS: PRE_TRADE_RISK_TIMEOUT_MS
+      PRE_TRADE_RISK_MAX_RETRIES: PRE_TRADE_RISK_MAX_RETRIES
+      PRE_TRADE_RISK_RETRY_BASE_DELAY: PRE_TRADE_RISK_RETRY_BASE_DELAY
       PRE_TRADE_RISK_FAIL_OPEN: PRE_TRADE_RISK_FAIL_OPEN
       ORDER_EXPIRY_ENABLED: ORDER_EXPIRY_ENABLED
       ORDER_EXPIRY_POLL_INTERVAL: ORDER_EXPIRY_POLL_INTERVAL

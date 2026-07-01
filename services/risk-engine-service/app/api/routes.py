@@ -26,6 +26,8 @@ from app.schemas import (
     DrawdownTrendRequest,
     DrawdownTrendResult,
     HistoricalValue,
+    PreTradeRiskDecision,
+    PreTradeRiskRequest,
     RecommendationResponse,
     RiskScoreResponse,
     ScenarioRunRequest,
@@ -40,6 +42,7 @@ from app.services.advanced_risk_analytics_service import AdvancedRiskAnalyticsSe
 from app.services.anomaly_service import AnomalyService
 from app.services.drawdown_service import DrawdownService
 from app.services.recommendation_service import RecommendationService
+from app.services.pre_trade_risk_service import PreTradeRiskService
 from app.services.risk_score_service import RiskScoreService
 from app.services.var_service import VarService
 from app.services.volatility_service import VolatilityService
@@ -47,10 +50,38 @@ from app.services.volatility_service import VolatilityService
 
 router = APIRouter()
 DEFAULT_TENANT_ID = "default-tenant"
+pre_trade_service = PreTradeRiskService()
 
 
 def repo(db: Session = Depends(get_db)) -> RiskRepository:
     return RiskRepository(db)
+
+
+@router.post("/api/v1/risk/pre-trade/evaluate", response_model=PreTradeRiskDecision)
+def pre_trade_evaluate(
+    payload: PreTradeRiskRequest,
+    request: Request,
+    repository: RiskRepository = Depends(repo),
+):
+    if not payload.tenantId:
+        raise HTTPException(status_code=400, detail={"message": "tenantId is required."})
+    correlation_id = payload.correlationId or getattr(request.state, "correlation_id", None)
+    del correlation_id
+    start = perf_counter()
+    try:
+        decision = pre_trade_service.evaluate(repository, payload)
+    except LookupError as exc:
+        metrics.tradeops_risk_policy_lookup_errors_total.inc()
+        raise HTTPException(status_code=503, detail={"message": str(exc)}) from None
+    except Exception:
+        metrics.tradeops_risk_daily_limit_query_errors_total.inc()
+        raise HTTPException(status_code=503, detail={"message": "Pre-trade risk evaluation is unavailable."}) from None
+    result = "approved" if decision.approved else "rejected"
+    metrics.tradeops_risk_pretrade_evaluations_total.labels(result=result, reason_code=decision.reasonCode).inc()
+    if not decision.approved:
+        metrics.tradeops_risk_pretrade_rejections_total.labels(reason_code=decision.reasonCode).inc()
+    metrics.tradeops_risk_pretrade_evaluation_duration_seconds.labels(result=result).observe(perf_counter() - start)
+    return decision
 
 
 @router.get("/risk/portfolio/score", response_model=RiskScoreResponse)

@@ -18,6 +18,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/observability"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/outbox"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/repository"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/risk"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/service"
 )
@@ -62,7 +63,23 @@ func main() {
 	}
 
 	orderRepo := repository.NewOrderRepository(pool)
-	orderService := service.NewOrderService(orderRepo, producer, metrics, calendar)
+	orderService := service.NewOrderService(orderRepo, producer, metrics, calendar, service.RiskOptions{Enabled: cfg.PreTradeRisk.Enabled, FailOpen: cfg.PreTradeRisk.FailOpen})
+	if cfg.PreTradeRisk.Enabled {
+		riskClient, err := risk.NewClient(risk.ClientConfig{
+			BaseURL:    cfg.PreTradeRisk.URL,
+			Timeout:    cfg.PreTradeRisk.Timeout,
+			MaxRetries: cfg.PreTradeRisk.MaxRetries,
+			BaseDelay:  cfg.PreTradeRisk.RetryBaseDelay,
+		})
+		if err != nil {
+			logger.Error("pre-trade risk client initialization failed", "error", err)
+			os.Exit(1)
+		}
+		orderService.SetRiskChecker(riskClient)
+		logger.Info("pre-trade risk evaluation enabled", "failOpen", cfg.PreTradeRisk.FailOpen)
+	} else {
+		logger.Warn("pre-trade risk evaluation disabled")
+	}
 	var expiryDone chan struct{}
 	var expiryWorker *expiry.Worker
 	if cfg.Expiry.Enabled {

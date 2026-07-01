@@ -53,6 +53,8 @@ data:
   PRE_TRADE_RISK_ENABLED: {{ .Values.orderManagement.preTradeRiskEnabled | quote }}
   PRE_TRADE_RISK_URL: {{ .Values.orderManagement.preTradeRiskUrl | quote }}
   PRE_TRADE_RISK_TIMEOUT_MS: {{ .Values.orderManagement.preTradeRiskTimeoutMs | quote }}
+  PRE_TRADE_RISK_MAX_RETRIES: {{ .Values.orderManagement.preTradeRiskMaxRetries | quote }}
+  PRE_TRADE_RISK_RETRY_BASE_DELAY: {{ .Values.orderManagement.preTradeRiskRetryBaseDelay | quote }}
   PRE_TRADE_RISK_FAIL_OPEN: {{ .Values.orderManagement.preTradeRiskFailOpen | quote }}
   ORDER_EXPIRY_ENABLED: {{ .Values.orderManagement.expiryEnabled | quote }}
   ORDER_EXPIRY_POLL_INTERVAL: {{ .Values.orderManagement.expiryPollInterval | quote }}
