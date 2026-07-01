@@ -9,19 +9,26 @@ import (
 )
 
 type Metrics struct {
-	Registry           *prometheus.Registry
-	Updates            prometheus.Counter
-	UpdateFailures     prometheus.Counter
-	HoldingsCount      prometheus.Gauge
-	CashBalance        prometheus.Gauge
-	RealizedPnL        prometheus.Gauge
-	UnrealizedPnL      prometheus.Gauge
-	ProcessingDuration prometheus.Histogram
-	KafkaPublishErrors prometheus.Counter
-	EventsRetried      prometheus.CounterVec
-	EventsDeadlettered prometheus.CounterVec
-	ProcessingAttempts prometheus.CounterVec
-	DuplicateSkipped   prometheus.CounterVec
+	Registry               *prometheus.Registry
+	Updates                prometheus.Counter
+	UpdateFailures         prometheus.Counter
+	HoldingsCount          prometheus.Gauge
+	CashBalance            prometheus.Gauge
+	RealizedPnL            prometheus.Gauge
+	UnrealizedPnL          prometheus.Gauge
+	ProcessingDuration     prometheus.Histogram
+	KafkaPublishErrors     prometheus.Counter
+	EventsRetried          prometheus.CounterVec
+	EventsDeadlettered     prometheus.CounterVec
+	ProcessingAttempts     prometheus.CounterVec
+	DuplicateSkipped       prometheus.CounterVec
+	TradeEventsReceived    prometheus.CounterVec
+	TradeEventsProcessed   prometheus.CounterVec
+	TradeEventsFailed      prometheus.CounterVec
+	TradeEventsDuplicate   prometheus.Counter
+	TradePayloadConflicts  prometheus.Counter
+	ExecutionLag           prometheus.Gauge
+	ReconciliationFailures prometheus.CounterVec
 }
 
 func NewMetrics() *Metrics {
@@ -78,8 +85,36 @@ func NewMetrics() *Metrics {
 			Name: "portfolio_duplicate_events_skipped_total",
 			Help: "Total duplicate portfolio events skipped.",
 		}, []string{"topic"}),
+		TradeEventsReceived: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_trade_events_received_total",
+			Help: "Total trade.executed events received by Portfolio Service.",
+		}, []string{"event_version"}),
+		TradeEventsProcessed: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_trade_events_processed_total",
+			Help: "Total trade.executed events applied by Portfolio Service.",
+		}, []string{"result"}),
+		TradeEventsFailed: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_trade_events_failed_total",
+			Help: "Total trade.executed events that failed processing.",
+		}, []string{"reason"}),
+		TradeEventsDuplicate: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_trade_events_duplicate_total",
+			Help: "Total duplicate trade.executed events skipped.",
+		}),
+		TradePayloadConflicts: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_trade_payload_conflicts_total",
+			Help: "Total conflicting payloads seen for an already processed execution ID.",
+		}),
+		ExecutionLag: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_portfolio_execution_lag_seconds",
+			Help: "Lag between trade execution occurrence and portfolio processing.",
+		}),
+		ReconciliationFailures: *prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_reconciliation_failures_total",
+			Help: "Total portfolio reconciliation failures while processing executions.",
+		}, []string{"reason"}),
 	}
-	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.DuplicateSkipped)
+	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.DuplicateSkipped, &metrics.TradeEventsReceived, &metrics.TradeEventsProcessed, &metrics.TradeEventsFailed, metrics.TradeEventsDuplicate, metrics.TradePayloadConflicts, metrics.ExecutionLag, &metrics.ReconciliationFailures)
 	return metrics
 }
 

@@ -18,6 +18,11 @@ type OrderEvent struct {
 	RemainingQuantity float64   `json:"remainingQuantity,omitempty"`
 	ExecutionQuantity float64   `json:"executionQuantity,omitempty"`
 	ExecutionPrice    *float64  `json:"executionPrice,omitempty"`
+	ExecutionID       string    `json:"executionId,omitempty"`
+	BuyerUserID       string    `json:"buyerUserId,omitempty"`
+	SellerUserID      string    `json:"sellerUserId,omitempty"`
+	Currency          string    `json:"currency,omitempty"`
+	Source            string    `json:"source,omitempty"`
 	AverageFillPrice  *float64  `json:"averageFillPrice,omitempty"`
 	Status            string    `json:"status"`
 	Version           int       `json:"version,omitempty"`

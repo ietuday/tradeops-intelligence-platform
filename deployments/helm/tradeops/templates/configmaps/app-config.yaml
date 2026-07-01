@@ -70,6 +70,9 @@ data:
   OUTBOX_ERROR_MAX_LENGTH: {{ .Values.orderManagement.outboxErrorMaxLength | quote }}
   ORDERBOOK_MAX_DEPTH: {{ .Values.orderManagement.orderBookMaxDepth | quote }}
   PORTFOLIO_ORDER_FILLED_TOPIC: {{ .Values.portfolio.topics.orderFilled | quote }}
+  PORTFOLIO_TRADE_TOPIC: {{ .Values.portfolio.topics.tradeExecuted | quote }}
+  PORTFOLIO_TRADE_CONSUMER_GROUP: {{ .Values.portfolio.consumerGroup | quote }}
+  PORTFOLIO_TRADE_DLQ_TOPIC: {{ .Values.portfolio.topics.tradeDlq | quote }}
   PORTFOLIO_UPDATED_TOPIC: {{ .Values.portfolio.topics.updated | quote }}
   PORTFOLIO_SNAPSHOT_TOPIC: {{ .Values.portfolio.topics.snapshotCreated | quote }}
   PORTFOLIO_INITIAL_CASH: {{ .Values.portfolio.initialCash | quote }}

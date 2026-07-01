@@ -52,20 +52,24 @@ type writerCloser interface {
 }
 
 func NewConsumer(brokers []string, topic string, svc Processor, logger *slog.Logger, metrics *observability.Metrics, retryConfig RetryConfig) *Consumer {
+	return NewConsumerWithOptions(brokers, topic, "portfolio-service", "portfolio.dlq", svc, logger, metrics, retryConfig)
+}
+
+func NewConsumerWithOptions(brokers []string, topic, groupID, dlqTopic string, svc Processor, logger *slog.Logger, metrics *observability.Metrics, retryConfig RetryConfig) *Consumer {
 	return &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:        brokers,
 			Topic:          topic,
-			GroupID:        "portfolio-service",
+			GroupID:        groupID,
 			MinBytes:       1,
 			MaxBytes:       10e6,
-			CommitInterval: time.Second,
+			CommitInterval: 0,
 			StartOffset:    kafka.LastOffset,
 		}),
 		service:     svc,
 		logger:      logger,
 		metrics:     metrics,
-		dlqWriter:   newDLQWriter(brokers, "portfolio.dlq"),
+		dlqWriter:   newDLQWriter(brokers, dlqTopic),
 		retryConfig: normalizeRetryConfig(retryConfig),
 	}
 }
@@ -78,14 +82,14 @@ func (c *Consumer) Start(ctx context.Context) {
 				if ctx.Err() != nil {
 					return
 				}
-				c.logger.Warn("failed to fetch order filled event", "error", err)
+				c.logger.Warn("failed to fetch portfolio source event", "error", err)
 				continue
 			}
 			if err := c.processWithRetry(ctx, message); err != nil {
-				c.logger.Warn("failed to process order filled event", "topic", message.Topic, "partition", message.Partition, "offset", message.Offset, "error", err)
+				c.logger.Warn("failed to process portfolio source event", "topic", message.Topic, "partition", message.Partition, "offset", message.Offset, "error", err)
 			}
 			if err := c.reader.CommitMessages(ctx, message); err != nil && ctx.Err() == nil {
-				c.logger.Warn("failed to commit order filled event", "error", err)
+				c.logger.Warn("failed to commit portfolio source event", "error", err)
 			}
 		}
 	}()

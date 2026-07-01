@@ -19,6 +19,26 @@ type OrderFilledEvent struct {
 	CorrelationID string    `json:"correlationId"`
 }
 
+type TradeExecutedEvent struct {
+	EventID           string    `json:"eventId"`
+	EventType         string    `json:"eventType"`
+	EventVersion      string    `json:"eventVersion,omitempty"`
+	TenantID          string    `json:"tenantId"`
+	CorrelationID     string    `json:"correlationId"`
+	TraceParent       string    `json:"traceparent,omitempty"`
+	OccurredAt        time.Time `json:"occurredAt"`
+	ExecutionID       string    `json:"executionId"`
+	BuyOrderID        string    `json:"buyOrderId"`
+	SellOrderID       string    `json:"sellOrderId"`
+	BuyerUserID       string    `json:"buyerUserId"`
+	SellerUserID      string    `json:"sellerUserId"`
+	Symbol            string    `json:"symbol"`
+	ExecutionQuantity float64   `json:"executionQuantity"`
+	ExecutionPrice    float64   `json:"executionPrice"`
+	Currency          string    `json:"currency,omitempty"`
+	Source            string    `json:"source,omitempty"`
+}
+
 type PortfolioEvent struct {
 	EventID       string    `json:"eventId"`
 	EventType     string    `json:"eventType"`

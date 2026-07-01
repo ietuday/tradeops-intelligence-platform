@@ -12,6 +12,9 @@ type Config struct {
 	DatabaseURL               string
 	KafkaBrokers              []string
 	OrderFilledTopic          string
+	TradeTopic                string
+	TradeConsumerGroup        string
+	TradeDLQTopic             string
 	PortfolioTopic            string
 	SnapshotTopic             string
 	JWTSecret                 string
@@ -27,6 +30,9 @@ func Load() (Config, error) {
 		DatabaseURL:               os.Getenv("PORTFOLIO_DATABASE_URL"),
 		KafkaBrokers:              splitCSV(getenv("PORTFOLIO_KAFKA_BROKERS", "redpanda:29092")),
 		OrderFilledTopic:          getenv("PORTFOLIO_ORDER_FILLED_TOPIC", "order.filled"),
+		TradeTopic:                getenv("PORTFOLIO_TRADE_TOPIC", "trade.executed"),
+		TradeConsumerGroup:        getenv("PORTFOLIO_TRADE_CONSUMER_GROUP", "portfolio-service-trade-v1"),
+		TradeDLQTopic:             getenv("PORTFOLIO_TRADE_DLQ_TOPIC", "portfolio.trade.dlq"),
 		PortfolioTopic:            getenv("PORTFOLIO_UPDATED_TOPIC", "portfolio.updated"),
 		SnapshotTopic:             getenv("PORTFOLIO_SNAPSHOT_TOPIC", "portfolio.snapshot.created"),
 		JWTSecret:                 os.Getenv("PORTFOLIO_JWT_SECRET"),
@@ -40,6 +46,9 @@ func Load() (Config, error) {
 	}
 	if len(cfg.KafkaBrokers) == 0 {
 		return cfg, errors.New("PORTFOLIO_KAFKA_BROKERS is required")
+	}
+	if cfg.TradeTopic == "" || cfg.TradeConsumerGroup == "" || cfg.TradeDLQTopic == "" {
+		return cfg, errors.New("portfolio trade topic, consumer group, and DLQ topic are required")
 	}
 	if cfg.JWTSecret == "" {
 		return cfg, errors.New("PORTFOLIO_JWT_SECRET is required")

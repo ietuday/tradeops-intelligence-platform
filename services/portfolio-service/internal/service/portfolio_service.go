@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,30 +35,60 @@ func NewPortfolioService(repo *repository.PortfolioRepository, producer *kafka.P
 }
 
 func (s *PortfolioService) ProcessOrderFilled(ctx context.Context, payload []byte) error {
-	start := time.Now()
-	defer s.metrics.ObserveProcessing(start)
-
 	var event domain.OrderFilledEvent
 	if err := json.Unmarshal(payload, &event); err != nil {
 		s.metrics.UpdateFailures.Inc()
 		return err
 	}
-	if event.EventType != "order.filled" {
+	if event.EventType == "order.filled" {
+		// trade.executed is authoritative for financial mutations. This legacy
+		// event is consumed only so old topics can drain without double applying.
+		s.metrics.DuplicateSkipped.WithLabelValues(event.EventType).Inc()
 		return nil
 	}
-	if event.TenantID == "" {
-		event.TenantID = "default-tenant"
+	return s.ProcessTradeExecuted(ctx, payload)
+}
+
+func (s *PortfolioService) ProcessTradeExecuted(ctx context.Context, payload []byte) error {
+	start := time.Now()
+	defer s.metrics.ObserveProcessing(start)
+
+	var event domain.TradeExecutedEvent
+	if err := json.Unmarshal(payload, &event); err != nil {
+		s.metrics.UpdateFailures.Inc()
+		return err
 	}
-	result, err := s.repo.ApplyFilledOrder(ctx, event, s.initialCash)
+	if event.EventType != "trade.executed" {
+		return nil
+	}
+	if err := normalizeTradeExecuted(&event); err != nil {
+		s.metrics.UpdateFailures.Inc()
+		s.metrics.TradeEventsFailed.WithLabelValues("validation").Inc()
+		return err
+	}
+	s.metrics.TradeEventsReceived.WithLabelValues(event.EventVersion).Inc()
+	result, err := s.repo.ApplyTradeExecution(ctx, event, s.initialCash, repository.PayloadHash(event))
 	if err != nil {
 		s.metrics.UpdateFailures.Inc()
+		if errors.Is(err, repository.ErrPayloadConflict) {
+			s.metrics.TradePayloadConflicts.Inc()
+		}
+		if errors.Is(err, repository.ErrInsufficientCash) || errors.Is(err, repository.ErrInsufficientHoldings) || errors.Is(err, repository.ErrSelfTrade) {
+			s.metrics.ReconciliationFailures.WithLabelValues(errorReason(err)).Inc()
+		}
+		s.metrics.TradeEventsFailed.WithLabelValues(errorReason(err)).Inc()
 		return err
 	}
 	if result.Duplicate {
 		s.metrics.DuplicateSkipped.WithLabelValues(event.EventType).Inc()
+		s.metrics.TradeEventsDuplicate.Inc()
 		return nil
 	}
 	s.metrics.Updates.Inc()
+	s.metrics.TradeEventsProcessed.WithLabelValues("success").Inc()
+	if !event.OccurredAt.IsZero() {
+		s.metrics.ExecutionLag.Set(time.Since(event.OccurredAt).Seconds())
+	}
 	s.metrics.HoldingsCount.Set(float64(len(result.Holdings)))
 	s.metrics.CashBalance.Set(result.Portfolio.CashBalance)
 	s.metrics.RealizedPnL.Set(result.Portfolio.RealizedPnL)
@@ -81,6 +113,66 @@ func (s *PortfolioService) ProcessOrderFilled(ctx context.Context, payload []byt
 		s.metrics.KafkaPublishErrors.Inc()
 	}
 	return nil
+}
+
+func normalizeTradeExecuted(event *domain.TradeExecutedEvent) error {
+	event.EventVersion = strings.TrimSpace(event.EventVersion)
+	if event.EventVersion == "" {
+		event.EventVersion = "1.0"
+	}
+	if event.EventVersion != "1.0" && event.EventVersion != "1" {
+		return fmt.Errorf("%w: unsupported event version", repository.ErrInvalidExecution)
+	}
+	event.TenantID = strings.TrimSpace(event.TenantID)
+	event.ExecutionID = strings.TrimSpace(event.ExecutionID)
+	event.BuyOrderID = strings.TrimSpace(event.BuyOrderID)
+	event.SellOrderID = strings.TrimSpace(event.SellOrderID)
+	event.BuyerUserID = strings.TrimSpace(event.BuyerUserID)
+	event.SellerUserID = strings.TrimSpace(event.SellerUserID)
+	event.Symbol = strings.ToUpper(strings.TrimSpace(event.Symbol))
+	event.Currency = strings.ToUpper(strings.TrimSpace(event.Currency))
+	if event.Currency == "" {
+		event.Currency = "USD"
+	}
+	if event.TenantID == "" || event.ExecutionID == "" || event.BuyOrderID == "" || event.SellOrderID == "" || event.BuyerUserID == "" || event.SellerUserID == "" || event.Symbol == "" {
+		return fmt.Errorf("%w: required field missing", repository.ErrInvalidExecution)
+	}
+	if event.BuyOrderID == event.SellOrderID {
+		return fmt.Errorf("%w: buy and sell order IDs match", repository.ErrInvalidExecution)
+	}
+	if event.BuyerUserID == event.SellerUserID {
+		return repository.ErrSelfTrade
+	}
+	if event.ExecutionQuantity <= 0 {
+		return fmt.Errorf("%w: quantity must be positive", repository.ErrInvalidExecution)
+	}
+	if event.ExecutionPrice <= 0 {
+		return fmt.Errorf("%w: price must be positive", repository.ErrInvalidExecution)
+	}
+	if event.Currency != "USD" {
+		return fmt.Errorf("%w: unsupported currency", repository.ErrInvalidExecution)
+	}
+	if event.OccurredAt.IsZero() {
+		return fmt.Errorf("%w: occurredAt is required", repository.ErrInvalidExecution)
+	}
+	return nil
+}
+
+func errorReason(err error) string {
+	switch {
+	case errors.Is(err, repository.ErrInsufficientCash):
+		return "insufficient_cash"
+	case errors.Is(err, repository.ErrInsufficientHoldings):
+		return "insufficient_holdings"
+	case errors.Is(err, repository.ErrPayloadConflict):
+		return "payload_conflict"
+	case errors.Is(err, repository.ErrSelfTrade):
+		return "self_trade"
+	case errors.Is(err, repository.ErrInvalidExecution):
+		return "invalid_execution"
+	default:
+		return "repository_error"
+	}
 }
 
 func (s *PortfolioService) Portfolio(ctx context.Context, user UserContext) (domain.Portfolio, error) {

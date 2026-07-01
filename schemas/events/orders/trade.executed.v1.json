@@ -4,7 +4,7 @@
   "title": "trade.executed v1",
   "type": "object",
   "additionalProperties": true,
-  "required": ["eventId", "eventType", "tenantId", "symbol", "buyOrderId", "sellOrderId", "executionQuantity", "executionPrice"],
+  "required": ["eventId", "eventType", "tenantId", "symbol", "executionId", "buyOrderId", "sellOrderId", "buyerUserId", "sellerUserId", "executionQuantity", "executionPrice"],
   "properties": {
     "eventId": { "type": "string" },
     "eventType": { "type": "string", "enum": ["trade.executed"] },
@@ -13,10 +13,15 @@
     "correlationId": { "type": "string" },
     "traceparent": { "type": "string" },
     "occurredAt": { "type": "string", "format": "date-time" },
+    "executionId": { "type": "string" },
     "symbol": { "type": "string" },
     "buyOrderId": { "type": "string" },
     "sellOrderId": { "type": "string" },
+    "buyerUserId": { "type": "string" },
+    "sellerUserId": { "type": "string" },
     "executionQuantity": { "type": "number" },
-    "executionPrice": { "type": "number" }
+    "executionPrice": { "type": "number" },
+    "currency": { "type": "string" },
+    "source": { "type": "string" }
   }
 }

@@ -352,6 +352,9 @@ func (r *OrderRepository) matchAcceptedOrder(ctx context.Context, tx pgx.Tx, ord
 	}
 
 	for _, exec := range result.Executions {
+		if exec.ID == "" {
+			exec.ID = uuid.NewString()
+		}
 		if err := insertExecution(ctx, tx, order.TenantID, order.CorrelationID, exec); err != nil {
 			return domain.Order{}, nil, err
 		}
@@ -471,9 +474,9 @@ func persistOrderState(ctx context.Context, tx pgx.Tx, order domain.Order) error
 
 func insertExecution(ctx context.Context, tx pgx.Tx, tenantID, correlationID string, exec matching.Execution) error {
 	_, err := tx.Exec(ctx, `
-		INSERT INTO order_executions (tenant_id, buy_order_id, sell_order_id, symbol, execution_quantity, execution_price, buyer_user_id, seller_user_id, correlation_id, executed_at)
-		VALUES ($1, $2, $3, $4, $5::numeric, $6::numeric, $7, $8, $9, $10)
-	`, tenantID, exec.BuyOrderID, exec.SellOrderID, exec.Symbol, matching.RatString(exec.Quantity), matching.RatString(exec.Price), exec.BuyerUserID, exec.SellerUserID, correlationID, exec.ExecutedAt)
+		INSERT INTO order_executions (id, tenant_id, buy_order_id, sell_order_id, symbol, execution_quantity, execution_price, buyer_user_id, seller_user_id, correlation_id, executed_at)
+		VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8, $9, $10, $11)
+	`, exec.ID, tenantID, exec.BuyOrderID, exec.SellOrderID, exec.Symbol, matching.RatString(exec.Quantity), matching.RatString(exec.Price), exec.BuyerUserID, exec.SellerUserID, correlationID, exec.ExecutedAt)
 	return err
 }
 
@@ -534,6 +537,11 @@ func tradeExecutedEvent(order domain.Order, exec matching.Execution) domain.Orde
 	event.SellOrderID = exec.SellOrderID
 	event.ExecutionQuantity = event.Quantity
 	event.ExecutionPrice = &price
+	event.ExecutionID = exec.ID
+	event.BuyerUserID = exec.BuyerUserID
+	event.SellerUserID = exec.SellerUserID
+	event.Currency = "USD"
+	event.Source = "order-service"
 	return event
 }
 

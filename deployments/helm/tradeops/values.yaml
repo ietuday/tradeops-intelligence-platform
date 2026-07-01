@@ -192,8 +192,11 @@ orderManagement:
 
 portfolio:
   initialCash: "100000"
+  consumerGroup: portfolio-service-trade-v1
   topics:
     orderFilled: order.filled
+    tradeExecuted: trade.executed
+    tradeDlq: portfolio.trade.dlq
     updated: portfolio.updated
     snapshotCreated: portfolio.snapshot.created
 
@@ -583,6 +586,9 @@ applications:
       PORTFOLIO_KAFKA_BROKERS: "{{ include \"tradeops.kafkaBrokers\" . }}"
     configMapEnv:
       PORTFOLIO_ORDER_FILLED_TOPIC: PORTFOLIO_ORDER_FILLED_TOPIC
+      PORTFOLIO_TRADE_TOPIC: PORTFOLIO_TRADE_TOPIC
+      PORTFOLIO_TRADE_CONSUMER_GROUP: PORTFOLIO_TRADE_CONSUMER_GROUP
+      PORTFOLIO_TRADE_DLQ_TOPIC: PORTFOLIO_TRADE_DLQ_TOPIC
       PORTFOLIO_UPDATED_TOPIC: PORTFOLIO_UPDATED_TOPIC
       PORTFOLIO_SNAPSHOT_TOPIC: PORTFOLIO_SNAPSHOT_TOPIC
       PORTFOLIO_INITIAL_CASH: PORTFOLIO_INITIAL_CASH

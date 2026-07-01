@@ -3,6 +3,23 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.1.2] - Idempotent Portfolio Trade Execution Processing
+
+### Added
+
+- Portfolio Service now applies `trade.executed` events atomically to buyer and seller portfolios.
+- Added processed-execution idempotency records, payload conflict detection, and a portfolio transaction ledger.
+- Extended `trade.executed.v1` additively with execution and ownership fields required for portfolio mutation.
+
+### Changed
+
+- `order.filled` no longer mutates Portfolio Service financial state.
+- Portfolio trade consumer defaults to `trade.executed` with a dedicated consumer group and DLQ topic.
+
+### Known Limitations
+
+- Fees are zero, USD-only processing is enforced, short selling and negative cash are disabled, and Portfolio Service still publishes update events directly after commit.
+
 ## [v3.1.1] - Transactional Outbox Publisher
 
 ### Added

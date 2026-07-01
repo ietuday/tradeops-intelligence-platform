@@ -24,6 +24,7 @@ type Order struct {
 }
 
 type Execution struct {
+	ID           string
 	BuyOrderID   string
 	SellOrderID  string
 	BuyerUserID  string

@@ -2,7 +2,12 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/domain"
@@ -13,6 +18,10 @@ import (
 var ErrNotFound = errors.New("not found")
 var ErrDuplicateEvent = errors.New("duplicate event")
 var ErrInsufficientHoldings = errors.New("insufficient holdings")
+var ErrInsufficientCash = errors.New("insufficient cash")
+var ErrInvalidExecution = errors.New("invalid trade execution")
+var ErrPayloadConflict = errors.New("trade execution payload conflict")
+var ErrSelfTrade = errors.New("self-trade execution")
 
 type PortfolioRepository struct {
 	db *pgxpool.Pool
@@ -20,6 +29,7 @@ type PortfolioRepository struct {
 
 type UpdateResult struct {
 	Portfolio domain.Portfolio
+	Seller    domain.Portfolio
 	Holdings  []domain.Holding
 	Snapshot  domain.Snapshot
 	Duplicate bool
@@ -27,6 +37,106 @@ type UpdateResult struct {
 
 func NewPortfolioRepository(db *pgxpool.Pool) *PortfolioRepository {
 	return &PortfolioRepository{db: db}
+}
+
+func (r *PortfolioRepository) ApplyTradeExecution(ctx context.Context, event domain.TradeExecutedEvent, initialCash float64, payloadHash string) (UpdateResult, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	tenantID := defaultTenant(event.TenantID)
+	var existingHash string
+	err = tx.QueryRow(ctx, `
+		SELECT payload_hash
+		FROM portfolio_processed_events
+		WHERE tenant_id = $1 AND execution_id = $2
+	`, tenantID, event.ExecutionID).Scan(&existingHash)
+	if err == nil {
+		if existingHash != "" && existingHash != payloadHash {
+			return UpdateResult{}, ErrPayloadConflict
+		}
+		return UpdateResult{Duplicate: true}, tx.Commit(ctx)
+	}
+	if err != pgx.ErrNoRows {
+		return UpdateResult{}, err
+	}
+
+	buyerPortfolioID, err := ensurePortfolio(ctx, tx, tenantID, event.BuyerUserID, initialCash)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	sellerPortfolioID, err := ensurePortfolio(ctx, tx, tenantID, event.SellerUserID, initialCash)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+
+	portfolioIDs := uniqueSorted([]string{buyerPortfolioID, sellerPortfolioID})
+	for _, portfolioID := range portfolioIDs {
+		if _, err := tx.Exec(ctx, `SELECT 1 FROM cash_balances WHERE portfolio_id = $1 FOR UPDATE`, portfolioID); err != nil {
+			return UpdateResult{}, err
+		}
+	}
+	holdingKeys := []struct {
+		portfolioID string
+		userID      string
+	}{
+		{buyerPortfolioID, event.BuyerUserID},
+		{sellerPortfolioID, event.SellerUserID},
+	}
+	sort.Slice(holdingKeys, func(i, j int) bool {
+		if holdingKeys[i].portfolioID == holdingKeys[j].portfolioID {
+			return event.Symbol < event.Symbol
+		}
+		return holdingKeys[i].portfolioID < holdingKeys[j].portfolioID
+	})
+	for _, key := range holdingKeys {
+		if err := ensureHoldingForUpdate(ctx, tx, tenantID, key.portfolioID, key.userID, event.Symbol); err != nil {
+			return UpdateResult{}, err
+		}
+	}
+
+	if err := applyExecutionBuyer(ctx, tx, tenantID, buyerPortfolioID, event); err != nil {
+		return UpdateResult{}, err
+	}
+	sellerRealized, err := applyExecutionSeller(ctx, tx, tenantID, sellerPortfolioID, event)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	if err := insertPortfolioTransaction(ctx, tx, tenantID, buyerPortfolioID, event.BuyerUserID, event.ExecutionID, event.BuyOrderID, event.Symbol, "BUY", event.ExecutionQuantity, event.ExecutionPrice, event.ExecutionQuantity*event.ExecutionPrice, 0, -(event.ExecutionQuantity * event.ExecutionPrice), event.Currency, 0, event.CorrelationID, event.OccurredAt); err != nil {
+		return UpdateResult{}, err
+	}
+	if err := insertPortfolioTransaction(ctx, tx, tenantID, sellerPortfolioID, event.SellerUserID, event.ExecutionID, event.SellOrderID, event.Symbol, "SELL", event.ExecutionQuantity, event.ExecutionPrice, event.ExecutionQuantity*event.ExecutionPrice, 0, event.ExecutionQuantity*event.ExecutionPrice, event.Currency, sellerRealized, event.CorrelationID, event.OccurredAt); err != nil {
+		return UpdateResult{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO portfolio_processed_events (event_id, execution_id, tenant_id, event_type, correlation_id, payload_hash, consumer_version)
+		VALUES ($1, $2, $3, $4, $5, $6, 'v3.1.2')
+	`, event.EventID, event.ExecutionID, tenantID, event.EventType, event.CorrelationID, payloadHash); err != nil {
+		return UpdateResult{}, err
+	}
+
+	buyer, err := readPortfolio(ctx, tx, tenantID, event.BuyerUserID)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	seller, err := readPortfolio(ctx, tx, tenantID, event.SellerUserID)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	holdings, err := readHoldings(ctx, tx, tenantID, event.BuyerUserID)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	snapshot, err := createSnapshot(ctx, tx, buyer, holdings)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return UpdateResult{}, err
+	}
+	return UpdateResult{Portfolio: buyer, Seller: seller, Holdings: holdings, Snapshot: snapshot}, nil
 }
 
 func (r *PortfolioRepository) ApplyFilledOrder(ctx context.Context, event domain.OrderFilledEvent, initialCash float64) (UpdateResult, error) {
@@ -93,6 +203,128 @@ func (r *PortfolioRepository) ApplyFilledOrder(ctx context.Context, event domain
 		return UpdateResult{}, err
 	}
 	return UpdateResult{Portfolio: portfolio, Holdings: holdings, Snapshot: snapshot}, nil
+}
+
+func ensureHoldingForUpdate(ctx context.Context, tx pgx.Tx, tenantID, portfolioID, userID, symbol string) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO portfolio_holdings (tenant_id, portfolio_id, user_id, symbol, quantity, average_buy_price)
+		VALUES ($1, $2, $3, $4, 0, 0)
+		ON CONFLICT (portfolio_id, symbol) DO NOTHING
+	`, tenantID, portfolioID, userID, symbol)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `SELECT 1 FROM portfolio_holdings WHERE portfolio_id = $1 AND symbol = $2 FOR UPDATE`, portfolioID, symbol)
+	return err
+}
+
+func applyExecutionBuyer(ctx context.Context, tx pgx.Tx, tenantID, portfolioID string, event domain.TradeExecutedEvent) error {
+	gross := event.ExecutionQuantity * event.ExecutionPrice
+	tag, err := tx.Exec(ctx, `
+		UPDATE cash_balances
+		SET cash_balance = cash_balance - $2::numeric, updated_at = now()
+		WHERE portfolio_id = $1 AND cash_balance >= $2::numeric
+	`, portfolioID, fmt.Sprintf("%.10f", gross))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrInsufficientCash
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE portfolio_holdings
+		SET average_buy_price = CASE
+		      WHEN quantity + $3::numeric = 0 THEN 0
+		      ELSE ((quantity * average_buy_price) + ($3::numeric * $4::numeric)) / NULLIF(quantity + $3::numeric, 0)
+		    END,
+		    quantity = quantity + $3::numeric,
+		    updated_at = now()
+		WHERE tenant_id = $1 AND portfolio_id = $2 AND symbol = $5
+	`, tenantID, portfolioID, fmt.Sprintf("%.10f", event.ExecutionQuantity), fmt.Sprintf("%.10f", event.ExecutionPrice), event.Symbol)
+	return err
+}
+
+func applyExecutionSeller(ctx context.Context, tx pgx.Tx, tenantID, portfolioID string, event domain.TradeExecutedEvent) (float64, error) {
+	var currentQty, averageBuyPrice float64
+	if err := tx.QueryRow(ctx, `
+		SELECT quantity::float8, average_buy_price::float8
+		FROM portfolio_holdings
+		WHERE tenant_id = $1 AND portfolio_id = $2 AND symbol = $3
+		FOR UPDATE
+	`, tenantID, portfolioID, event.Symbol).Scan(&currentQty, &averageBuyPrice); err != nil {
+		return 0, err
+	}
+	if currentQty < event.ExecutionQuantity {
+		return 0, ErrInsufficientHoldings
+	}
+	realized := (event.ExecutionPrice - averageBuyPrice) * event.ExecutionQuantity
+	if _, err := tx.Exec(ctx, `
+		UPDATE portfolio_holdings
+		SET quantity = quantity - $4::numeric, updated_at = now()
+		WHERE tenant_id = $1 AND portfolio_id = $2 AND symbol = $3
+	`, tenantID, portfolioID, event.Symbol, fmt.Sprintf("%.10f", event.ExecutionQuantity)); err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE cash_balances
+		SET cash_balance = cash_balance + $2::numeric, realized_pnl = realized_pnl + $3::numeric, updated_at = now()
+		WHERE portfolio_id = $1
+	`, portfolioID, fmt.Sprintf("%.10f", event.ExecutionQuantity*event.ExecutionPrice), fmt.Sprintf("%.10f", realized)); err != nil {
+		return 0, err
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO realized_pnl_events (tenant_id, portfolio_id, user_id, order_id, symbol, quantity, fill_price, average_buy_price, realized_pnl, occurred_at, correlation_id)
+		VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric, $9::numeric, $10, $11)
+	`, tenantID, portfolioID, event.SellerUserID, event.SellOrderID, event.Symbol, fmt.Sprintf("%.10f", event.ExecutionQuantity), fmt.Sprintf("%.10f", event.ExecutionPrice), fmt.Sprintf("%.10f", averageBuyPrice), fmt.Sprintf("%.10f", realized), event.OccurredAt, event.CorrelationID)
+	return realized, err
+}
+
+func insertPortfolioTransaction(ctx context.Context, tx pgx.Tx, tenantID, portfolioID, userID, executionID, orderID, symbol, side string, quantity, price, gross, fee, netCash float64, currency string, realizedPnL float64, correlationID string, occurredAt time.Time) error {
+	if currency == "" {
+		currency = "USD"
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO portfolio_transactions (tenant_id, portfolio_id, user_id, execution_id, order_id, symbol, side, quantity, price, gross_amount, fee_amount, net_cash_amount, currency, realized_pnl, correlation_id, occurred_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13, $14::numeric, $15, $16)
+		ON CONFLICT (tenant_id, portfolio_id, execution_id, side) DO NOTHING
+	`, tenantID, portfolioID, userID, executionID, orderID, symbol, side, fmt.Sprintf("%.10f", quantity), fmt.Sprintf("%.10f", price), fmt.Sprintf("%.10f", gross), fmt.Sprintf("%.10f", fee), fmt.Sprintf("%.10f", netCash), currency, fmt.Sprintf("%.10f", realizedPnL), correlationID, occurredAt)
+	return err
+}
+
+func uniqueSorted(values []string) []string {
+	sort.Strings(values)
+	out := values[:0]
+	for _, value := range values {
+		if value == "" || (len(out) > 0 && out[len(out)-1] == value) {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out
+}
+
+func PayloadHash(event domain.TradeExecutedEvent) string {
+	normalized := strings.Join([]string{
+		defaultTenant(event.TenantID),
+		event.ExecutionID,
+		event.BuyOrderID,
+		event.SellOrderID,
+		event.BuyerUserID,
+		event.SellerUserID,
+		strings.ToUpper(strings.TrimSpace(event.Symbol)),
+		fmt.Sprintf("%.10f", event.ExecutionQuantity),
+		fmt.Sprintf("%.10f", event.ExecutionPrice),
+		strings.ToUpper(defaultCurrency(event.Currency)),
+	}, "|")
+	sum := sha256.Sum256([]byte(normalized))
+	return hex.EncodeToString(sum[:])
+}
+
+func defaultCurrency(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "USD"
+	}
+	return strings.ToUpper(strings.TrimSpace(value))
 }
 
 func (r *PortfolioRepository) GetPortfolio(ctx context.Context, tenantID, userID string, initialCash float64) (domain.Portfolio, error) {
@@ -185,7 +417,7 @@ func ensurePortfolio(ctx context.Context, tx pgx.Tx, tenantID, userID string, in
 	err := tx.QueryRow(ctx, `
 		INSERT INTO portfolios (tenant_id, user_id)
 		VALUES ($1, $2)
-		ON CONFLICT (user_id) DO UPDATE SET updated_at = portfolios.updated_at
+		ON CONFLICT (tenant_id, user_id) DO UPDATE SET updated_at = portfolios.updated_at
 		RETURNING id::text
 	`, defaultTenant(tenantID), userID).Scan(&portfolioID)
 	if err != nil {
