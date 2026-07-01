@@ -149,9 +149,14 @@ services:
       PRE_TRADE_RISK_URL: ${PRE_TRADE_RISK_URL:-http://risk-engine-service:8080}
       PRE_TRADE_RISK_TIMEOUT_MS: ${PRE_TRADE_RISK_TIMEOUT_MS:-1500}
       PRE_TRADE_RISK_FAIL_OPEN: ${PRE_TRADE_RISK_FAIL_OPEN:-false}
-      ORDER_EXPIRY_ENABLED: ${ORDER_EXPIRY_ENABLED:-false}
-      ORDER_EXPIRY_POLL_INTERVAL: ${ORDER_EXPIRY_POLL_INTERVAL:-10s}
+      ORDER_EXPIRY_ENABLED: ${ORDER_EXPIRY_ENABLED:-true}
+      ORDER_EXPIRY_POLL_INTERVAL: ${ORDER_EXPIRY_POLL_INTERVAL:-5s}
       ORDER_EXPIRY_BATCH_SIZE: ${ORDER_EXPIRY_BATCH_SIZE:-100}
+      ORDER_EXPIRY_MAX_BATCHES_PER_POLL: ${ORDER_EXPIRY_MAX_BATCHES_PER_POLL:-10}
+      ORDER_EXPIRY_PROCESSING_TIMEOUT: ${ORDER_EXPIRY_PROCESSING_TIMEOUT:-10s}
+      ORDER_EXPIRY_SHUTDOWN_TIMEOUT: ${ORDER_EXPIRY_SHUTDOWN_TIMEOUT:-15s}
+      ORDER_DAY_TIMEZONE: ${ORDER_DAY_TIMEZONE:-America/New_York}
+      ORDER_DAY_CLOSE_TIME: ${ORDER_DAY_CLOSE_TIME:-16:00}
       OUTBOX_ENABLED: ${OUTBOX_ENABLED:-true}
       OUTBOX_POLL_INTERVAL: ${OUTBOX_POLL_INTERVAL:-1s}
       OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
@@ -296,7 +301,7 @@ services:
       SURVEILLANCE_SERVICE_PORT: ${SURVEILLANCE_SERVICE_PORT:-8090}
       SURVEILLANCE_DATABASE_URL: ${SURVEILLANCE_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
       SURVEILLANCE_KAFKA_BROKERS: ${SURVEILLANCE_KAFKA_BROKERS:-redpanda:29092}
-      SURVEILLANCE_KAFKA_TOPICS: ${SURVEILLANCE_KAFKA_TOPICS:-order.created,order.filled,order.cancelled,portfolio.updated,risk.score.updated,market.ticks,strategy.signal.generated}
+      SURVEILLANCE_KAFKA_TOPICS: ${SURVEILLANCE_KAFKA_TOPICS:-order.created,order.filled,order.cancelled,order.expired,portfolio.updated,risk.score.updated,market.ticks,strategy.signal.generated}
       SURVEILLANCE_JWT_SECRET: ${SURVEILLANCE_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
       SURVEILLANCE_LARGE_ORDER_THRESHOLD: ${SURVEILLANCE_LARGE_ORDER_THRESHOLD:-100000}
       SURVEILLANCE_RAPID_ORDER_LIMIT: ${SURVEILLANCE_RAPID_ORDER_LIMIT:-5}
@@ -381,7 +386,7 @@ services:
       JWT_SECRET: ${AUDIT_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
       KAFKA_BROKERS: ${AUDIT_KAFKA_BROKERS:-redpanda:29092}
       KAFKA_GROUP_ID: ${AUDIT_KAFKA_GROUP_ID:-audit-service}
-      AUDIT_KAFKA_TOPICS: ${AUDIT_KAFKA_TOPICS:-user.registered,user.login,user.logout,order.created,order.cancelled,order.filled,portfolio.updated,risk.score.updated,risk.breached,surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed,notification.read,notification.failed,notification.sent,notification.retry_requested}
+      AUDIT_KAFKA_TOPICS: ${AUDIT_KAFKA_TOPICS:-user.registered,user.login,user.logout,order.created,order.cancelled,order.filled,order.expired,portfolio.updated,risk.score.updated,risk.breached,surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed,notification.read,notification.failed,notification.sent,notification.retry_requested}
       EVENT_PROCESSING_MAX_RETRIES: ${EVENT_PROCESSING_MAX_RETRIES:-3}
       EVENT_PROCESSING_RETRY_BACKOFF_MS: ${EVENT_PROCESSING_RETRY_BACKOFF_MS:-500}
       EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER: ${EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER:-2}

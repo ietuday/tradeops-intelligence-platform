@@ -90,7 +90,7 @@ func (o *Order) Expire(at time.Time) error {
 		return fmt.Errorf("%w: %s to expired", ErrInvalidTransition, o.Status)
 	}
 	o.Status = StatusExpired
-	o.RemainingQuantity = 0
+	o.ExpiredAt = &at
 	o.UpdatedAt = at
 	return nil
 }

@@ -57,6 +57,11 @@ data:
   ORDER_EXPIRY_ENABLED: {{ .Values.orderManagement.expiryEnabled | quote }}
   ORDER_EXPIRY_POLL_INTERVAL: {{ .Values.orderManagement.expiryPollInterval | quote }}
   ORDER_EXPIRY_BATCH_SIZE: {{ .Values.orderManagement.expiryBatchSize | quote }}
+  ORDER_EXPIRY_MAX_BATCHES_PER_POLL: {{ .Values.orderManagement.expiryMaxBatchesPerPoll | quote }}
+  ORDER_EXPIRY_PROCESSING_TIMEOUT: {{ .Values.orderManagement.expiryProcessingTimeout | quote }}
+  ORDER_EXPIRY_SHUTDOWN_TIMEOUT: {{ .Values.orderManagement.expiryShutdownTimeout | quote }}
+  ORDER_DAY_TIMEZONE: {{ .Values.orderManagement.dayTimezone | quote }}
+  ORDER_DAY_CLOSE_TIME: {{ .Values.orderManagement.dayCloseTime | quote }}
   OUTBOX_ENABLED: {{ .Values.orderManagement.outboxEnabled | quote }}
   OUTBOX_POLL_INTERVAL: {{ .Values.orderManagement.outboxPollInterval | quote }}
   OUTBOX_BATCH_SIZE: {{ .Values.orderManagement.outboxBatchSize | quote }}

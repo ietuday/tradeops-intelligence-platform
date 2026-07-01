@@ -3,6 +3,20 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.1.3] - Order Expiry Worker for DAY and GTD Orders
+
+### Added
+
+- Order Service expiry worker for due `DAY` and `GTD` orders using PostgreSQL `FOR UPDATE SKIP LOCKED` for multi-replica-safe bounded batches.
+- Weekday trading calendar abstraction with configurable IANA timezone and close time for server-assigned `DAY` expiries.
+- Additive `011` migration for expiry metadata and expiry worker scan index.
+- Transactional `order.expired` history/outbox events with stable expiry reason codes.
+- Prometheus expiry metrics, local alerts, Compose/Helm configuration, and `GET /internal/order-expiry/status`.
+
+### Known Limitations
+
+- The initial `DAY` calendar is weekday-only and does not model exchange holidays, special sessions, or half-days.
+
 ## [v3.1.2] - Idempotent Portfolio Trade Execution Processing
 
 ### Added

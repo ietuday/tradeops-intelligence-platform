@@ -174,9 +174,14 @@ orderManagement:
   preTradeRiskUrl: http://risk-engine-service:8080
   preTradeRiskTimeoutMs: "1500"
   preTradeRiskFailOpen: "false"
-  expiryEnabled: "false"
-  expiryPollInterval: 10s
+  expiryEnabled: "true"
+  expiryPollInterval: 5s
   expiryBatchSize: "100"
+  expiryMaxBatchesPerPoll: "10"
+  expiryProcessingTimeout: 10s
+  expiryShutdownTimeout: 15s
+  dayTimezone: America/New_York
+  dayCloseTime: "16:00"
   outboxEnabled: "true"
   outboxPollInterval: 1s
   outboxBatchSize: "50"
@@ -221,6 +226,7 @@ surveillance:
     - order.created
     - order.filled
     - order.cancelled
+    - order.expired
     - portfolio.updated
     - risk.score.updated
     - market.ticks
@@ -254,6 +260,7 @@ audit:
     - order.created
     - order.cancelled
     - order.filled
+    - order.expired
     - portfolio.updated
     - risk.score.updated
     - risk.breached
@@ -428,6 +435,11 @@ applications:
       ORDER_EXPIRY_ENABLED: ORDER_EXPIRY_ENABLED
       ORDER_EXPIRY_POLL_INTERVAL: ORDER_EXPIRY_POLL_INTERVAL
       ORDER_EXPIRY_BATCH_SIZE: ORDER_EXPIRY_BATCH_SIZE
+      ORDER_EXPIRY_MAX_BATCHES_PER_POLL: ORDER_EXPIRY_MAX_BATCHES_PER_POLL
+      ORDER_EXPIRY_PROCESSING_TIMEOUT: ORDER_EXPIRY_PROCESSING_TIMEOUT
+      ORDER_EXPIRY_SHUTDOWN_TIMEOUT: ORDER_EXPIRY_SHUTDOWN_TIMEOUT
+      ORDER_DAY_TIMEZONE: ORDER_DAY_TIMEZONE
+      ORDER_DAY_CLOSE_TIME: ORDER_DAY_CLOSE_TIME
       OUTBOX_ENABLED: OUTBOX_ENABLED
       OUTBOX_POLL_INTERVAL: OUTBOX_POLL_INTERVAL
       OUTBOX_BATCH_SIZE: OUTBOX_BATCH_SIZE
@@ -560,6 +572,14 @@ applications:
       OUTBOX_MAX_BACKOFF: OUTBOX_MAX_BACKOFF
       OUTBOX_MAX_ATTEMPTS: OUTBOX_MAX_ATTEMPTS
       OUTBOX_ERROR_MAX_LENGTH: OUTBOX_ERROR_MAX_LENGTH
+      ORDER_EXPIRY_ENABLED: ORDER_EXPIRY_ENABLED
+      ORDER_EXPIRY_POLL_INTERVAL: ORDER_EXPIRY_POLL_INTERVAL
+      ORDER_EXPIRY_BATCH_SIZE: ORDER_EXPIRY_BATCH_SIZE
+      ORDER_EXPIRY_MAX_BATCHES_PER_POLL: ORDER_EXPIRY_MAX_BATCHES_PER_POLL
+      ORDER_EXPIRY_PROCESSING_TIMEOUT: ORDER_EXPIRY_PROCESSING_TIMEOUT
+      ORDER_EXPIRY_SHUTDOWN_TIMEOUT: ORDER_EXPIRY_SHUTDOWN_TIMEOUT
+      ORDER_DAY_TIMEZONE: ORDER_DAY_TIMEZONE
+      ORDER_DAY_CLOSE_TIME: ORDER_DAY_CLOSE_TIME
     secretEnv:
       ORDER_JWT_SECRET: JWT_SECRET
     probes: *defaultProbes

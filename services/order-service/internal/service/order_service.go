@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/domain"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/expiry"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/observability"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/repository"
@@ -31,13 +32,14 @@ type UserContext struct {
 }
 
 type OrderService struct {
-	repo    *repository.OrderRepository
-	metrics *observability.Metrics
+	repo     *repository.OrderRepository
+	metrics  *observability.Metrics
+	calendar expiry.TradingCalendar
 }
 
-func NewOrderService(repo *repository.OrderRepository, producer *kafka.Producer, metrics *observability.Metrics) *OrderService {
+func NewOrderService(repo *repository.OrderRepository, producer *kafka.Producer, metrics *observability.Metrics, calendar expiry.TradingCalendar) *OrderService {
 	_ = producer
-	return &OrderService{repo: repo, metrics: metrics}
+	return &OrderService{repo: repo, metrics: metrics, calendar: calendar}
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempotencyKey string, requestBody []byte, correlationID string) (domain.Order, bool, error) {
@@ -67,7 +69,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, user UserContext, idempo
 		return domain.Order{}, false, err
 	}
 
-	order, events := s.buildOrder(user.UserID, user.TenantID, req, correlationID)
+	order, events, err := s.buildOrder(ctx, user.UserID, user.TenantID, req, correlationID)
+	if err != nil {
+		return domain.Order{}, false, err
+	}
 	created, events, err := s.repo.CreateOrder(ctx, order, events, idempotencyKey, requestHash)
 	if err != nil {
 		return domain.Order{}, false, err
@@ -152,6 +157,16 @@ func (s *OrderService) AmendOrder(ctx context.Context, user UserContext, id stri
 	if req.Quantity != nil && *req.Quantity < existing.FilledQuantity {
 		return domain.Order{}, fmt.Errorf("%w: quantity cannot be below filledQuantity", ErrInvalidOrder)
 	}
+	if req.ExpiresAt != nil {
+		if existing.TimeInForce != domain.TimeInForceGTD {
+			return domain.Order{}, fmt.Errorf("%w: expiresAt can only be amended for GTD orders", ErrInvalidOrder)
+		}
+		expiresAt := req.ExpiresAt.UTC()
+		if !expiresAt.After(time.Now().UTC()) {
+			return domain.Order{}, fmt.Errorf("%w: GTD expiresAt must be in the future", ErrInvalidOrder)
+		}
+		req.ExpiresAt = &expiresAt
+	}
 	order, err := s.repo.AmendOrder(ctx, user.TenantID, id, req, correlationID)
 	if errors.Is(err, repository.ErrNotFound) {
 		return domain.Order{}, ErrVersionConflict
@@ -195,10 +210,16 @@ func (s *OrderService) OrderBookDepth(ctx context.Context, user UserContext, sym
 	return s.repo.OrderBookDepth(ctx, user.TenantID, strings.ToUpper(strings.TrimSpace(symbol)), depth)
 }
 
-func (s *OrderService) buildOrder(userID, tenantID string, req domain.CreateOrderRequest, correlationID string) (domain.Order, []domain.OrderEvent) {
+func (s *OrderService) buildOrder(ctx context.Context, userID, tenantID string, req domain.CreateOrderRequest, correlationID string) (domain.Order, []domain.OrderEvent, error) {
 	now := time.Now().UTC()
 	if tenantID == "" {
 		tenantID = "default-tenant"
+	}
+	timeInForce := normalizeTimeInForce(req.TimeInForce)
+	expiresAt := req.ExpiresAt
+	if expiresAt != nil {
+		utc := expiresAt.UTC()
+		expiresAt = &utc
 	}
 	order := domain.Order{
 		UserID:            userID,
@@ -211,8 +232,8 @@ func (s *OrderService) buildOrder(userID, tenantID string, req domain.CreateOrde
 		RemainingQuantity: req.Quantity,
 		LimitPrice:        req.LimitPrice,
 		StopPrice:         req.StopPrice,
-		TimeInForce:       normalizeTimeInForce(req.TimeInForce),
-		ExpiresAt:         req.ExpiresAt,
+		TimeInForce:       timeInForce,
+		ExpiresAt:         expiresAt,
 		Version:           1,
 		Status:            domain.StatusCreated,
 		CorrelationID:     correlationID,
@@ -226,12 +247,22 @@ func (s *OrderService) buildOrder(userID, tenantID string, req domain.CreateOrde
 		order.Status = domain.StatusRejected
 		order.RejectReason = &reason
 		events = append(events, makeEvent(order, "order.rejected", domain.StatusRejected, correlationID))
-		return order, events
+		return order, events, nil
+	}
+	if order.TimeInForce == domain.TimeInForceDay {
+		if s.calendar == nil {
+			return domain.Order{}, nil, fmt.Errorf("%w: DAY trading calendar is not configured", ErrInvalidOrder)
+		}
+		dayExpiry, err := s.calendar.ExpiryForDayOrder(ctx, now)
+		if err != nil {
+			return domain.Order{}, nil, err
+		}
+		order.ExpiresAt = &dayExpiry
 	}
 	events = append(events, makeEvent(order, "order.validated", domain.StatusValidated, correlationID))
 	order.Status = domain.StatusAccepted
 	events = append(events, makeEvent(order, "order.accepted", domain.StatusAccepted, correlationID))
-	return order, events
+	return order, events, nil
 }
 
 func (s *OrderService) recordMetrics(status string) {
@@ -299,7 +330,7 @@ func makeEvent(order domain.Order, eventType, status, correlationID string) doma
 	if tenantID == "" {
 		tenantID = "default-tenant"
 	}
-	return domain.OrderEvent{
+	event := domain.OrderEvent{
 		EventID:           uuid.NewString(),
 		EventType:         eventType,
 		TenantID:          tenantID,
@@ -316,9 +347,15 @@ func makeEvent(order domain.Order, eventType, status, correlationID string) doma
 		FillPrice:         order.FillPrice,
 		AverageFillPrice:  order.AverageFillPrice,
 		Version:           order.Version,
+		ExpiresAt:         order.ExpiresAt,
+		ExpiredAt:         order.ExpiredAt,
 		OccurredAt:        time.Now().UTC(),
 		CorrelationID:     correlationID,
 	}
+	if order.ExpiryReason != nil {
+		event.ExpiryReason = *order.ExpiryReason
+	}
+	return event
 }
 
 func normalizeTimeInForce(value string) string {

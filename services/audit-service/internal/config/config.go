@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const defaultTopics = "user.registered,user.login,user.logout,order.created,order.cancelled,order.filled,portfolio.updated,risk.score.updated,risk.breached,surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed,notification.read,notification.failed,notification.sent,notification.retry_requested"
+const defaultTopics = "user.registered,user.login,user.logout,order.created,order.cancelled,order.filled,order.expired,portfolio.updated,risk.score.updated,risk.breached,surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed,notification.read,notification.failed,notification.sent,notification.retry_requested"
 
 type Config struct {
 	ServiceName               string

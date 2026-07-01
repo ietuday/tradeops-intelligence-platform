@@ -56,6 +56,8 @@ type Order struct {
 	UpdatedAt         time.Time  `json:"updatedAt"`
 	CancelledAt       *time.Time `json:"cancelledAt"`
 	FilledAt          *time.Time `json:"filledAt"`
+	ExpiredAt         *time.Time `json:"expiredAt"`
+	ExpiryReason      *string    `json:"expiryReason"`
 }
 
 type CreateOrderRequest struct {

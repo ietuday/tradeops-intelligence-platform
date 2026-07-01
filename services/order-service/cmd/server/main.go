@@ -12,6 +12,7 @@ import (
 
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/config"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/db"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/expiry"
 	httpapi "github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/http"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/observability"
@@ -54,7 +55,42 @@ func main() {
 	producer := kafka.NewProducer(cfg.KafkaBrokers)
 	defer producer.Close()
 
-	orderService := service.NewOrderService(repository.NewOrderRepository(pool), producer, metrics)
+	calendar, err := expiry.NewWeekdayTradingCalendar(cfg.Expiry.DayTimezone, cfg.Expiry.DayCloseTime)
+	if err != nil {
+		logger.Error("order expiry calendar initialization failed", "error", err)
+		os.Exit(1)
+	}
+
+	orderRepo := repository.NewOrderRepository(pool)
+	orderService := service.NewOrderService(orderRepo, producer, metrics, calendar)
+	var expiryDone chan struct{}
+	var expiryWorker *expiry.Worker
+	if cfg.Expiry.Enabled {
+		workerID, _ := os.Hostname()
+		if workerID == "" {
+			workerID = "order-service"
+		}
+		expiryCfg := expiry.Config{
+			Enabled:           cfg.Expiry.Enabled,
+			PollInterval:      cfg.Expiry.PollInterval,
+			BatchSize:         cfg.Expiry.BatchSize,
+			MaxBatchesPerPoll: cfg.Expiry.MaxBatchesPerPoll,
+			ProcessingTimeout: cfg.Expiry.ProcessingTimeout,
+			ShutdownTimeout:   cfg.Expiry.ShutdownTimeout,
+			DayTimezone:       cfg.Expiry.DayTimezone,
+			DayCloseTime:      cfg.Expiry.DayCloseTime,
+		}
+		expiryWorker = expiry.NewWorker(expiry.NewRepository(pool, workerID), metrics, logger, expiryCfg)
+		expiryDone = make(chan struct{})
+		go func() {
+			defer close(expiryDone)
+			if err := expiryWorker.Run(ctx); err != nil {
+				logger.Error("order expiry worker failed", "error", err)
+			}
+		}()
+	} else {
+		logger.Info("order expiry worker disabled")
+	}
 	var outboxDone chan struct{}
 	var outboxPublisher *outbox.Publisher
 	if cfg.Outbox.Enabled {
@@ -78,6 +114,7 @@ func main() {
 		DB:           pool,
 		KafkaBrokers: cfg.KafkaBrokers,
 		Metrics:      metrics,
+		Expiry:       expiryWorker,
 		Outbox:       outboxPublisher,
 		Service:      orderService,
 		Validator:    security.NewValidator([]byte(cfg.JWTSecret)),
@@ -111,6 +148,15 @@ func main() {
 		case <-outboxDone:
 		case <-outboxCtx.Done():
 			logger.Warn("outbox publisher shutdown timed out")
+		}
+	}
+	if expiryDone != nil {
+		expiryCtx, expiryCancel := context.WithTimeout(context.Background(), cfg.Expiry.ShutdownTimeout)
+		defer expiryCancel()
+		select {
+		case <-expiryDone:
+		case <-expiryCtx.Done():
+			logger.Warn("order expiry worker shutdown timed out")
 		}
 	}
 	if err := shutdownTracing(shutdownCtx); err != nil {

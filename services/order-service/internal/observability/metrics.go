@@ -9,31 +9,42 @@ import (
 )
 
 type Metrics struct {
-	Registry               *prometheus.Registry
-	OrdersCreated          prometheus.Counter
-	OrdersAccepted         prometheus.Counter
-	OrdersFilled           prometheus.Counter
-	OrdersRejected         prometheus.Counter
-	OrdersCancelled        prometheus.Counter
-	OrdersAmended          prometheus.Counter
-	OrdersPartial          prometheus.Counter
-	TradesExecuted         prometheus.Counter
-	IdempotencyReplays     prometheus.Counter
-	KafkaPublishErrors     prometheus.Counter
-	ProcessingDuration     prometheus.Histogram
-	OutboxClaimed          prometheus.Counter
-	OutboxPublished        *prometheus.CounterVec
-	OutboxPublishErrors    *prometheus.CounterVec
-	OutboxTerminalFailures *prometheus.CounterVec
-	OutboxPending          prometheus.Gauge
-	OutboxProcessing       prometheus.Gauge
-	OutboxFailed           prometheus.Gauge
-	OutboxOldestPendingAge prometheus.Gauge
-	OutboxPublishDuration  *prometheus.HistogramVec
-	OutboxBatchSize        prometheus.Histogram
-	OutboxClaimDuration    prometheus.Histogram
-	OutboxRetryDelay       prometheus.Histogram
-	OutboxLeaseRecoveries  prometheus.Counter
+	Registry                        *prometheus.Registry
+	OrdersCreated                   prometheus.Counter
+	OrdersAccepted                  prometheus.Counter
+	OrdersFilled                    prometheus.Counter
+	OrdersRejected                  prometheus.Counter
+	OrdersCancelled                 prometheus.Counter
+	OrdersAmended                   prometheus.Counter
+	OrdersPartial                   prometheus.Counter
+	TradesExecuted                  prometheus.Counter
+	IdempotencyReplays              prometheus.Counter
+	KafkaPublishErrors              prometheus.Counter
+	ProcessingDuration              prometheus.Histogram
+	OutboxClaimed                   prometheus.Counter
+	OutboxPublished                 *prometheus.CounterVec
+	OutboxPublishErrors             *prometheus.CounterVec
+	OutboxTerminalFailures          *prometheus.CounterVec
+	OutboxPending                   prometheus.Gauge
+	OutboxProcessing                prometheus.Gauge
+	OutboxFailed                    prometheus.Gauge
+	OutboxOldestPendingAge          prometheus.Gauge
+	OutboxPublishDuration           *prometheus.HistogramVec
+	OutboxBatchSize                 prometheus.Histogram
+	OutboxClaimDuration             prometheus.Histogram
+	OutboxRetryDelay                prometheus.Histogram
+	OutboxLeaseRecoveries           prometheus.Counter
+	OrderExpiryPolls                *prometheus.CounterVec
+	OrderExpiryDueOrders            prometheus.Gauge
+	OrderExpiryClaimed              prometheus.Counter
+	OrdersExpired                   *prometheus.CounterVec
+	OrderExpiryErrors               *prometheus.CounterVec
+	OrderExpiryConflicts            prometheus.Counter
+	OrderExpiryDuration             *prometheus.HistogramVec
+	OrderExpiryBatchSize            prometheus.Histogram
+	OrderExpiryLag                  prometheus.Histogram
+	OrderExpiryOldestDueAge         prometheus.Gauge
+	OrderExpiryReconciliationErrors prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
@@ -142,8 +153,55 @@ func NewMetrics() *Metrics {
 			Name: "tradeops_outbox_lease_recoveries_total",
 			Help: "Total outbox rows recovered after an expired lease.",
 		}),
+		OrderExpiryPolls: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_order_expiry_polls_total",
+			Help: "Total order expiry worker polls.",
+		}, []string{"result"}),
+		OrderExpiryDueOrders: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_order_expiry_due_orders",
+			Help: "Current due orders visible to the expiry worker.",
+		}),
+		OrderExpiryClaimed: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_order_expiry_claimed_total",
+			Help: "Total orders claimed by the expiry worker.",
+		}),
+		OrdersExpired: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_orders_expired_total",
+			Help: "Total orders expired by the expiry worker.",
+		}, []string{"time_in_force", "reason"}),
+		OrderExpiryErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_order_expiry_errors_total",
+			Help: "Total order expiry worker errors.",
+		}, []string{"result"}),
+		OrderExpiryConflicts: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_order_expiry_conflicts_total",
+			Help: "Total order expiry no-op conflicts.",
+		}),
+		OrderExpiryDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "tradeops_order_expiry_processing_duration_seconds",
+			Help:    "Order expiry processing duration in seconds.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5},
+		}, []string{"result"}),
+		OrderExpiryBatchSize: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "tradeops_order_expiry_batch_size",
+			Help:    "Order expiry claimed batch size.",
+			Buckets: []float64{0, 1, 5, 10, 25, 50, 100, 250, 500},
+		}),
+		OrderExpiryLag: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "tradeops_order_expiry_lag_seconds",
+			Help:    "Seconds between configured expiry and actual expiry.",
+			Buckets: []float64{0, 1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600},
+		}),
+		OrderExpiryOldestDueAge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_order_expiry_oldest_due_age_seconds",
+			Help: "Age of the oldest due order in seconds.",
+		}),
+		OrderExpiryReconciliationErrors: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "tradeops_order_expiry_reconciliation_errors_total",
+			Help: "Total malformed order records skipped by expiry reconciliation.",
+		}),
 	}
-	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries)
+	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries, metrics.OrderExpiryPolls, metrics.OrderExpiryDueOrders, metrics.OrderExpiryClaimed, metrics.OrdersExpired, metrics.OrderExpiryErrors, metrics.OrderExpiryConflicts, metrics.OrderExpiryDuration, metrics.OrderExpiryBatchSize, metrics.OrderExpiryLag, metrics.OrderExpiryOldestDueAge, metrics.OrderExpiryReconciliationErrors)
 	return metrics
 }
 

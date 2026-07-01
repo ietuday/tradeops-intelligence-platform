@@ -107,6 +107,49 @@ groups:
           summary: "Order outbox backlog is not draining"
           description: "Pending outbox rows exist and no successful publishes occurred for 10 minutes."
 
+  - name: tradeops-order-expiry
+    rules:
+      - alert: OrderExpiryBacklogHigh
+        expr: tradeops_order_expiry_due_orders > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order expiry backlog is high"
+          description: "Due DAY/GTD orders exceeded the local expiry threshold."
+      - alert: OrderExpiryLagHigh
+        expr: tradeops_order_expiry_oldest_due_age_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order expiry lag is high"
+          description: "The oldest due order has been waiting more than 5 minutes."
+      - alert: OrderExpiryWorkerErrorsHigh
+        expr: sum(rate(tradeops_order_expiry_errors_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order expiry worker errors are elevated"
+          description: "The expiry worker error rate is above the demo threshold."
+      - alert: OrderExpiryNoProgress
+        expr: tradeops_order_expiry_due_orders > 0 and sum(increase(tradeops_orders_expired_total[10m])) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order expiry backlog is not draining"
+          description: "Due orders exist and no orders expired in the last 10 minutes."
+      - alert: OrderExpiryReconciliationErrors
+        expr: increase(tradeops_order_expiry_reconciliation_errors_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Order expiry reconciliation errors present"
+          description: "Malformed or impossible expiry records require inspection."
+
   - name: tradeops-surveillance-notification-audit
     rules:
       - alert: SurveillanceAlertSpike

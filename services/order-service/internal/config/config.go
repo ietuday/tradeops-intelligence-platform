@@ -15,6 +15,7 @@ type Config struct {
 	KafkaBrokers    []string
 	JWTSecret       string
 	Outbox          OutboxConfig
+	Expiry          ExpiryConfig
 	ShutdownTimeout time.Duration
 }
 
@@ -30,6 +31,17 @@ type OutboxConfig struct {
 	MaxBackoff         time.Duration
 	MaxAttempts        int
 	ErrorMaxLength     int
+}
+
+type ExpiryConfig struct {
+	Enabled           bool
+	PollInterval      time.Duration
+	BatchSize         int
+	MaxBatchesPerPoll int
+	ProcessingTimeout time.Duration
+	ShutdownTimeout   time.Duration
+	DayTimezone       string
+	DayCloseTime      string
 }
 
 func Load() (Config, error) {
@@ -52,6 +64,16 @@ func Load() (Config, error) {
 			MaxAttempts:        intEnv("OUTBOX_MAX_ATTEMPTS", 10),
 			ErrorMaxLength:     intEnv("OUTBOX_ERROR_MAX_LENGTH", 512),
 		},
+		Expiry: ExpiryConfig{
+			Enabled:           boolEnv("ORDER_EXPIRY_ENABLED", true),
+			PollInterval:      durationEnv("ORDER_EXPIRY_POLL_INTERVAL", 5*time.Second),
+			BatchSize:         intEnv("ORDER_EXPIRY_BATCH_SIZE", 100),
+			MaxBatchesPerPoll: intEnv("ORDER_EXPIRY_MAX_BATCHES_PER_POLL", 10),
+			ProcessingTimeout: durationEnv("ORDER_EXPIRY_PROCESSING_TIMEOUT", 10*time.Second),
+			ShutdownTimeout:   durationEnv("ORDER_EXPIRY_SHUTDOWN_TIMEOUT", 15*time.Second),
+			DayTimezone:       getenv("ORDER_DAY_TIMEZONE", "America/New_York"),
+			DayCloseTime:      getenv("ORDER_DAY_CLOSE_TIME", "16:00"),
+		},
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("ORDER_DATABASE_URL is required")
@@ -65,10 +87,38 @@ func Load() (Config, error) {
 	if err := validateOutbox(cfg.Outbox); err != nil {
 		return cfg, err
 	}
+	if err := validateExpiry(cfg.Expiry); err != nil {
+		return cfg, err
+	}
 	if cfg.ShutdownTimeout <= 0 {
 		return cfg, errors.New("ORDER_SHUTDOWN_TIMEOUT must be positive")
 	}
 	return cfg, nil
+}
+
+func validateExpiry(cfg ExpiryConfig) error {
+	if cfg.PollInterval <= 0 {
+		return errors.New("ORDER_EXPIRY_POLL_INTERVAL must be positive")
+	}
+	if cfg.BatchSize <= 0 {
+		return errors.New("ORDER_EXPIRY_BATCH_SIZE must be greater than zero")
+	}
+	if cfg.MaxBatchesPerPoll <= 0 {
+		return errors.New("ORDER_EXPIRY_MAX_BATCHES_PER_POLL must be greater than zero")
+	}
+	if cfg.ProcessingTimeout <= 0 {
+		return errors.New("ORDER_EXPIRY_PROCESSING_TIMEOUT must be positive")
+	}
+	if cfg.ShutdownTimeout <= 0 {
+		return errors.New("ORDER_EXPIRY_SHUTDOWN_TIMEOUT must be positive")
+	}
+	if _, err := time.LoadLocation(cfg.DayTimezone); err != nil {
+		return fmt.Errorf("ORDER_DAY_TIMEZONE is invalid: %w", err)
+	}
+	if _, err := time.Parse("15:04", cfg.DayCloseTime); err != nil {
+		return fmt.Errorf("ORDER_DAY_CLOSE_TIME must use HH:MM: %w", err)
+	}
+	return nil
 }
 
 func validateOutbox(cfg OutboxConfig) error {

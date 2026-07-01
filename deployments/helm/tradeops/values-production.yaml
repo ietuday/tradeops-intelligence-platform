@@ -92,6 +92,14 @@ otel:
     exporterEndpoint: https://otel-gateway.production.example.internal
 
 orderManagement:
+  expiryEnabled: "true"
+  expiryPollInterval: 5s
+  expiryBatchSize: "100"
+  expiryMaxBatchesPerPoll: "10"
+  expiryProcessingTimeout: 10s
+  expiryShutdownTimeout: 15s
+  dayTimezone: America/New_York
+  dayCloseTime: "16:00"
   outboxEnabled: "true"
   outboxPollInterval: 1s
   outboxBatchSize: "100"

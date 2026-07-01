@@ -96,10 +96,10 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, order domain.Order, e
 func (r *OrderRepository) GetOrder(ctx context.Context, tenantID, id string) (domain.Order, error) {
 	var order domain.Order
 	err := r.db.QueryRow(ctx, `
-		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
 		FROM orders
 		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
-	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
+	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -111,7 +111,7 @@ func (r *OrderRepository) GetOrder(ctx context.Context, tenantID, id string) (do
 
 func (r *OrderRepository) ListOrders(ctx context.Context, tenantID, userID string, includeAll bool) ([]domain.Order, error) {
 	query := `
-		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
 		FROM orders
 	`
 	args := []any{tenantID}
@@ -130,7 +130,7 @@ func (r *OrderRepository) ListOrders(ctx context.Context, tenantID, userID strin
 	var orders []domain.Order
 	for rows.Next() {
 		var order domain.Order
-		if err := rows.Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt); err != nil {
+		if err := rows.Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason); err != nil {
 			return nil, err
 		}
 		orders = append(orders, order)
@@ -150,8 +150,8 @@ func (r *OrderRepository) CancelOrder(ctx context.Context, tenantID, id, correla
 		UPDATE orders
 		SET status = $2, remaining_quantity = 0, cancelled_at = now(), updated_at = now(), correlation_id = $3, version = version + 1
 		WHERE id = $1 AND status IN ($4, $5) AND COALESCE(tenant_id, 'default-tenant') = $6
-		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
-	`, id, domain.StatusCancelled, correlationID, domain.StatusAccepted, domain.StatusPartiallyFilled, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+	`, id, domain.StatusCancelled, correlationID, domain.StatusAccepted, domain.StatusPartiallyFilled, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -192,8 +192,8 @@ func (r *OrderRepository) AmendOrder(ctx context.Context, tenantID, id string, r
 		  AND version = $8
 		  AND status IN ($9, $10)
 		  AND ($3::numeric IS NULL OR $3::numeric >= filled_quantity)
-		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
-	`, id, tenantID, req.Quantity, req.LimitPrice, req.StopPrice, req.ExpiresAt, correlationID, req.ExpectedVersion, domain.StatusAccepted, domain.StatusPartiallyFilled).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+	`, id, tenantID, req.Quantity, req.LimitPrice, req.StopPrice, req.ExpiresAt, correlationID, req.ExpectedVersion, domain.StatusAccepted, domain.StatusPartiallyFilled).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return domain.Order{}, ErrNotFound
@@ -407,11 +407,11 @@ func loadRestingOrders(ctx context.Context, tx pgx.Tx, incoming domain.Order) ([
 func loadOrderForUpdate(ctx context.Context, tx pgx.Tx, tenantID, id string) (domain.Order, error) {
 	var order domain.Order
 	err := tx.QueryRow(ctx, `
-		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at
+		SELECT id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type, quantity::float8, filled_quantity::float8, remaining_quantity::float8, limit_price::float8, stop_price::float8, average_fill_price::float8, time_in_force, expires_at, version, risk_decision_id::text, last_execution_at, status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''), created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
 		FROM orders
 		WHERE id = $1 AND COALESCE(tenant_id, 'default-tenant') = $2
 		FOR UPDATE
-	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt)
+	`, id, tenantID).Scan(&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType, &order.Quantity, &order.FilledQuantity, &order.RemainingQuantity, &order.LimitPrice, &order.StopPrice, &order.AverageFillPrice, &order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.LastExecutionAt, &order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID, &order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason)
 	return order, err
 }
 
@@ -546,7 +546,7 @@ func tradeExecutedEvent(order domain.Order, exec matching.Execution) domain.Orde
 }
 
 func newRepositoryEvent(order domain.Order, eventType string) domain.OrderEvent {
-	return domain.OrderEvent{
+	event := domain.OrderEvent{
 		EventID:           uuid.NewString(),
 		EventType:         eventType,
 		EventVersion:      "1.0",
@@ -564,9 +564,15 @@ func newRepositoryEvent(order domain.Order, eventType string) domain.OrderEvent 
 		FillPrice:         order.FillPrice,
 		AverageFillPrice:  order.AverageFillPrice,
 		Version:           order.Version + 1,
+		ExpiresAt:         order.ExpiresAt,
+		ExpiredAt:         order.ExpiredAt,
 		OccurredAt:        time.Now().UTC(),
 		CorrelationID:     order.CorrelationID,
 	}
+	if order.ExpiryReason != nil {
+		event.ExpiryReason = *order.ExpiryReason
+	}
+	return event
 }
 
 func compactEvents(events []domain.OrderEvent) []domain.OrderEvent {
