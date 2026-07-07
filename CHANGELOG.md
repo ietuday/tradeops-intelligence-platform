@@ -3,6 +3,21 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.4.0] - Consumer Lag Monitoring, DLQ Visibility, and Autoscaling Signals
+
+### Added
+
+- Portfolio Service `/internal/consumers/status` endpoint for consumer and DLQ health.
+- Shared consumer observability metrics for lag, processing attempts/errors, DLQ counts/age, and outbox backlog.
+- Compose and Helm configuration for consumer observability thresholds.
+- Disabled-by-default Helm autoscaling values and HPA custom metric rendering for consumer lag.
+- Prometheus alert rules, operations docs, release notes, and demo script for lag/DLQ troubleshooting.
+
+### Known Limitations
+
+- Portfolio Service is wired first; other Go consumer services can reuse the metric/status conventions in later releases.
+- DLQ visibility is read-only and does not replay or delete messages.
+
 ## [v3.3.0] - Portfolio Service Transactional Outbox and Idempotent Event Processing
 
 ### Added

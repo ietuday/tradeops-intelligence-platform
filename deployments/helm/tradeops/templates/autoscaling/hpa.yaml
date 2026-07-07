@@ -1,5 +1,16 @@
 {{- range $key, $app := .Values.applications }}
 {{- if and $app.enabled $app.autoscaling.enabled }}
+{{- $consumerLag := dict "enabled" false }}
+{{- $minReplicas := $app.autoscaling.minReplicas }}
+{{- $maxReplicas := $app.autoscaling.maxReplicas }}
+{{- with $app.autoscaling.consumerLag }}
+{{- $consumerLag = . }}
+{{- end }}
+{{- if and (eq $key "portfolioService") $.Values.portfolio.consumerAutoscaling.enabled }}
+{{- $consumerLag = $.Values.portfolio.consumerAutoscaling }}
+{{- $minReplicas = $.Values.portfolio.consumerAutoscaling.minReplicas }}
+{{- $maxReplicas = $.Values.portfolio.consumerAutoscaling.maxReplicas }}
+{{- end }}
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -13,8 +24,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "tradeops.componentName" (dict "root" $ "component" $app) }}
-  minReplicas: {{ $app.autoscaling.minReplicas }}
-  maxReplicas: {{ $app.autoscaling.maxReplicas }}
+  minReplicas: {{ $minReplicas }}
+  maxReplicas: {{ $maxReplicas }}
   metrics:
     - type: Resource
       resource:
@@ -30,10 +41,18 @@ spec:
           type: Utilization
           averageUtilization: {{ $app.autoscaling.targetMemoryUtilizationPercentage }}
     {{- end }}
+    {{- if $consumerLag.enabled }}
+    - type: Pods
+      pods:
+        metric:
+          name: {{ $consumerLag.lagMetricName | quote }}
+        target:
+          type: AverageValue
+          averageValue: {{ $consumerLag.lagTargetAverageValue | quote }}
+    {{- end }}
   {{- with $app.autoscaling.behavior }}
   behavior:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
 {{- end }}
-

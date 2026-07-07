@@ -6,6 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/consumerobs"
 )
 
 type Metrics struct {
@@ -38,6 +40,7 @@ type Metrics struct {
 	PortfolioOutboxPublishErrors    *prometheus.CounterVec
 	PortfolioOutboxPending          prometheus.Gauge
 	PortfolioOutboxOldestPendingAge prometheus.Gauge
+	ConsumerObs                     *consumerobs.Metrics
 }
 
 func NewMetrics() *Metrics {
@@ -159,8 +162,10 @@ func NewMetrics() *Metrics {
 			Name: "tradeops_portfolio_outbox_oldest_pending_age_seconds",
 			Help: "Age of the oldest pending Portfolio Service outbox row.",
 		}),
+		ConsumerObs: consumerobs.NewMetrics(),
 	}
 	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.DuplicateSkipped, &metrics.TradeEventsReceived, &metrics.TradeEventsProcessed, &metrics.TradeEventsFailed, metrics.TradeEventsDuplicate, metrics.TradePayloadConflicts, metrics.ExecutionLag, &metrics.ReconciliationFailures, metrics.PortfolioEventsConsumed, metrics.PortfolioEventsDuplicate, metrics.PortfolioEventErrors, metrics.PortfolioEventDuration, metrics.PortfolioOutboxEvents, metrics.PortfolioOutboxPublishAttempts, metrics.PortfolioOutboxPublishErrors, metrics.PortfolioOutboxPending, metrics.PortfolioOutboxOldestPendingAge)
+	metrics.ConsumerObs.Register(registry)
 	return metrics
 }
 

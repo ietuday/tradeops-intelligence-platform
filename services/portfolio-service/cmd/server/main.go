@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/config"
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/consumerobs"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/db"
 	httpapi "github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/http"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/kafka"
@@ -80,11 +81,23 @@ func main() {
 		logger.Info("portfolio outbox publisher disabled")
 	}
 
-	consumer := kafka.NewConsumerWithOptions(cfg.KafkaBrokers, cfg.TradeTopic, cfg.TradeConsumerGroup, cfg.TradeDLQTopic, portfolioService, logger, metrics, kafka.RetryConfig{
+	consumerObsCfg := consumerobs.Config{
+		Enabled:              cfg.ConsumerObs.Enabled,
+		PollInterval:         cfg.ConsumerObs.PollInterval,
+		LagWarnThreshold:     cfg.ConsumerObs.LagWarnThreshold,
+		LagCriticalThreshold: cfg.ConsumerObs.LagCriticalThreshold,
+		StalledAfter:         cfg.ConsumerObs.StalledAfter,
+		MaxTopicScan:         cfg.ConsumerObs.MaxTopicScan,
+		DLQEnabled:           cfg.ConsumerObs.DLQEnabled,
+		DLQTopic:             cfg.TradeDLQTopic,
+		DLQOldestAgeWarn:     cfg.ConsumerObs.DLQOldestAgeWarn,
+		DLQOldestAgeCritical: cfg.ConsumerObs.DLQOldestAgeCritical,
+	}
+	consumer := kafka.NewConsumerWithObservability(cfg.KafkaBrokers, cfg.TradeTopic, cfg.TradeConsumerGroup, cfg.TradeDLQTopic, portfolioService, logger, metrics, kafka.RetryConfig{
 		MaxRetries:        cfg.EventProcessingMaxRetries,
 		Backoff:           time.Duration(cfg.EventProcessingBackoffMS) * time.Millisecond,
 		BackoffMultiplier: cfg.EventProcessingMultiplier,
-	})
+	}, consumerObsCfg)
 	consumer.Start(ctx)
 	defer consumer.Close()
 

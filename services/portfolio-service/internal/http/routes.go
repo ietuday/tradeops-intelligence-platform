@@ -4,6 +4,7 @@ import (
 	nethttp "net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/consumerobs"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/http/handlers"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/http/middleware"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/kafka"
@@ -20,8 +21,11 @@ type Dependencies struct {
 	Metrics      *observability.Metrics
 	Service      *service.PortfolioService
 	Outbox       interface{ Status() outbox.Status }
-	Consumer     interface{ Status() kafka.Status }
-	Validator    *security.Validator
+	Consumer     interface {
+		Status() kafka.Status
+		ConsumerObsStatus() consumerobs.Snapshot
+	}
+	Validator *security.Validator
 }
 
 func NewRouter(deps Dependencies) nethttp.Handler {
@@ -35,6 +39,7 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	router.Get("/ready", health.Ready)
 	router.Get("/internal/portfolio/outbox/status", health.OutboxStatus)
 	router.Get("/internal/portfolio/consumer/status", health.ConsumerStatus)
+	router.Get("/internal/consumers/status", health.ConsumersStatus)
 	router.Handle("/metrics", deps.Metrics.Handler())
 
 	router.Group(func(r chi.Router) {

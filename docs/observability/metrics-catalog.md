@@ -102,6 +102,34 @@ Advanced risk analytics adds `risk_stress_tests_total{status}`, `risk_scenarios_
 | `audit_export_requests_total` | Counter | Audit export requests by format. |
 | `audit_kafka_publish_errors_total` | Counter | Audit event publish failures. |
 
+## Consumer Observability
+
+v3.4.0 adds shared event-consumer metrics, initially wired through Portfolio Service:
+
+| Metric | Type | Purpose |
+| --- | --- | --- |
+| `tradeops_consumer_lag_messages` | Gauge | Consumer lag by service, consumer group, topic, and partition. |
+| `tradeops_consumer_lag_oldest_age_seconds` | Gauge | Age of the oldest known unprocessed message by service, group, and topic. |
+| `tradeops_consumer_last_processed_timestamp_seconds` | Gauge | Unix timestamp for the last successful processing event. |
+| `tradeops_consumer_processing_total` | Counter | Processing attempts by service, group, topic, event type, and status. |
+| `tradeops_consumer_processing_errors_total` | Counter | Processing errors by bounded reason. |
+| `tradeops_consumer_rebalances_total` | Counter | Consumer rebalance count by service, group, and topic. |
+| `tradeops_dlq_messages` | Gauge | Observed DLQ message count by service and topic. |
+| `tradeops_dlq_oldest_message_age_seconds` | Gauge | Oldest observed DLQ message age by service and topic. |
+| `tradeops_dlq_events_total` | Counter | Events published to DLQ by bounded event type and reason. |
+| `tradeops_outbox_pending_events` | Gauge | Pending outbox rows by service and event type. |
+| `tradeops_outbox_oldest_pending_age_seconds` | Gauge | Oldest pending outbox row age by service and event type. |
+| `tradeops_outbox_publish_errors_total` | Counter | Outbox publish errors by service, event type, and bounded reason. |
+
+Useful queries:
+
+```promql
+sum by (service, consumer_group, topic) (tradeops_consumer_lag_messages)
+max by (service, topic) (tradeops_dlq_oldest_message_age_seconds)
+sum by (service, event_type) (tradeops_outbox_pending_events)
+rate(tradeops_consumer_processing_errors_total[5m])
+```
+
 ## Dashboard Query Pattern
 
 Dashboards use `or vector(0)` for optional metrics so an empty local demo does not render broken panels before events have been generated. This is a demo-friendly fallback, not a substitute for production cardinality and scrape health reviews.

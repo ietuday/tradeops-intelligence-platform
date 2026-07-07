@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/consumerobs"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/observability"
 	"github.com/segmentio/kafka-go"
 )
@@ -23,6 +24,11 @@ type Consumer struct {
 	metrics     *observability.Metrics
 	dlqWriter   writerCloser
 	retryConfig RetryConfig
+	serviceName string
+	topic       string
+	groupID     string
+	dlqTopic    string
+	obsCfg      consumerobs.Config
 	mu          sync.RWMutex
 	status      Status
 	running     bool
@@ -49,8 +55,10 @@ type Status struct {
 	LastConsumedAt    *time.Time `json:"lastConsumedAt,omitempty"`
 	LastProcessedAt   *time.Time `json:"lastProcessedAt,omitempty"`
 	LastDuplicateAt   *time.Time `json:"lastDuplicateAt,omitempty"`
+	LastDLQAt         *time.Time `json:"lastDlqAt,omitempty"`
 	ProcessedCount    int64      `json:"processedCount"`
 	DuplicateCount    int64      `json:"duplicateCount"`
+	DLQCount          int64      `json:"dlqCount"`
 	ConsecutiveErrors int        `json:"consecutiveErrors"`
 	LastError         string     `json:"lastError,omitempty"`
 }
@@ -71,6 +79,13 @@ func NewConsumer(brokers []string, topic string, svc Processor, logger *slog.Log
 }
 
 func NewConsumerWithOptions(brokers []string, topic, groupID, dlqTopic string, svc Processor, logger *slog.Logger, metrics *observability.Metrics, retryConfig RetryConfig) *Consumer {
+	return NewConsumerWithObservability(brokers, topic, groupID, dlqTopic, svc, logger, metrics, retryConfig, consumerobs.Config{Enabled: true, LagWarnThreshold: 1000, LagCriticalThreshold: 10000, StalledAfter: 2 * time.Minute, DLQEnabled: true, DLQTopic: dlqTopic, DLQOldestAgeWarn: 5 * time.Minute, DLQOldestAgeCritical: 30 * time.Minute})
+}
+
+func NewConsumerWithObservability(brokers []string, topic, groupID, dlqTopic string, svc Processor, logger *slog.Logger, metrics *observability.Metrics, retryConfig RetryConfig, obsCfg consumerobs.Config) *Consumer {
+	if obsCfg.DLQTopic == "" {
+		obsCfg.DLQTopic = dlqTopic
+	}
 	return &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:        brokers,
@@ -86,6 +101,11 @@ func NewConsumerWithOptions(brokers []string, topic, groupID, dlqTopic string, s
 		metrics:     metrics,
 		dlqWriter:   newDLQWriter(brokers, dlqTopic),
 		retryConfig: normalizeRetryConfig(retryConfig),
+		serviceName: "portfolio-service",
+		topic:       topic,
+		groupID:     groupID,
+		dlqTopic:    dlqTopic,
+		obsCfg:      obsCfg,
 	}
 }
 
@@ -124,6 +144,56 @@ func (c *Consumer) Status() Status {
 	return status
 }
 
+func (c *Consumer) ConsumerObsStatus() consumerobs.Snapshot {
+	c.mu.RLock()
+	status := c.status
+	running := c.running
+	c.mu.RUnlock()
+	now := time.Now().UTC()
+	consumerStatus := consumerobs.ConsumerStatus{
+		ConsumerGroup:     c.groupID,
+		Topic:             c.topic,
+		Partitions:        []consumerobs.PartitionStatus{{Partition: 0, CurrentOffset: 0, LatestOffset: 0, LagMessages: 0}},
+		TotalLagMessages:  0,
+		LastProcessedAt:   status.LastProcessedAt,
+		LastMessageAt:     status.LastConsumedAt,
+		ConsecutiveErrors: status.ConsecutiveErrors,
+		Status:            consumerobs.ClassifyConsumer(0, status.ConsecutiveErrors, status.LastProcessedAt, now, c.obsCfg),
+	}
+	if !running && c.obsCfg.Enabled {
+		consumerStatus.Status = consumerobs.StatusUnknown
+	}
+	if c.metrics != nil && status.LastProcessedAt != nil {
+		c.metrics.ConsumerObs.ConsumerLastProcessed.WithLabelValues(c.serviceName, c.groupID, c.topic).Set(float64(status.LastProcessedAt.Unix()))
+	}
+	dlqOldestAge := time.Duration(0)
+	if status.LastDLQAt != nil {
+		dlqOldestAge = now.Sub(status.LastDLQAt.UTC())
+	}
+	if c.metrics != nil {
+		c.metrics.ConsumerObs.ConsumerLagMessages.WithLabelValues(c.serviceName, c.groupID, c.topic, "0").Set(0)
+		c.metrics.ConsumerObs.ConsumerLagOldestAge.WithLabelValues(c.serviceName, c.groupID, c.topic).Set(0)
+		c.metrics.ConsumerObs.DLQMessages.WithLabelValues(c.serviceName, c.dlqTopic).Set(float64(status.DLQCount))
+		c.metrics.ConsumerObs.DLQOldestMessageAge.WithLabelValues(c.serviceName, c.dlqTopic).Set(dlqOldestAge.Seconds())
+	}
+	dlq := consumerobs.DLQStatus{
+		Topic:                   c.dlqTopic,
+		MessageCount:            status.DLQCount,
+		OldestMessageAgeSeconds: dlqOldestAge.Seconds(),
+		NewestMessageAgeSeconds: dlqOldestAge.Seconds(),
+		LastObservedAt:          status.LastDLQAt,
+		Status:                  consumerobs.ClassifyDLQ(status.DLQCount, dlqOldestAge, c.obsCfg),
+	}
+	return consumerobs.Snapshot{
+		Service:   c.serviceName,
+		Status:    consumerobs.AggregateStatus([]consumerobs.ConsumerStatus{consumerStatus}, []consumerobs.DLQStatus{dlq}),
+		CheckedAt: now,
+		Consumers: []consumerobs.ConsumerStatus{consumerStatus},
+		DLQ:       []consumerobs.DLQStatus{dlq},
+		Enabled:   c.obsCfg.Enabled,
+	}
+}
+
 func (c *Consumer) Close() error {
 	if err := c.reader.Close(); err != nil {
 		_ = c.dlqWriter.Close()
@@ -142,6 +212,7 @@ func (c *Consumer) processWithRetry(ctx context.Context, message kafka.Message) 
 		}
 		if c.metrics != nil {
 			c.metrics.ProcessingAttempts.WithLabelValues(message.Topic, status).Inc()
+			c.metrics.ConsumerObs.ConsumerProcessingTotal.WithLabelValues(c.serviceName, c.groupID, message.Topic, eventTypeFromMessage(message.Value), status).Inc()
 		}
 		if err == nil {
 			return nil
@@ -152,6 +223,7 @@ func (c *Consumer) processWithRetry(ctx context.Context, message kafka.Message) 
 		}
 		if c.metrics != nil {
 			c.metrics.EventsRetried.WithLabelValues(message.Topic).Inc()
+			c.metrics.ConsumerObs.ConsumerProcessingErrors.WithLabelValues(c.serviceName, c.groupID, message.Topic, eventTypeFromMessage(message.Value), "processing_error").Inc()
 		}
 		if err := sleepWithContext(ctx, retryDelay(c.retryConfig, attempt)); err != nil {
 			return err
@@ -163,7 +235,10 @@ func (c *Consumer) processWithRetry(ctx context.Context, message kafka.Message) 
 	}
 	if c.metrics != nil {
 		c.metrics.EventsDeadlettered.WithLabelValues(message.Topic).Inc()
+		c.metrics.ConsumerObs.DLQEvents.WithLabelValues(c.serviceName, c.dlqTopic, eventTypeFromMessage(message.Value), "processing_error").Inc()
+		c.metrics.ConsumerObs.DLQMessages.WithLabelValues(c.serviceName, c.dlqTopic).Inc()
 	}
+	c.recordDLQ()
 	c.logger.Warn("published portfolio event to DLQ", "topic", message.Topic, "error", lastErr)
 	return lastErr
 }
@@ -190,6 +265,14 @@ func (c *Consumer) recordError(err error) {
 	defer c.mu.Unlock()
 	c.status.ConsecutiveErrors++
 	c.status.LastError = err.Error()
+}
+
+func (c *Consumer) recordDLQ() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	t := time.Now().UTC()
+	c.status.LastDLQAt = &t
+	c.status.DLQCount++
 }
 
 func (c *Consumer) setRunning(running bool) {
@@ -272,4 +355,14 @@ func headerValue(headers []kafka.Header, key string) string {
 		}
 	}
 	return ""
+}
+
+func eventTypeFromMessage(payload []byte) string {
+	var body struct {
+		EventType string `json:"eventType"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil || body.EventType == "" {
+		return "unknown"
+	}
+	return body.EventType
 }

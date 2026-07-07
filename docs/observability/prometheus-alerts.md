@@ -14,7 +14,7 @@ The Docker Compose Prometheus service mounts the rules directory at `/etc/promet
 | --- | --- |
 | `tradeops-service-availability` | `ServiceDown` |
 | `tradeops-api-gateway` | `HighGateway5xxRate`, `HighGatewayLatency`, `GatewayUpstreamTimeouts` |
-| `tradeops-event-processing` | `EventProcessingFailures`, `DLQMessagesDetected`, `EventRetrySpike` |
+| `tradeops-event-processing` | `EventProcessingFailures`, `DLQMessagesDetected`, `EventRetrySpike`, `HighConsumerLag`, `ConsumerStalled`, `DLQMessagesPresent`, `DLQOldMessages`, `OutboxBacklogGrowing` |
 | `tradeops-order-outbox` | `OrderOutboxBacklogHigh`, `OrderOutboxOldestPendingTooOld`, `OrderOutboxPublishFailuresHigh`, `OrderOutboxTerminalFailuresPresent`, `OrderOutboxNoSuccessfulPublishesWithBacklog` |
 | `tradeops-surveillance-notification-audit` | `SurveillanceAlertSpike`, `NotificationDeliveryFailures`, `WebhookDeliveryFailures`, `AuditIngestionFailures`, `AuditDLQMessagesDetected` |
 
@@ -40,4 +40,4 @@ http://localhost:9090/alerts
 
 ## Threshold Notes
 
-The thresholds are intentionally small and demo-oriented. They are useful for detecting local failures, DLQ events, gateway errors, and obvious latency issues. A production deployment should tune thresholds from real traffic baselines and add Alertmanager routing, ownership, and escalation policies.
+The thresholds are intentionally small and demo-oriented. They are useful for detecting local failures, consumer lag, DLQ events, gateway errors, and obvious latency issues. A production deployment should tune thresholds from real traffic baselines and add Alertmanager routing, ownership, and escalation policies.

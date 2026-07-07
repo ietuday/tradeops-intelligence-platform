@@ -97,6 +97,16 @@ data:
   PORTFOLIO_OUTBOX_MAX_ATTEMPTS: {{ .Values.portfolio.outbox.maxAttempts | quote }}
   PORTFOLIO_OUTBOX_BASE_BACKOFF: {{ .Values.portfolio.outbox.baseBackoff | quote }}
   PORTFOLIO_OUTBOX_MAX_BACKOFF: {{ .Values.portfolio.outbox.maxBackoff | quote }}
+  CONSUMER_OBS_ENABLED: {{ .Values.portfolio.consumerObservability.enabled | quote }}
+  CONSUMER_OBS_POLL_INTERVAL: {{ .Values.portfolio.consumerObservability.pollInterval | quote }}
+  CONSUMER_OBS_LAG_WARN_THRESHOLD: {{ .Values.portfolio.consumerObservability.lagWarnThreshold | quote }}
+  CONSUMER_OBS_LAG_CRITICAL_THRESHOLD: {{ .Values.portfolio.consumerObservability.lagCriticalThreshold | quote }}
+  CONSUMER_OBS_STALLED_AFTER: {{ .Values.portfolio.consumerObservability.stalledAfter | quote }}
+  CONSUMER_OBS_MAX_TOPIC_SCAN: {{ .Values.portfolio.consumerObservability.maxTopicScan | quote }}
+  DLQ_OBS_ENABLED: {{ .Values.portfolio.consumerObservability.dlqEnabled | quote }}
+  DLQ_TOPIC_SUFFIX: {{ .Values.portfolio.consumerObservability.dlqTopicSuffix | quote }}
+  DLQ_OLDEST_AGE_WARN: {{ .Values.portfolio.consumerObservability.dlqOldestAgeWarn | quote }}
+  DLQ_OLDEST_AGE_CRITICAL: {{ .Values.portfolio.consumerObservability.dlqOldestAgeCritical | quote }}
   STRATEGY_SIGNAL_TOPIC: {{ .Values.strategy.topics.signalGenerated | quote }}
   STRATEGY_BACKTEST_COMPLETED_TOPIC: {{ .Values.strategy.topics.backtestCompleted | quote }}
   RISK_SCORE_UPDATED_TOPIC: {{ .Values.risk.topics.scoreUpdated | quote }}

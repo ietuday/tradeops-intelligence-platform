@@ -24,6 +24,7 @@ type Config struct {
 	EventProcessingBackoffMS  int
 	EventProcessingMultiplier float64
 	Outbox                    OutboxConfig
+	ConsumerObs               ConsumerObsConfig
 }
 
 type OutboxConfig struct {
@@ -33,6 +34,19 @@ type OutboxConfig struct {
 	MaxAttempts  int
 	BaseBackoff  time.Duration
 	MaxBackoff   time.Duration
+}
+
+type ConsumerObsConfig struct {
+	Enabled              bool
+	PollInterval         time.Duration
+	LagWarnThreshold     int64
+	LagCriticalThreshold int64
+	StalledAfter         time.Duration
+	MaxTopicScan         int
+	DLQEnabled           bool
+	DLQTopicSuffix       string
+	DLQOldestAgeWarn     time.Duration
+	DLQOldestAgeCritical time.Duration
 }
 
 func Load() (Config, error) {
@@ -59,6 +73,18 @@ func Load() (Config, error) {
 			BaseBackoff:  durationEnv("PORTFOLIO_OUTBOX_BASE_BACKOFF", time.Second),
 			MaxBackoff:   durationEnv("PORTFOLIO_OUTBOX_MAX_BACKOFF", time.Minute),
 		},
+		ConsumerObs: ConsumerObsConfig{
+			Enabled:              boolEnv("CONSUMER_OBS_ENABLED", true),
+			PollInterval:         durationEnv("CONSUMER_OBS_POLL_INTERVAL", 10*time.Second),
+			LagWarnThreshold:     int64Env("CONSUMER_OBS_LAG_WARN_THRESHOLD", 1000),
+			LagCriticalThreshold: int64Env("CONSUMER_OBS_LAG_CRITICAL_THRESHOLD", 10000),
+			StalledAfter:         durationEnv("CONSUMER_OBS_STALLED_AFTER", 2*time.Minute),
+			MaxTopicScan:         intEnv("CONSUMER_OBS_MAX_TOPIC_SCAN", 100),
+			DLQEnabled:           boolEnv("DLQ_OBS_ENABLED", true),
+			DLQTopicSuffix:       getenv("DLQ_TOPIC_SUFFIX", ".dlq"),
+			DLQOldestAgeWarn:     durationEnv("DLQ_OLDEST_AGE_WARN", 5*time.Minute),
+			DLQOldestAgeCritical: durationEnv("DLQ_OLDEST_AGE_CRITICAL", 30*time.Minute),
+		},
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("PORTFOLIO_DATABASE_URL is required")
@@ -75,7 +101,29 @@ func Load() (Config, error) {
 	if err := validateOutbox(cfg.Outbox); err != nil {
 		return cfg, err
 	}
+	if err := validateConsumerObs(cfg.ConsumerObs); err != nil {
+		return cfg, err
+	}
 	return cfg, nil
+}
+
+func validateConsumerObs(cfg ConsumerObsConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if cfg.PollInterval <= 0 {
+		return errors.New("CONSUMER_OBS_POLL_INTERVAL must be positive")
+	}
+	if cfg.LagWarnThreshold < 0 || cfg.LagCriticalThreshold < 0 {
+		return errors.New("consumer lag thresholds must be non-negative")
+	}
+	if cfg.LagCriticalThreshold > 0 && cfg.LagWarnThreshold > cfg.LagCriticalThreshold {
+		return errors.New("CONSUMER_OBS_LAG_WARN_THRESHOLD must be less than or equal to CONSUMER_OBS_LAG_CRITICAL_THRESHOLD")
+	}
+	if cfg.StalledAfter <= 0 {
+		return errors.New("CONSUMER_OBS_STALLED_AFTER must be positive")
+	}
+	return nil
 }
 
 func validateOutbox(cfg OutboxConfig) error {
@@ -127,6 +175,14 @@ func floatEnv(key string, fallback float64) float64 {
 
 func intEnv(key string, fallback int) int {
 	value, err := strconv.Atoi(getenv(key, ""))
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func int64Env(key string, fallback int64) int64 {
+	value, err := strconv.ParseInt(getenv(key, ""), 10, 64)
 	if err != nil {
 		return fallback
 	}

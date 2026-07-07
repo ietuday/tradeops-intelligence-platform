@@ -63,6 +63,46 @@ groups:
         annotations:
           summary: "Event retry spike"
           description: "Event retry volume is above the local demo threshold."
+      - alert: HighConsumerLag
+        expr: sum by (service, consumer_group, topic) (tradeops_consumer_lag_messages) > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High consumer lag for {{ $labels.service }}"
+          description: "Consumer group {{ $labels.consumer_group }} on topic {{ $labels.topic }} has high lag."
+      - alert: ConsumerStalled
+        expr: max by (service, consumer_group, topic) (tradeops_consumer_lag_oldest_age_seconds) > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumer appears stalled for {{ $labels.service }}"
+          description: "Consumer group {{ $labels.consumer_group }} on topic {{ $labels.topic }} has old unprocessed messages."
+      - alert: DLQMessagesPresent
+        expr: sum by (service, topic) (tradeops_dlq_messages) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DLQ messages present for {{ $labels.service }}"
+          description: "DLQ topic {{ $labels.topic }} has messages requiring investigation."
+      - alert: DLQOldMessages
+        expr: max by (service, topic) (tradeops_dlq_oldest_message_age_seconds) > 1800
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Old DLQ messages for {{ $labels.service }}"
+          description: "DLQ topic {{ $labels.topic }} contains messages older than 30 minutes."
+      - alert: OutboxBacklogGrowing
+        expr: sum by (service, event_type) (tradeops_outbox_pending_events) > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog is high for {{ $labels.service }}"
+          description: "Pending outbox events for {{ $labels.event_type }} exceeded the local threshold."
 
   - name: tradeops-order-outbox
     rules:

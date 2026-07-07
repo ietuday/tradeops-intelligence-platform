@@ -208,6 +208,24 @@ orderManagement:
 portfolio:
   initialCash: "100000"
   consumerGroup: portfolio-service-trade-v1
+  consumerObservability:
+    enabled: "true"
+    pollInterval: 10s
+    lagWarnThreshold: "1000"
+    lagCriticalThreshold: "10000"
+    stalledAfter: 2m
+    maxTopicScan: "100"
+    dlqEnabled: "true"
+    dlqTopicSuffix: .dlq
+    dlqOldestAgeWarn: 5m
+    dlqOldestAgeCritical: 30m
+  consumerAutoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    lagMetricName: tradeops_consumer_lag_messages
+    lagTargetAverageValue: "1000"
+    dlqMetricName: tradeops_dlq_messages
   outbox:
     enabled: "true"
     pollInterval: 2s
@@ -645,6 +663,16 @@ applications:
       PORTFOLIO_OUTBOX_MAX_ATTEMPTS: PORTFOLIO_OUTBOX_MAX_ATTEMPTS
       PORTFOLIO_OUTBOX_BASE_BACKOFF: PORTFOLIO_OUTBOX_BASE_BACKOFF
       PORTFOLIO_OUTBOX_MAX_BACKOFF: PORTFOLIO_OUTBOX_MAX_BACKOFF
+      CONSUMER_OBS_ENABLED: CONSUMER_OBS_ENABLED
+      CONSUMER_OBS_POLL_INTERVAL: CONSUMER_OBS_POLL_INTERVAL
+      CONSUMER_OBS_LAG_WARN_THRESHOLD: CONSUMER_OBS_LAG_WARN_THRESHOLD
+      CONSUMER_OBS_LAG_CRITICAL_THRESHOLD: CONSUMER_OBS_LAG_CRITICAL_THRESHOLD
+      CONSUMER_OBS_STALLED_AFTER: CONSUMER_OBS_STALLED_AFTER
+      CONSUMER_OBS_MAX_TOPIC_SCAN: CONSUMER_OBS_MAX_TOPIC_SCAN
+      DLQ_OBS_ENABLED: DLQ_OBS_ENABLED
+      DLQ_TOPIC_SUFFIX: DLQ_TOPIC_SUFFIX
+      DLQ_OLDEST_AGE_WARN: DLQ_OLDEST_AGE_WARN
+      DLQ_OLDEST_AGE_CRITICAL: DLQ_OLDEST_AGE_CRITICAL
       EVENT_PROCESSING_MAX_RETRIES: EVENT_PROCESSING_MAX_RETRIES
       EVENT_PROCESSING_RETRY_BACKOFF_MS: EVENT_PROCESSING_RETRY_BACKOFF_MS
       EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER: EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER

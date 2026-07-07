@@ -36,6 +36,8 @@ v3.2.0 adds latest reference price storage and a Stop Trigger worker that activa
 
 v3.3.0 adds Portfolio Service idempotent `trade.executed` processing and a transactional outbox for `portfolio.updated`, so portfolio mutation and outgoing event intent commit atomically. See [portfolio idempotent event processing](docs/portfolio/idempotent-event-processing.md) and [portfolio transactional outbox](docs/portfolio/transactional-outbox.md).
 
+v3.4.0 adds consumer lag monitoring, DLQ visibility, generic outbox backlog metrics, internal consumer status, alert rules, and disabled-by-default Helm autoscaling signals. See [consumer lag monitoring](docs/operations/consumer-lag-monitoring.md), [DLQ visibility](docs/operations/dlq-visibility.md), and [consumer autoscaling](docs/operations/autoscaling-consumers.md).
+
 ## Tech Stack
 
 | Area | Technologies |
@@ -172,6 +174,7 @@ Run focused demos:
 ./scripts/demo-dashboard.sh
 ./scripts/demo-stop-trigger-orders.sh
 ./scripts/demo-portfolio-outbox-idempotency.sh
+./scripts/demo-consumer-lag-dlq.sh
 ```
 
 Validate scripts without running the platform:
@@ -247,6 +250,9 @@ TradeOps includes Prometheus scraping, Grafana dashboard provisioning, local ale
 | Prometheus alert guide | [docs/observability/prometheus-alerts.md](docs/observability/prometheus-alerts.md) |
 | SLO guide | [docs/observability/slo-guide.md](docs/observability/slo-guide.md) |
 | Observability runbook | [docs/observability/runbook.md](docs/observability/runbook.md) |
+| Consumer lag monitoring | [docs/operations/consumer-lag-monitoring.md](docs/operations/consumer-lag-monitoring.md) |
+| DLQ visibility | [docs/operations/dlq-visibility.md](docs/operations/dlq-visibility.md) |
+| Consumer autoscaling | [docs/operations/autoscaling-consumers.md](docs/operations/autoscaling-consumers.md) |
 | OpenTelemetry tracing | [docs/tracing/opentelemetry.md](docs/tracing/opentelemetry.md) |
 | OpenTelemetry runbook | [docs/tracing/otel-runbook.md](docs/tracing/otel-runbook.md) |
 | Alert rules | [infrastructure/docker/prometheus/rules/tradeops-alerts.yml](infrastructure/docker/prometheus/rules/tradeops-alerts.yml) |
@@ -604,6 +610,7 @@ bash -n scripts/demo-reliability.sh
 bash -n scripts/demo-observability.sh
 bash -n scripts/demo-correlation-tracing.sh
 bash -n scripts/demo-websocket-streams.sh
+bash -n scripts/demo-consumer-lag-dlq.sh
 bash -n scripts/security-check.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh

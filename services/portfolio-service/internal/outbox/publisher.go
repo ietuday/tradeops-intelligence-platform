@@ -124,6 +124,7 @@ func (p *Publisher) publishOne(ctx context.Context, event Event) {
 	}
 	p.metrics.PortfolioOutboxPublishAttempts.WithLabelValues(event.EventType, status).Inc()
 	p.metrics.PortfolioOutboxPublishErrors.WithLabelValues(event.EventType, "publish_error").Inc()
+	p.metrics.ConsumerObs.OutboxPublishErrors.WithLabelValues("portfolio-service", event.EventType, "publish_error").Inc()
 	next := time.Now().UTC().Add(backoff(p.cfg, event.Attempts))
 	if markErr := p.store.MarkFailed(ctx, event.EventID, err, next, terminal); markErr != nil {
 		p.recordError("mark_failed", markErr)
@@ -138,6 +139,8 @@ func (p *Publisher) refreshStatus(ctx context.Context) {
 	}
 	p.metrics.PortfolioOutboxPending.Set(float64(status.Pending))
 	p.metrics.PortfolioOutboxOldestPendingAge.Set(status.OldestPendingAgeSeconds)
+	p.metrics.ConsumerObs.OutboxPendingEvents.WithLabelValues("portfolio-service", "all").Set(float64(status.Pending))
+	p.metrics.ConsumerObs.OutboxOldestPendingAge.WithLabelValues("portfolio-service", "all").Set(status.OldestPendingAgeSeconds)
 	p.mu.Lock()
 	status.Enabled = p.cfg.Enabled
 	status.Running = p.running

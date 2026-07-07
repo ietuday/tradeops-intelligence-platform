@@ -101,7 +101,7 @@ TradeOps is currently a local portfolio platform. It demonstrates production-ori
 - [x] Surveillance rule simulation exposes request, duration, match, and failure metrics without tenant labels.
 - [x] Advanced risk analytics exposes stress/scenario/concentration/drawdown/recommendation metrics without tenant labels.
 - [ ] Add business KPI dashboards for trading workflows.
-- [ ] Add Kafka consumer lag metrics.
+- [x] Add Kafka consumer lag metrics.
 
 ## Health And Readiness
 
