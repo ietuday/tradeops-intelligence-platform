@@ -8,6 +8,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/expiry"
 	httpmiddleware "github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/http/middleware"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/outbox"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/stoptrigger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 )
@@ -20,15 +21,20 @@ type OrderExpiryStatusProvider interface {
 	Status() expiry.Stats
 }
 
+type StopTriggerStatusProvider interface {
+	Status() stoptrigger.Stats
+}
+
 type HealthHandler struct {
 	db           *pgxpool.Pool
 	kafkaBrokers []string
 	outbox       OutboxStatusProvider
 	expiry       OrderExpiryStatusProvider
+	stopTrigger  StopTriggerStatusProvider
 }
 
-func NewHealthHandler(db *pgxpool.Pool, kafkaBrokers []string, outbox OutboxStatusProvider, expiry OrderExpiryStatusProvider) *HealthHandler {
-	return &HealthHandler{db: db, kafkaBrokers: kafkaBrokers, outbox: outbox, expiry: expiry}
+func NewHealthHandler(db *pgxpool.Pool, kafkaBrokers []string, outbox OutboxStatusProvider, expiry OrderExpiryStatusProvider, stopTrigger StopTriggerStatusProvider) *HealthHandler {
+	return &HealthHandler{db: db, kafkaBrokers: kafkaBrokers, outbox: outbox, expiry: expiry, stopTrigger: stopTrigger}
 }
 
 func (h *HealthHandler) Health(w http.ResponseWriter, _ *http.Request) {
@@ -88,5 +94,26 @@ func (h *HealthHandler) OrderExpiryStatus(w http.ResponseWriter, _ *http.Request
 		"oldestDueAgeSeconds":      status.OldestDueAge.Seconds(),
 		"totalProcessedInLastPoll": status.TotalProcessedInLastPoll,
 		"consecutiveErrors":        status.ConsecutiveErrors,
+	})
+}
+
+func (h *HealthHandler) StopTriggerStatus(w http.ResponseWriter, _ *http.Request) {
+	if h.stopTrigger == nil {
+		httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{"enabled": false})
+		return
+	}
+	status := h.stopTrigger.Status()
+	httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{
+		"enabled":              status.Enabled,
+		"running":              status.Running,
+		"pollInterval":         status.PollInterval,
+		"batchSize":            status.BatchSize,
+		"maxReferencePriceAge": status.MaxReferencePriceAge,
+		"lastPollAt":           status.LastPollAt,
+		"lastSuccessfulPollAt": status.LastSuccessfulPollAt,
+		"lastTriggeredAt":      status.LastTriggeredAt,
+		"triggeredInLastPoll":  status.TriggeredInLastPoll,
+		"consecutiveErrors":    status.ConsecutiveErrors,
+		"lastError":            status.LastError,
 	})
 }

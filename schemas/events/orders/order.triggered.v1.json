@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/orders/order.triggered.v1.json",
+  "title": "order.triggered v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "eventType",
+    "eventVersion",
+    "tenantId",
+    "orderId",
+    "userId",
+    "symbol",
+    "side",
+    "originalOrderType",
+    "activatedOrderType",
+    "stopPrice",
+    "referencePrice",
+    "triggeredAt",
+    "correlationId"
+  ],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["order.triggered"] },
+    "eventVersion": { "type": "string", "enum": ["v1"] },
+    "eventId": { "type": "string" },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "orderId": { "type": "string", "minLength": 1 },
+    "userId": { "type": "string", "minLength": 1 },
+    "symbol": { "type": "string", "minLength": 1 },
+    "side": { "type": "string", "enum": ["BUY", "SELL"] },
+    "originalOrderType": { "type": "string", "enum": ["STOP", "STOP_LIMIT"] },
+    "activatedOrderType": { "type": "string", "enum": ["MARKET", "LIMIT"] },
+    "stopPrice": { "type": "number", "exclusiveMinimum": 0 },
+    "referencePrice": { "type": "number", "exclusiveMinimum": 0 },
+    "triggeredAt": { "type": "string", "format": "date-time" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "traceparent": { "type": "string" }
+  }
+}

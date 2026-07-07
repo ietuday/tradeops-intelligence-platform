@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/domain"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/matching"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/stoptrigger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -425,6 +426,153 @@ func (r *OrderRepository) OrderBookDepth(ctx context.Context, tenantID, symbol s
 		"asks":        asks,
 		"generatedAt": time.Now().UTC(),
 	}, nil
+}
+
+func (r *OrderRepository) TriggerDueStopOrders(ctx context.Context, limit int, maxReferencePriceAge time.Duration, now time.Time) (stoptrigger.BatchResult, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	now = now.UTC()
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return stoptrigger.BatchResult{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx, `
+		SELECT o.id::text, COALESCE(o.tenant_id, 'default-tenant'), o.user_id, o.symbol, o.side,
+		       o.order_type, o.stop_price::float8, o.limit_price::float8, rp.price::float8,
+		       rp.updated_at, COALESCE(o.correlation_id, '')
+		FROM orders o
+		JOIN reference_prices rp
+		  ON rp.tenant_id = COALESCE(o.tenant_id, 'default-tenant')
+		 AND rp.symbol = o.symbol
+		WHERE o.order_type IN ($1, $2)
+		  AND o.stop_price IS NOT NULL
+		  AND o.triggered_at IS NULL
+		  AND o.remaining_quantity > 0
+		  AND o.status IN ($3, $4)
+		  AND rp.updated_at >= $5
+		ORDER BY o.created_at ASC, o.id ASC
+		FOR UPDATE OF o SKIP LOCKED
+		LIMIT $6
+	`, domain.OrderTypeStop, domain.OrderTypeStopLimit, domain.StatusAccepted, domain.StatusPartiallyFilled, now.Add(-maxReferencePriceAge), limit)
+	if err != nil {
+		return stoptrigger.BatchResult{}, err
+	}
+	defer rows.Close()
+
+	var candidates []stoptrigger.TriggerCandidate
+	for rows.Next() {
+		var candidate stoptrigger.TriggerCandidate
+		if err := rows.Scan(&candidate.OrderID, &candidate.TenantID, &candidate.UserID, &candidate.Symbol, &candidate.Side, &candidate.OriginalType, &candidate.StopPrice, &candidate.LimitPrice, &candidate.ReferencePrice, &candidate.PriceUpdatedAt, &candidate.CorrelationID); err != nil {
+			return stoptrigger.BatchResult{}, err
+		}
+		candidates = append(candidates, candidate)
+	}
+	if err := rows.Err(); err != nil {
+		return stoptrigger.BatchResult{}, err
+	}
+
+	result := stoptrigger.BatchResult{Processed: len(candidates)}
+	for _, candidate := range candidates {
+		if !stoptrigger.ShouldTrigger(candidate.Side, candidate.OriginalType, candidate.StopPrice, candidate.ReferencePrice) {
+			result.Skipped++
+			continue
+		}
+		activatedType := stoptrigger.ActivatedOrderType(candidate.OriginalType)
+		if activatedType == "" {
+			result.Skipped++
+			continue
+		}
+		order, triggeredEvent, err := r.activateLockedStopOrder(ctx, tx, candidate, activatedType, now)
+		if errors.Is(err, ErrNotFound) {
+			result.Skipped++
+			continue
+		}
+		if err != nil {
+			return stoptrigger.BatchResult{}, err
+		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, order.TenantID+":"+order.Symbol); err != nil {
+			return stoptrigger.BatchResult{}, err
+		}
+		matchOrder, matchEvents, err := r.matchAcceptedOrder(ctx, tx, order)
+		if err != nil {
+			return stoptrigger.BatchResult{}, err
+		}
+		events := append([]domain.OrderEvent{triggeredEvent}, matchEvents...)
+		for i := range events {
+			if events[i].OrderID == "" {
+				events[i].OrderID = matchOrder.ID
+			}
+			if events[i].UserID == "" {
+				events[i].UserID = matchOrder.UserID
+			}
+			if err := insertEvent(ctx, tx, events[i]); err != nil {
+				return stoptrigger.BatchResult{}, err
+			}
+			if err := insertOutbox(ctx, tx, events[i]); err != nil {
+				return stoptrigger.BatchResult{}, err
+			}
+		}
+		result.Triggered++
+		result.TriggeredLabels = append(result.TriggeredLabels, stoptrigger.TriggeredLabel{Symbol: candidate.Symbol, Side: candidate.Side, OrderType: candidate.OriginalType})
+		result.LagSeconds = append(result.LagSeconds, now.Sub(candidate.PriceUpdatedAt.UTC()).Seconds())
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return stoptrigger.BatchResult{}, err
+	}
+	return result, nil
+}
+
+func (r *OrderRepository) activateLockedStopOrder(ctx context.Context, tx pgx.Tx, candidate stoptrigger.TriggerCandidate, activatedType string, now time.Time) (domain.Order, domain.OrderEvent, error) {
+	var order domain.Order
+	err := tx.QueryRow(ctx, `
+		UPDATE orders
+		SET order_type = $2,
+		    original_order_type = $3,
+		    activated_order_type = $2,
+		    stop_trigger_reference_price = $4,
+		    triggered_at = $5,
+		    updated_at = $5,
+		    version = version + 1
+		WHERE id = $1
+		  AND COALESCE(tenant_id, 'default-tenant') = $6
+		  AND order_type IN ($7, $8)
+		  AND triggered_at IS NULL
+		  AND status IN ($9, $10)
+		  AND remaining_quantity > 0
+		RETURNING id::text, COALESCE(tenant_id, 'default-tenant'), user_id, symbol, side, order_type,
+		          quantity::float8, filled_quantity::float8, remaining_quantity::float8,
+		          limit_price::float8, stop_price::float8, average_fill_price::float8,
+		          time_in_force, expires_at, version, risk_decision_id::text, COALESCE(risk_status, 'NOT_EVALUATED'),
+		          risk_reason_code, risk_reason_message, risk_evaluated_at, last_execution_at,
+		          status, fill_price::float8, reject_reason, COALESCE(correlation_id, ''),
+		          created_at, updated_at, cancelled_at, filled_at, expired_at, expiry_reason
+	`, candidate.OrderID, activatedType, candidate.OriginalType, candidate.ReferencePrice, now, candidate.TenantID, domain.OrderTypeStop, domain.OrderTypeStopLimit, domain.StatusAccepted, domain.StatusPartiallyFilled).Scan(
+		&order.ID, &order.TenantID, &order.UserID, &order.Symbol, &order.Side, &order.OrderType,
+		&order.Quantity, &order.FilledQuantity, &order.RemainingQuantity,
+		&order.LimitPrice, &order.StopPrice, &order.AverageFillPrice,
+		&order.TimeInForce, &order.ExpiresAt, &order.Version, &order.RiskDecisionID, &order.RiskStatus,
+		&order.RiskReasonCode, &order.RiskReasonMessage, &order.RiskEvaluatedAt, &order.LastExecutionAt,
+		&order.Status, &order.FillPrice, &order.RejectReason, &order.CorrelationID,
+		&order.CreatedAt, &order.UpdatedAt, &order.CancelledAt, &order.FilledAt, &order.ExpiredAt, &order.ExpiryReason,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return domain.Order{}, domain.OrderEvent{}, ErrNotFound
+		}
+		return domain.Order{}, domain.OrderEvent{}, err
+	}
+	event := newRepositoryEvent(order, "order.triggered")
+	event.EventVersion = "v1"
+	event.OriginalOrderType = candidate.OriginalType
+	event.ActivatedOrderType = activatedType
+	event.StopPrice = &candidate.StopPrice
+	event.ReferencePrice = &candidate.ReferencePrice
+	event.TriggeredAt = &now
+	event.Source = "stop-trigger-worker"
+	return order, event, nil
 }
 
 type txQuerier interface {

@@ -64,6 +64,14 @@ data:
   ORDER_EXPIRY_SHUTDOWN_TIMEOUT: {{ .Values.orderManagement.expiryShutdownTimeout | quote }}
   ORDER_DAY_TIMEZONE: {{ .Values.orderManagement.dayTimezone | quote }}
   ORDER_DAY_CLOSE_TIME: {{ .Values.orderManagement.dayCloseTime | quote }}
+  STOP_TRIGGER_ENABLED: {{ .Values.orderManagement.stopTriggerEnabled | quote }}
+  STOP_TRIGGER_POLL_INTERVAL: {{ .Values.orderManagement.stopTriggerPollInterval | quote }}
+  STOP_TRIGGER_BATCH_SIZE: {{ .Values.orderManagement.stopTriggerBatchSize | quote }}
+  STOP_TRIGGER_MAX_REFERENCE_PRICE_AGE: {{ .Values.orderManagement.stopTriggerMaxReferencePriceAge | quote }}
+  STOP_TRIGGER_PROCESSING_TIMEOUT: {{ .Values.orderManagement.stopTriggerProcessingTimeout | quote }}
+  STOP_TRIGGER_SHUTDOWN_TIMEOUT: {{ .Values.orderManagement.stopTriggerShutdownTimeout | quote }}
+  STOP_TRIGGER_MARKET_TOPIC: {{ .Values.orderManagement.stopTriggerMarketTopic | quote }}
+  STOP_TRIGGER_CONSUMER_GROUP: {{ .Values.orderManagement.stopTriggerConsumerGroup | quote }}
   OUTBOX_ENABLED: {{ .Values.orderManagement.outboxEnabled | quote }}
   OUTBOX_POLL_INTERVAL: {{ .Values.orderManagement.outboxPollInterval | quote }}
   OUTBOX_BATCH_SIZE: {{ .Values.orderManagement.outboxBatchSize | quote }}

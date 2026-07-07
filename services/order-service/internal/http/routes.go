@@ -11,6 +11,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/outbox"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/service"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/stoptrigger"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,6 +20,7 @@ type Dependencies struct {
 	KafkaBrokers []string
 	Metrics      *observability.Metrics
 	Expiry       interface{ Status() expiry.Stats }
+	StopTrigger  interface{ Status() stoptrigger.Stats }
 	Outbox       interface{ Status() outbox.Stats }
 	Service      *service.OrderService
 	Validator    *security.Validator
@@ -29,13 +31,14 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	router.Use(middleware.CorrelationID)
 	router.Use(observability.TraceAttributes("order-service"))
 
-	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers, deps.Outbox, deps.Expiry)
+	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers, deps.Outbox, deps.Expiry, deps.StopTrigger)
 	orders := handlers.NewOrderHandler(deps.Service)
 
 	router.Get("/health", health.Health)
 	router.Get("/ready", health.Ready)
 	router.Get("/internal/outbox/status", health.OutboxStatus)
 	router.Get("/internal/order-expiry/status", health.OrderExpiryStatus)
+	router.Get("/internal/stop-trigger/status", health.StopTriggerStatus)
 	router.Handle("/metrics", deps.Metrics.Handler())
 
 	router.Group(func(r chi.Router) {

@@ -4,10 +4,12 @@ The API Gateway admin endpoint `GET /api/admin/topics` exposes a static topic ca
 
 | Topic | Producer | Consumers | Schema file | Version | Description |
 | --- | --- | --- | --- | --- | --- |
-| `market.ticks` | `market-data-service` | `surveillance-service`, API Gateway WebSocket | `schemas/events/market/market.ticks.v1.json` | v1 | Normalized market tick event. |
+| `market.ticks` | `market-data-service` | `order-service`, `surveillance-service`, API Gateway WebSocket | `schemas/events/market/market.ticks.v1.json` | v1 | Normalized market tick event. |
+| `market.price.updated` | `market-data-service` | `order-service` | `schemas/events/market/market.price.updated.v1.json` | v1 | Latest reference price update for stop triggering. |
 | `order.created` | `order-service` | `surveillance-service`, `audit-service`, API Gateway WebSocket | `schemas/events/orders/order.created.v1.json` | v1 | Order submitted/created event. |
 | `order.validated` | `order-service` | API Gateway WebSocket | `schemas/events/orders/order.validated.v1.json` | v1 | Order validation lifecycle event. |
 | `order.accepted` | `order-service` | API Gateway WebSocket | `schemas/events/orders/order.accepted.v1.json` | v1 | Accepted order lifecycle event. |
+| `order.triggered` | `order-service` | API Gateway WebSocket, audit/replay integrations | `schemas/events/orders/order.triggered.v1.json` | v1 | Stop order activated from reference price movement. |
 | `order.filled` | `order-service` | `portfolio-service`, `surveillance-service`, `audit-service`, API Gateway WebSocket | `schemas/events/orders/order.filled.v1.json` | v1 | Filled order event. |
 | `order.rejected` | `order-service` | API Gateway WebSocket | `schemas/events/orders/order.rejected.v1.json` | v1 | Rejected order lifecycle event. |
 | `order.cancelled` | `order-service` | `surveillance-service`, `audit-service`, API Gateway WebSocket | `schemas/events/orders/order.cancelled.v1.json` | v1 | Cancelled order event. |

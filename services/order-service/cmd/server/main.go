@@ -21,6 +21,7 @@ import (
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/risk"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/service"
+	"github.com/ietuday/tradeops-intelligence-platform/services/order-service/internal/stoptrigger"
 )
 
 func main() {
@@ -63,6 +64,7 @@ func main() {
 	}
 
 	orderRepo := repository.NewOrderRepository(pool)
+	referencePriceRepo := repository.NewReferencePriceRepository(pool)
 	orderService := service.NewOrderService(orderRepo, producer, metrics, calendar, service.RiskOptions{Enabled: cfg.PreTradeRisk.Enabled, FailOpen: cfg.PreTradeRisk.FailOpen})
 	if cfg.PreTradeRisk.Enabled {
 		riskClient, err := risk.NewClient(risk.ClientConfig{
@@ -108,6 +110,41 @@ func main() {
 	} else {
 		logger.Info("order expiry worker disabled")
 	}
+	var stopTriggerDone chan struct{}
+	var stopTriggerWorker *stoptrigger.Worker
+	var priceConsumerDone chan struct{}
+	var priceConsumer *stoptrigger.PriceConsumer
+	if cfg.StopTrigger.Enabled {
+		stopTriggerCfg := stoptrigger.Config{
+			Enabled:              cfg.StopTrigger.Enabled,
+			PollInterval:         cfg.StopTrigger.PollInterval,
+			BatchSize:            cfg.StopTrigger.BatchSize,
+			MaxReferencePriceAge: cfg.StopTrigger.MaxReferencePriceAge,
+			ProcessingTimeout:    cfg.StopTrigger.ProcessingTimeout,
+			ShutdownTimeout:      cfg.StopTrigger.ShutdownTimeout,
+			MarketTopic:          cfg.StopTrigger.MarketTopic,
+			ConsumerGroup:        cfg.StopTrigger.ConsumerGroup,
+		}
+		stopTriggerWorker = stoptrigger.NewWorker(orderRepo, metrics, logger, stopTriggerCfg)
+		stopTriggerDone = make(chan struct{})
+		go func() {
+			defer close(stopTriggerDone)
+			if err := stopTriggerWorker.Run(ctx); err != nil {
+				logger.Error("stop trigger worker failed", "error", err)
+			}
+		}()
+		priceConsumer = stoptrigger.NewPriceConsumer(cfg.KafkaBrokers, cfg.StopTrigger.MarketTopic, cfg.StopTrigger.ConsumerGroup, referencePriceRepo, metrics, logger)
+		priceConsumerDone = make(chan struct{})
+		go func() {
+			defer close(priceConsumerDone)
+			if err := priceConsumer.Run(ctx); err != nil {
+				logger.Error("market price consumer failed", "error", err)
+			}
+		}()
+		logger.Info("stop trigger worker enabled", "pollInterval", cfg.StopTrigger.PollInterval, "batchSize", cfg.StopTrigger.BatchSize, "marketTopic", cfg.StopTrigger.MarketTopic)
+	} else {
+		logger.Info("stop trigger worker disabled")
+	}
 	var outboxDone chan struct{}
 	var outboxPublisher *outbox.Publisher
 	if cfg.Outbox.Enabled {
@@ -132,6 +169,7 @@ func main() {
 		KafkaBrokers: cfg.KafkaBrokers,
 		Metrics:      metrics,
 		Expiry:       expiryWorker,
+		StopTrigger:  stopTriggerWorker,
 		Outbox:       outboxPublisher,
 		Service:      orderService,
 		Validator:    security.NewValidator([]byte(cfg.JWTSecret)),
@@ -165,6 +203,27 @@ func main() {
 		case <-outboxDone:
 		case <-outboxCtx.Done():
 			logger.Warn("outbox publisher shutdown timed out")
+		}
+	}
+	if priceConsumer != nil {
+		_ = priceConsumer.Close()
+	}
+	if stopTriggerDone != nil {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), cfg.StopTrigger.ShutdownTimeout)
+		defer stopCancel()
+		select {
+		case <-stopTriggerDone:
+		case <-stopCtx.Done():
+			logger.Warn("stop trigger worker shutdown timed out")
+		}
+	}
+	if priceConsumerDone != nil {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), cfg.StopTrigger.ShutdownTimeout)
+		defer stopCancel()
+		select {
+		case <-priceConsumerDone:
+		case <-stopCtx.Done():
+			logger.Warn("market price consumer shutdown timed out")
 		}
 	}
 	if expiryDone != nil {

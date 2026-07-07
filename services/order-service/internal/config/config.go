@@ -16,6 +16,7 @@ type Config struct {
 	JWTSecret       string
 	Outbox          OutboxConfig
 	Expiry          ExpiryConfig
+	StopTrigger     StopTriggerConfig
 	PreTradeRisk    PreTradeRiskConfig
 	ShutdownTimeout time.Duration
 }
@@ -43,6 +44,17 @@ type ExpiryConfig struct {
 	ShutdownTimeout   time.Duration
 	DayTimezone       string
 	DayCloseTime      string
+}
+
+type StopTriggerConfig struct {
+	Enabled              bool
+	PollInterval         time.Duration
+	BatchSize            int
+	MaxReferencePriceAge time.Duration
+	ProcessingTimeout    time.Duration
+	ShutdownTimeout      time.Duration
+	MarketTopic          string
+	ConsumerGroup        string
 }
 
 type PreTradeRiskConfig struct {
@@ -84,6 +96,16 @@ func Load() (Config, error) {
 			DayTimezone:       getenv("ORDER_DAY_TIMEZONE", "America/New_York"),
 			DayCloseTime:      getenv("ORDER_DAY_CLOSE_TIME", "16:00"),
 		},
+		StopTrigger: StopTriggerConfig{
+			Enabled:              boolEnv("STOP_TRIGGER_ENABLED", true),
+			PollInterval:         durationEnv("STOP_TRIGGER_POLL_INTERVAL", 5*time.Second),
+			BatchSize:            intEnv("STOP_TRIGGER_BATCH_SIZE", 100),
+			MaxReferencePriceAge: durationEnv("STOP_TRIGGER_MAX_REFERENCE_PRICE_AGE", 5*time.Minute),
+			ProcessingTimeout:    durationEnv("STOP_TRIGGER_PROCESSING_TIMEOUT", 10*time.Second),
+			ShutdownTimeout:      durationEnv("STOP_TRIGGER_SHUTDOWN_TIMEOUT", 15*time.Second),
+			MarketTopic:          getenv("STOP_TRIGGER_MARKET_TOPIC", getenv("MARKET_DATA_KAFKA_TOPIC", "market.ticks")),
+			ConsumerGroup:        getenv("STOP_TRIGGER_CONSUMER_GROUP", "order-service-stop-trigger"),
+		},
 		PreTradeRisk: PreTradeRiskConfig{
 			Enabled:        boolEnv("PRE_TRADE_RISK_ENABLED", true),
 			URL:            getenv("PRE_TRADE_RISK_URL", "http://risk-engine-service:8080"),
@@ -108,6 +130,9 @@ func Load() (Config, error) {
 	if err := validateExpiry(cfg.Expiry); err != nil {
 		return cfg, err
 	}
+	if err := validateStopTrigger(cfg.StopTrigger); err != nil {
+		return cfg, err
+	}
 	if err := validatePreTradeRisk(cfg.PreTradeRisk); err != nil {
 		return cfg, err
 	}
@@ -115,6 +140,34 @@ func Load() (Config, error) {
 		return cfg, errors.New("ORDER_SHUTDOWN_TIMEOUT must be positive")
 	}
 	return cfg, nil
+}
+
+func validateStopTrigger(cfg StopTriggerConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if cfg.PollInterval <= 0 {
+		return errors.New("STOP_TRIGGER_POLL_INTERVAL must be positive")
+	}
+	if cfg.BatchSize <= 0 {
+		return errors.New("STOP_TRIGGER_BATCH_SIZE must be greater than zero")
+	}
+	if cfg.MaxReferencePriceAge <= 0 {
+		return errors.New("STOP_TRIGGER_MAX_REFERENCE_PRICE_AGE must be positive")
+	}
+	if cfg.ProcessingTimeout <= 0 {
+		return errors.New("STOP_TRIGGER_PROCESSING_TIMEOUT must be positive")
+	}
+	if cfg.ShutdownTimeout <= 0 {
+		return errors.New("STOP_TRIGGER_SHUTDOWN_TIMEOUT must be positive")
+	}
+	if strings.TrimSpace(cfg.MarketTopic) == "" {
+		return errors.New("STOP_TRIGGER_MARKET_TOPIC is required")
+	}
+	if strings.TrimSpace(cfg.ConsumerGroup) == "" {
+		return errors.New("STOP_TRIGGER_CONSUMER_GROUP is required")
+	}
+	return nil
 }
 
 func validatePreTradeRisk(cfg PreTradeRiskConfig) error {

@@ -50,7 +50,9 @@ func (s *MarketDataService) HandleTickPayload(ctx context.Context, payload []byt
 
 	event := domain.NormalizedTickEvent{
 		EventID:       uuid.NewString(),
-		EventType:     "market.tick.received",
+		EventType:     "market.price.updated",
+		EventVersion:  "v1",
+		TenantID:      "default-tenant",
 		Symbol:        tick.Symbol,
 		Price:         tick.Price,
 		Volume:        tick.Volume,

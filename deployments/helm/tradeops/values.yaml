@@ -184,6 +184,14 @@ orderManagement:
   expiryShutdownTimeout: 15s
   dayTimezone: America/New_York
   dayCloseTime: "16:00"
+  stopTriggerEnabled: "true"
+  stopTriggerPollInterval: 5s
+  stopTriggerBatchSize: "100"
+  stopTriggerMaxReferencePriceAge: 5m
+  stopTriggerProcessingTimeout: 10s
+  stopTriggerShutdownTimeout: 15s
+  stopTriggerMarketTopic: market.ticks
+  stopTriggerConsumerGroup: order-service-stop-trigger
   outboxEnabled: "true"
   outboxPollInterval: 1s
   outboxBatchSize: "50"
@@ -584,6 +592,14 @@ applications:
       ORDER_EXPIRY_SHUTDOWN_TIMEOUT: ORDER_EXPIRY_SHUTDOWN_TIMEOUT
       ORDER_DAY_TIMEZONE: ORDER_DAY_TIMEZONE
       ORDER_DAY_CLOSE_TIME: ORDER_DAY_CLOSE_TIME
+      STOP_TRIGGER_ENABLED: STOP_TRIGGER_ENABLED
+      STOP_TRIGGER_POLL_INTERVAL: STOP_TRIGGER_POLL_INTERVAL
+      STOP_TRIGGER_BATCH_SIZE: STOP_TRIGGER_BATCH_SIZE
+      STOP_TRIGGER_MAX_REFERENCE_PRICE_AGE: STOP_TRIGGER_MAX_REFERENCE_PRICE_AGE
+      STOP_TRIGGER_PROCESSING_TIMEOUT: STOP_TRIGGER_PROCESSING_TIMEOUT
+      STOP_TRIGGER_SHUTDOWN_TIMEOUT: STOP_TRIGGER_SHUTDOWN_TIMEOUT
+      STOP_TRIGGER_MARKET_TOPIC: STOP_TRIGGER_MARKET_TOPIC
+      STOP_TRIGGER_CONSUMER_GROUP: STOP_TRIGGER_CONSUMER_GROUP
     secretEnv:
       ORDER_JWT_SECRET: JWT_SECRET
     probes: *defaultProbes

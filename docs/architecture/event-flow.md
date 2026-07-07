@@ -17,10 +17,12 @@ v2.5.0 adds repository-local JSON Schemas for core Kafka/Redpanda topics, DLQ pa
 | `user.registered` | `identity-service` | `audit-service` | User registration audit event. |
 | `user.login` | `identity-service` | `audit-service` | User login audit event. |
 | `user.logout` | `identity-service` | `audit-service` | User logout audit event. |
-| `market.ticks` | `market-data-service` | `surveillance-service` | Normalized market tick events. |
+| `market.ticks` | `market-data-service` | `order-service`, `surveillance-service` | Normalized market tick events and reference price updates. |
+| `market.price.updated` | `market-data-service` | `order-service` | Latest reference price update for stop triggering. |
 | `order.created` | `order-service` | `surveillance-service`, `audit-service` | Order submitted/created event. |
 | `order.validated` | `order-service` | None currently | Order validation lifecycle event. |
 | `order.accepted` | `order-service` | None currently | Accepted order lifecycle event. |
+| `order.triggered` | `order-service` | Future audit/replay integrations | Stop order activated from reference price movement. |
 | `order.filled` | `order-service` | `portfolio-service`, `surveillance-service`, `audit-service` | Filled order event. |
 | `order.rejected` | `order-service` | None currently | Rejected order lifecycle event. |
 | `order.cancelled` | `order-service` | `surveillance-service`, `audit-service` | Cancelled order event. |
@@ -66,7 +68,7 @@ sequenceDiagram
 
   Client->>Gateway: POST /api/orders
   Gateway->>Order: Forward order command
-  Order->>Kafka: order.created / order.accepted / order.filled
+  Order->>Kafka: order.created / order.accepted / order.triggered / order.filled
   Kafka->>Portfolio: order.filled
   Portfolio->>Kafka: portfolio.updated
   Kafka->>Surveillance: order.created / order.filled / portfolio.updated

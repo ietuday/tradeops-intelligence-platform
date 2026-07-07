@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tradeops.local/schemas/events/market/market.price.updated.v1.json",
+  "title": "market.price.updated v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["eventType", "eventVersion", "tenantId", "symbol", "price", "source", "eventTime", "correlationId"],
+  "properties": {
+    "eventType": { "type": "string", "enum": ["market.price.updated"] },
+    "eventVersion": { "type": "string", "enum": ["v1"] },
+    "eventId": { "type": "string" },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "symbol": { "type": "string", "minLength": 1 },
+    "price": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$" },
+        { "type": "number", "exclusiveMinimum": 0 }
+      ]
+    },
+    "source": { "type": "string", "minLength": 1 },
+    "eventTime": { "type": "string", "format": "date-time" },
+    "receivedAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "traceparent": { "type": "string" }
+  }
+}

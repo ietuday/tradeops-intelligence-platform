@@ -3,6 +3,22 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.2.0] - Stop Order Triggering and Reference Price Support
+
+### Added
+
+- Order Service `reference_prices` table and market price consumer for latest tenant/symbol prices.
+- Stop-trigger worker that activates eligible `STOP` orders as `MARKET` and `STOP_LIMIT` orders as `LIMIT`.
+- Idempotent trigger tracking with `triggered_at`, original/activated order type metadata, row locking, and transactional `order.triggered` outbox events.
+- Prometheus stop-trigger/reference-price metrics and `GET /internal/stop-trigger/status`.
+- Event schemas for `market.price.updated` and `order.triggered`.
+- Stop-order triggering docs and demo script.
+
+### Known Limitations
+
+- Triggered orders use their original placement-time pre-trade risk decision.
+- Reference prices are latest snapshots, not venue-specific NBBO marks.
+
 ## [v3.1.4] - Remote Pre-Trade Risk Evaluation
 
 ### Added

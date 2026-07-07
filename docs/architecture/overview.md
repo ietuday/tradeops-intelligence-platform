@@ -24,8 +24,8 @@ v3.0.0 adds a cloud-neutral Kubernetes deployment blueprint under `deployments/h
 | --- | --- |
 | `api-gateway` | Single external HTTP entry point, reverse proxy to backend services, WebSocket streaming host, and admin operations API surface. |
 | `identity-service` | Registration, login, JWT issuance, refresh tokens, and RBAC identity data. |
-| `market-data-service` | MQTT market tick ingestion, validation, storage, and Kafka publication. |
-| `order-service` | Order creation, validation, idempotency, status transitions, and order events. |
+| `market-data-service` | MQTT market tick ingestion, validation, storage, and Kafka reference price publication. |
+| `order-service` | Order creation, validation, idempotency, stop-trigger activation, matching, and order events. |
 | `portfolio-service` | Consumes fills, updates holdings/cash, and publishes portfolio snapshots. |
 | `strategy-service` | Strategy CRUD, backtests, performance, generated signals, and strategy events. |
 | `risk-engine-service` | Portfolio risk score, VaR, volatility, drawdown, stress testing, scenario analysis, concentration risk, recommendations, and risk events. |

@@ -54,6 +54,12 @@ type Metrics struct {
 	PreTradeRiskBypassed            prometheus.Counter
 	PreTradeRiskDuration            *prometheus.HistogramVec
 	PreTradeRiskInflight            prometheus.Gauge
+	StopTriggerPolls                *prometheus.CounterVec
+	StopTriggerOrdersTriggered      *prometheus.CounterVec
+	StopTriggerErrors               *prometheus.CounterVec
+	StopTriggerLag                  prometheus.Histogram
+	StopTriggerPollDuration         *prometheus.HistogramVec
+	ReferencePriceAge               *prometheus.GaugeVec
 }
 
 func NewMetrics() *Metrics {
@@ -246,8 +252,34 @@ func NewMetrics() *Metrics {
 			Name: "tradeops_pretrade_risk_inflight",
 			Help: "Current in-flight pre-trade risk evaluations.",
 		}),
+		StopTriggerPolls: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_stop_trigger_polls_total",
+			Help: "Total stop trigger worker polls.",
+		}, []string{"status"}),
+		StopTriggerOrdersTriggered: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_stop_trigger_orders_triggered_total",
+			Help: "Total stop orders activated by reference price movement.",
+		}, []string{"symbol", "side", "order_type"}),
+		StopTriggerErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_stop_trigger_errors_total",
+			Help: "Total stop trigger errors.",
+		}, []string{"reason"}),
+		StopTriggerLag: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "tradeops_stop_trigger_lag_seconds",
+			Help:    "Age of reference price at stop trigger time.",
+			Buckets: []float64{0, 1, 5, 10, 30, 60, 120, 300, 600},
+		}),
+		StopTriggerPollDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "tradeops_stop_trigger_poll_duration_seconds",
+			Help:    "Stop trigger worker poll duration in seconds.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5},
+		}, []string{"status"}),
+		ReferencePriceAge: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "tradeops_reference_price_age_seconds",
+			Help: "Current reference price age by symbol.",
+		}, []string{"symbol"}),
 	}
-	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries, metrics.OrderExpiryPolls, metrics.OrderExpiryDueOrders, metrics.OrderExpiryClaimed, metrics.OrdersExpired, metrics.OrderExpiryErrors, metrics.OrderExpiryConflicts, metrics.OrderExpiryDuration, metrics.OrderExpiryBatchSize, metrics.OrderExpiryLag, metrics.OrderExpiryOldestDueAge, metrics.OrderExpiryReconciliationErrors, metrics.PreTradeRiskRequests, metrics.PreTradeRiskApproved, metrics.PreTradeRiskRejected, metrics.PreTradeRiskErrors, metrics.PreTradeRiskTimeouts, metrics.PreTradeRiskRetries, metrics.PreTradeRiskBypassed, metrics.PreTradeRiskDuration, metrics.PreTradeRiskInflight)
+	registry.MustRegister(metrics.OrdersCreated, metrics.OrdersAccepted, metrics.OrdersFilled, metrics.OrdersRejected, metrics.OrdersCancelled, metrics.OrdersAmended, metrics.OrdersPartial, metrics.TradesExecuted, metrics.IdempotencyReplays, metrics.KafkaPublishErrors, metrics.ProcessingDuration, metrics.OutboxClaimed, metrics.OutboxPublished, metrics.OutboxPublishErrors, metrics.OutboxTerminalFailures, metrics.OutboxPending, metrics.OutboxProcessing, metrics.OutboxFailed, metrics.OutboxOldestPendingAge, metrics.OutboxPublishDuration, metrics.OutboxBatchSize, metrics.OutboxClaimDuration, metrics.OutboxRetryDelay, metrics.OutboxLeaseRecoveries, metrics.OrderExpiryPolls, metrics.OrderExpiryDueOrders, metrics.OrderExpiryClaimed, metrics.OrdersExpired, metrics.OrderExpiryErrors, metrics.OrderExpiryConflicts, metrics.OrderExpiryDuration, metrics.OrderExpiryBatchSize, metrics.OrderExpiryLag, metrics.OrderExpiryOldestDueAge, metrics.OrderExpiryReconciliationErrors, metrics.PreTradeRiskRequests, metrics.PreTradeRiskApproved, metrics.PreTradeRiskRejected, metrics.PreTradeRiskErrors, metrics.PreTradeRiskTimeouts, metrics.PreTradeRiskRetries, metrics.PreTradeRiskBypassed, metrics.PreTradeRiskDuration, metrics.PreTradeRiskInflight, metrics.StopTriggerPolls, metrics.StopTriggerOrdersTriggered, metrics.StopTriggerErrors, metrics.StopTriggerLag, metrics.StopTriggerPollDuration, metrics.ReferencePriceAge)
 	return metrics
 }
 
