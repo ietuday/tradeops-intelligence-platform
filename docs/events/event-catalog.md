@@ -13,7 +13,7 @@ The API Gateway admin endpoint `GET /api/admin/topics` exposes a static topic ca
 | `order.filled` | `order-service` | `portfolio-service`, `surveillance-service`, `audit-service`, API Gateway WebSocket | `schemas/events/orders/order.filled.v1.json` | v1 | Filled order event. |
 | `order.rejected` | `order-service` | API Gateway WebSocket | `schemas/events/orders/order.rejected.v1.json` | v1 | Rejected order lifecycle event. |
 | `order.cancelled` | `order-service` | `surveillance-service`, `audit-service`, API Gateway WebSocket | `schemas/events/orders/order.cancelled.v1.json` | v1 | Cancelled order event. |
-| `portfolio.updated` | `portfolio-service` | `surveillance-service`, `audit-service` | `schemas/events/portfolio/portfolio.updated.v1.json` | v1 | Portfolio holdings/cash update event. |
+| `portfolio.updated` | `portfolio-service` | `surveillance-service`, `audit-service` | `schemas/events/portfolio/portfolio.updated.v1.json` | v1 | Portfolio holdings/cash update event published through the Portfolio Service outbox. |
 | `portfolio.snapshot.created` | `portfolio-service` | None currently | `schemas/events/portfolio/portfolio.snapshot.created.v1.json` | v1 | Portfolio snapshot event. |
 | `strategy.signal.generated` | `strategy-service` | `surveillance-service` | `schemas/events/strategy/strategy.signal.generated.v1.json` | v1 | Strategy signal event. |
 | `strategy.backtest.completed` | `strategy-service` | None currently | `schemas/events/strategy/strategy.backtest.completed.v1.json` | v1 | Backtest completion event. |

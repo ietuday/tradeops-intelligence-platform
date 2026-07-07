@@ -6,7 +6,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/http/handlers"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/http/middleware"
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/observability"
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/outbox"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/security"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/service"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +19,8 @@ type Dependencies struct {
 	KafkaBrokers []string
 	Metrics      *observability.Metrics
 	Service      *service.PortfolioService
+	Outbox       interface{ Status() outbox.Status }
+	Consumer     interface{ Status() kafka.Status }
 	Validator    *security.Validator
 }
 
@@ -24,11 +28,13 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.CorrelationID)
 
-	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers)
+	health := handlers.NewHealthHandler(deps.DB, deps.KafkaBrokers, deps.Outbox, deps.Consumer)
 	portfolio := handlers.NewPortfolioHandler(deps.Service)
 
 	router.Get("/health", health.Health)
 	router.Get("/ready", health.Ready)
+	router.Get("/internal/portfolio/outbox/status", health.OutboxStatus)
+	router.Get("/internal/portfolio/consumer/status", health.ConsumerStatus)
 	router.Handle("/metrics", deps.Metrics.Handler())
 
 	router.Group(func(r chi.Router) {

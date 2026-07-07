@@ -26,7 +26,7 @@ v3.0.0 adds a cloud-neutral Kubernetes deployment blueprint under `deployments/h
 | `identity-service` | Registration, login, JWT issuance, refresh tokens, and RBAC identity data. |
 | `market-data-service` | MQTT market tick ingestion, validation, storage, and Kafka reference price publication. |
 | `order-service` | Order creation, validation, idempotency, stop-trigger activation, matching, and order events. |
-| `portfolio-service` | Consumes fills, updates holdings/cash, and publishes portfolio snapshots. |
+| `portfolio-service` | Consumes trade executions idempotently, updates holdings/cash, snapshots portfolios, and publishes portfolio updates through an outbox. |
 | `strategy-service` | Strategy CRUD, backtests, performance, generated signals, and strategy events. |
 | `risk-engine-service` | Portfolio risk score, VaR, volatility, drawdown, stress testing, scenario analysis, concentration risk, recommendations, and risk events. |
 | `surveillance-service` | Consumes trading/risk/market events, supports dry-run rule simulation, and creates alert lifecycle events in live processing. |

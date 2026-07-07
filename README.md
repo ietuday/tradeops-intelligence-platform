@@ -4,7 +4,7 @@ TradeOps Intelligence Platform is an enterprise-style event-driven trading micro
 
 TradeOps is built as a portfolio and interview project: it models a realistic backend platform for simulated trading workflows while staying fully runnable on a local machine with Docker Compose.
 
-Current release: `v3.2.0` Stop Order Triggering and Reference Price Support.
+Current release: `v3.3.0` Portfolio Service Transactional Outbox and Idempotent Event Processing.
 
 ## Architecture Summary
 
@@ -33,6 +33,8 @@ v3.0.0 adds a cloud-neutral Kubernetes/Helm deployment blueprint with local Kind
 v3.1.1 adds the Order Service transactional outbox publisher with PostgreSQL lease-based claiming, retry backoff, terminal failures, Kafka metadata propagation, Prometheus metrics, and operational runbooks. See [transactional outbox](docs/architecture/transactional-outbox.md) and [order outbox runbook](docs/runbooks/order-outbox.md).
 
 v3.2.0 adds latest reference price storage and a Stop Trigger worker that activates `STOP` orders as `MARKET` and `STOP_LIMIT` orders as `LIMIT`, writes `order.triggered` through the transactional outbox, and exposes stop-trigger status and metrics. See [stop order triggering](docs/orders/stop-order-triggering.md).
+
+v3.3.0 adds Portfolio Service idempotent `trade.executed` processing and a transactional outbox for `portfolio.updated`, so portfolio mutation and outgoing event intent commit atomically. See [portfolio idempotent event processing](docs/portfolio/idempotent-event-processing.md) and [portfolio transactional outbox](docs/portfolio/transactional-outbox.md).
 
 ## Tech Stack
 
@@ -169,6 +171,7 @@ Run focused demos:
 ./scripts/demo-risk-analytics.sh
 ./scripts/demo-dashboard.sh
 ./scripts/demo-stop-trigger-orders.sh
+./scripts/demo-portfolio-outbox-idempotency.sh
 ```
 
 Validate scripts without running the platform:
@@ -195,6 +198,7 @@ bash -n scripts/demo-websocket-streams.sh
 bash -n scripts/demo-risk-analytics.sh
 bash -n scripts/demo-dashboard.sh
 bash -n scripts/demo-stop-trigger-orders.sh
+bash -n scripts/demo-portfolio-outbox-idempotency.sh
 bash -n scripts/db-backup.sh
 bash -n scripts/db-restore.sh
 bash -n scripts/archive-old-data.sh

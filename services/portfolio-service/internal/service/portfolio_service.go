@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/domain"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/kafka"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/observability"
@@ -24,14 +23,19 @@ type UserContext struct {
 }
 
 type PortfolioService struct {
-	repo        *repository.PortfolioRepository
-	producer    *kafka.Producer
-	metrics     *observability.Metrics
-	initialCash float64
+	repo           *repository.PortfolioRepository
+	metrics        *observability.Metrics
+	initialCash    float64
+	portfolioTopic string
 }
 
-func NewPortfolioService(repo *repository.PortfolioRepository, producer *kafka.Producer, metrics *observability.Metrics, initialCash float64) *PortfolioService {
-	return &PortfolioService{repo: repo, producer: producer, metrics: metrics, initialCash: initialCash}
+func NewPortfolioService(repo *repository.PortfolioRepository, producer *kafka.Producer, metrics *observability.Metrics, initialCash float64, topics ...string) *PortfolioService {
+	_ = producer
+	portfolioTopic := "portfolio.updated"
+	if len(topics) > 0 && strings.TrimSpace(topics[0]) != "" {
+		portfolioTopic = strings.TrimSpace(topics[0])
+	}
+	return &PortfolioService{repo: repo, metrics: metrics, initialCash: initialCash, portfolioTopic: portfolioTopic}
 }
 
 func (s *PortfolioService) ProcessOrderFilled(ctx context.Context, payload []byte) error {
@@ -61,13 +65,19 @@ func (s *PortfolioService) ProcessTradeExecuted(ctx context.Context, payload []b
 	if event.EventType != "trade.executed" {
 		return nil
 	}
+	eventType := event.EventType
+	defer func() {
+		s.metrics.PortfolioEventDuration.WithLabelValues(eventType).Observe(time.Since(start).Seconds())
+	}()
 	if err := normalizeTradeExecuted(&event); err != nil {
 		s.metrics.UpdateFailures.Inc()
 		s.metrics.TradeEventsFailed.WithLabelValues("validation").Inc()
+		s.metrics.PortfolioEventsConsumed.WithLabelValues(eventType, "failed").Inc()
+		s.metrics.PortfolioEventErrors.WithLabelValues(eventType, "validation_error").Inc()
 		return err
 	}
 	s.metrics.TradeEventsReceived.WithLabelValues(event.EventVersion).Inc()
-	result, err := s.repo.ApplyTradeExecution(ctx, event, s.initialCash, repository.PayloadHash(event))
+	result, err := s.repo.ApplyTradeExecution(ctx, event, s.initialCash, repository.PayloadHash(event), s.portfolioTopic)
 	if err != nil {
 		s.metrics.UpdateFailures.Inc()
 		if errors.Is(err, repository.ErrPayloadConflict) {
@@ -77,15 +87,20 @@ func (s *PortfolioService) ProcessTradeExecuted(ctx context.Context, payload []b
 			s.metrics.ReconciliationFailures.WithLabelValues(errorReason(err)).Inc()
 		}
 		s.metrics.TradeEventsFailed.WithLabelValues(errorReason(err)).Inc()
+		s.metrics.PortfolioEventsConsumed.WithLabelValues(event.EventType, "failed").Inc()
+		s.metrics.PortfolioEventErrors.WithLabelValues(event.EventType, errorReason(err)).Inc()
 		return err
 	}
 	if result.Duplicate {
 		s.metrics.DuplicateSkipped.WithLabelValues(event.EventType).Inc()
 		s.metrics.TradeEventsDuplicate.Inc()
+		s.metrics.PortfolioEventsDuplicate.WithLabelValues(event.EventType).Inc()
+		s.metrics.PortfolioEventsConsumed.WithLabelValues(event.EventType, "duplicate").Inc()
 		return nil
 	}
 	s.metrics.Updates.Inc()
 	s.metrics.TradeEventsProcessed.WithLabelValues("success").Inc()
+	s.metrics.PortfolioEventsConsumed.WithLabelValues(event.EventType, "processed").Inc()
 	if !event.OccurredAt.IsZero() {
 		s.metrics.ExecutionLag.Set(time.Since(event.OccurredAt).Seconds())
 	}
@@ -94,24 +109,6 @@ func (s *PortfolioService) ProcessTradeExecuted(ctx context.Context, payload []b
 	s.metrics.RealizedPnL.Set(result.Portfolio.RealizedPnL)
 	s.metrics.UnrealizedPnL.Set(0)
 
-	portfolioEvent := domain.PortfolioEvent{
-		EventID:       uuid.NewString(),
-		EventType:     "portfolio.updated",
-		TenantID:      event.TenantID,
-		PortfolioID:   result.Portfolio.ID,
-		UserID:        result.Portfolio.UserID,
-		CashBalance:   result.Portfolio.CashBalance,
-		TotalValue:    result.Portfolio.TotalValue,
-		RealizedPnL:   result.Portfolio.RealizedPnL,
-		OccurredAt:    time.Now().UTC(),
-		CorrelationID: event.CorrelationID,
-	}
-	if err := s.producer.PublishPortfolioUpdated(ctx, portfolioEvent); err != nil {
-		s.metrics.KafkaPublishErrors.Inc()
-	}
-	if err := s.producer.PublishSnapshotCreated(ctx, result.Snapshot, event.CorrelationID); err != nil {
-		s.metrics.KafkaPublishErrors.Inc()
-	}
 	return nil
 }
 
@@ -134,7 +131,7 @@ func normalizeTradeExecuted(event *domain.TradeExecutedEvent) error {
 	if event.Currency == "" {
 		event.Currency = "USD"
 	}
-	if event.TenantID == "" || event.ExecutionID == "" || event.BuyOrderID == "" || event.SellOrderID == "" || event.BuyerUserID == "" || event.SellerUserID == "" || event.Symbol == "" {
+	if event.EventID == "" || event.TenantID == "" || event.ExecutionID == "" || event.BuyOrderID == "" || event.SellOrderID == "" || event.BuyerUserID == "" || event.SellerUserID == "" || event.Symbol == "" {
 		return fmt.Errorf("%w: required field missing", repository.ErrInvalidExecution)
 	}
 	if event.BuyOrderID == event.SellOrderID {

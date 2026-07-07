@@ -4,17 +4,31 @@
   "title": "portfolio.updated v1",
   "type": "object",
   "additionalProperties": true,
-  "required": ["portfolioId"],
+  "required": ["eventType", "eventVersion", "tenantId", "portfolioId", "userId", "symbol", "positionQuantity", "averagePrice", "cashDelta", "realizedPnl", "sourceEventId", "updatedAt", "correlationId"],
   "properties": {
     "eventType": { "type": "string", "enum": ["portfolio.updated"] },
-    "eventVersion": { "type": "string" },
-    "tenantId": { "type": "string" },
-    "correlationId": { "type": "string" },
+    "eventVersion": { "type": "string", "enum": ["v1", "1.0"] },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "correlationId": { "type": "string", "minLength": 1 },
     "traceparent": { "type": "string" },
     "occurredAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
     "source": { "type": "string" },
-    "portfolioId": { "type": "string" },
-    "userId": { "type": "string" },
+    "portfolioId": { "type": "string", "minLength": 1 },
+    "userId": { "type": "string", "minLength": 1 },
+    "accountId": { "type": "string" },
+    "symbol": { "type": "string", "minLength": 1 },
+    "positionQuantity": { "type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$" },
+    "averagePrice": { "type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$" },
+    "cashDelta": { "type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$" },
+    "realizedPnl": {
+      "oneOf": [
+        { "type": "string", "pattern": "^-?[0-9]+(\\.[0-9]+)?$" },
+        { "type": "number" }
+      ]
+    },
+    "sourceEventId": { "type": "string", "minLength": 1 },
+    "sourceExecutionId": { "type": "string" },
     "cashBalance": { "type": "number" },
     "totalValue": { "type": "number" },
     "positions": { "type": "array", "items": { "type": "object", "additionalProperties": true } }

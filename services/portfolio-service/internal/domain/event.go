@@ -28,6 +28,7 @@ type TradeExecutedEvent struct {
 	TraceParent       string    `json:"traceparent,omitempty"`
 	OccurredAt        time.Time `json:"occurredAt"`
 	ExecutionID       string    `json:"executionId"`
+	TradeID           string    `json:"tradeId,omitempty"`
 	BuyOrderID        string    `json:"buyOrderId"`
 	SellOrderID       string    `json:"sellOrderId"`
 	BuyerUserID       string    `json:"buyerUserId"`
@@ -40,15 +41,23 @@ type TradeExecutedEvent struct {
 }
 
 type PortfolioEvent struct {
-	EventID       string    `json:"eventId"`
-	EventType     string    `json:"eventType"`
-	EventVersion  string    `json:"eventVersion,omitempty"`
-	TenantID      string    `json:"tenantId"`
-	PortfolioID   string    `json:"portfolioId"`
-	UserID        string    `json:"userId"`
-	CashBalance   float64   `json:"cashBalance"`
-	TotalValue    float64   `json:"totalValue"`
-	RealizedPnL   float64   `json:"realizedPnl"`
-	OccurredAt    time.Time `json:"occurredAt"`
-	CorrelationID string    `json:"correlationId"`
+	EventID           string    `json:"eventId"`
+	EventType         string    `json:"eventType"`
+	EventVersion      string    `json:"eventVersion,omitempty"`
+	TenantID          string    `json:"tenantId"`
+	PortfolioID       string    `json:"portfolioId"`
+	UserID            string    `json:"userId"`
+	AccountID         string    `json:"accountId,omitempty"`
+	Symbol            string    `json:"symbol,omitempty"`
+	PositionQuantity  string    `json:"positionQuantity,omitempty"`
+	AveragePrice      string    `json:"averagePrice,omitempty"`
+	CashDelta         string    `json:"cashDelta,omitempty"`
+	CashBalance       float64   `json:"cashBalance"`
+	TotalValue        float64   `json:"totalValue"`
+	RealizedPnL       float64   `json:"realizedPnl"`
+	SourceEventID     string    `json:"sourceEventId,omitempty"`
+	SourceExecutionID string    `json:"sourceExecutionId,omitempty"`
+	UpdatedAt         time.Time `json:"updatedAt,omitempty"`
+	OccurredAt        time.Time `json:"occurredAt"`
+	CorrelationID     string    `json:"correlationId"`
 }

@@ -10,12 +10,16 @@ import (
 )
 
 type Producer struct {
+	brokers         []string
+	portfolioTopic  string
 	portfolioWriter *kafka.Writer
 	snapshotWriter  *kafka.Writer
 }
 
 func NewProducer(brokers []string, portfolioTopic, snapshotTopic string) *Producer {
 	return &Producer{
+		brokers:         brokers,
+		portfolioTopic:  portfolioTopic,
 		portfolioWriter: newWriter(brokers, portfolioTopic),
 		snapshotWriter:  newWriter(brokers, snapshotTopic),
 	}
@@ -39,6 +43,19 @@ func (p *Producer) PublishSnapshotCreated(ctx context.Context, snapshot domain.S
 		"correlationId": correlationID,
 	}
 	return writeJSON(ctx, p.snapshotWriter, snapshot.UserID, payload, snapshot.CreatedAt)
+}
+
+func (p *Producer) PublishRaw(ctx context.Context, topic string, key []byte, value []byte, headers map[string]string) error {
+	writer := p.portfolioWriter
+	if topic != "" && topic != p.portfolioTopic {
+		writer = newWriter(p.brokers, topic)
+		defer writer.Close()
+	}
+	kafkaHeaders := make([]kafka.Header, 0, len(headers))
+	for name, value := range headers {
+		kafkaHeaders = append(kafkaHeaders, kafka.Header{Key: name, Value: []byte(value)})
+	}
+	return writer.WriteMessages(ctx, kafka.Message{Key: key, Value: value, Time: time.Now().UTC(), Headers: kafkaHeaders})
 }
 
 func (p *Producer) Close() error {

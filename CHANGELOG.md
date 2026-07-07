@@ -3,6 +3,21 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.3.0] - Portfolio Service Transactional Outbox and Idempotent Event Processing
+
+### Added
+
+- Portfolio Service transactional outbox table and background publisher for reliable `portfolio.updated` publication.
+- Tenant-scoped processed-event idempotency keys for `trade.executed` consumption.
+- Same-transaction portfolio mutation, processed-event insert, snapshot creation, and outbox insert.
+- Portfolio outbox and consumer status endpoints under `/internal/portfolio/*`.
+- Portfolio consumer/outbox/idempotency metrics and demo script.
+
+### Known Limitations
+
+- `portfolio.snapshot.created` remains a database snapshot record; v3.3.0 focuses Kafka outbox publication on `portfolio.updated`.
+- Portfolio outbox delivery is at-least-once; downstream consumers must remain idempotent.
+
 ## [v3.2.0] - Stop Order Triggering and Reference Price Support
 
 ### Added

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/observability"
@@ -22,6 +23,9 @@ type Consumer struct {
 	metrics     *observability.Metrics
 	dlqWriter   writerCloser
 	retryConfig RetryConfig
+	mu          sync.RWMutex
+	status      Status
+	running     bool
 }
 
 type RetryConfig struct {
@@ -38,6 +42,17 @@ type DLQEvent struct {
 	FailedAt        time.Time `json:"failedAt"`
 	CorrelationID   string    `json:"correlationId,omitempty"`
 	RetryCount      int       `json:"retryCount"`
+}
+
+type Status struct {
+	Running           bool       `json:"running"`
+	LastConsumedAt    *time.Time `json:"lastConsumedAt,omitempty"`
+	LastProcessedAt   *time.Time `json:"lastProcessedAt,omitempty"`
+	LastDuplicateAt   *time.Time `json:"lastDuplicateAt,omitempty"`
+	ProcessedCount    int64      `json:"processedCount"`
+	DuplicateCount    int64      `json:"duplicateCount"`
+	ConsecutiveErrors int        `json:"consecutiveErrors"`
+	LastError         string     `json:"lastError,omitempty"`
 }
 
 type readerCloser interface {
@@ -76,6 +91,8 @@ func NewConsumerWithOptions(brokers []string, topic, groupID, dlqTopic string, s
 
 func (c *Consumer) Start(ctx context.Context) {
 	go func() {
+		c.setRunning(true)
+		defer c.setRunning(false)
 		for {
 			message, err := c.reader.FetchMessage(ctx)
 			if err != nil {
@@ -85,14 +102,26 @@ func (c *Consumer) Start(ctx context.Context) {
 				c.logger.Warn("failed to fetch portfolio source event", "error", err)
 				continue
 			}
+			c.recordConsumed()
 			if err := c.processWithRetry(ctx, message); err != nil {
+				c.recordError(err)
 				c.logger.Warn("failed to process portfolio source event", "topic", message.Topic, "partition", message.Partition, "offset", message.Offset, "error", err)
+			} else {
+				c.recordProcessed()
 			}
 			if err := c.reader.CommitMessages(ctx, message); err != nil && ctx.Err() == nil {
 				c.logger.Warn("failed to commit portfolio source event", "error", err)
 			}
 		}
 	}()
+}
+
+func (c *Consumer) Status() Status {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	status := c.status
+	status.Running = c.running
+	return status
 }
 
 func (c *Consumer) Close() error {
@@ -137,6 +166,36 @@ func (c *Consumer) processWithRetry(ctx context.Context, message kafka.Message) 
 	}
 	c.logger.Warn("published portfolio event to DLQ", "topic", message.Topic, "error", lastErr)
 	return lastErr
+}
+
+func (c *Consumer) recordConsumed() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	t := time.Now().UTC()
+	c.status.LastConsumedAt = &t
+}
+
+func (c *Consumer) recordProcessed() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	t := time.Now().UTC()
+	c.status.LastProcessedAt = &t
+	c.status.ProcessedCount++
+	c.status.ConsecutiveErrors = 0
+	c.status.LastError = ""
+}
+
+func (c *Consumer) recordError(err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.status.ConsecutiveErrors++
+	c.status.LastError = err.Error()
+}
+
+func (c *Consumer) setRunning(running bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.running = running
 }
 
 func (c *Consumer) publishDLQ(ctx context.Context, message kafka.Message, processingErr error, retryCount int) error {

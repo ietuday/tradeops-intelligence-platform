@@ -91,6 +91,12 @@ data:
   PORTFOLIO_UPDATED_TOPIC: {{ .Values.portfolio.topics.updated | quote }}
   PORTFOLIO_SNAPSHOT_TOPIC: {{ .Values.portfolio.topics.snapshotCreated | quote }}
   PORTFOLIO_INITIAL_CASH: {{ .Values.portfolio.initialCash | quote }}
+  PORTFOLIO_OUTBOX_ENABLED: {{ .Values.portfolio.outbox.enabled | quote }}
+  PORTFOLIO_OUTBOX_POLL_INTERVAL: {{ .Values.portfolio.outbox.pollInterval | quote }}
+  PORTFOLIO_OUTBOX_BATCH_SIZE: {{ .Values.portfolio.outbox.batchSize | quote }}
+  PORTFOLIO_OUTBOX_MAX_ATTEMPTS: {{ .Values.portfolio.outbox.maxAttempts | quote }}
+  PORTFOLIO_OUTBOX_BASE_BACKOFF: {{ .Values.portfolio.outbox.baseBackoff | quote }}
+  PORTFOLIO_OUTBOX_MAX_BACKOFF: {{ .Values.portfolio.outbox.maxBackoff | quote }}
   STRATEGY_SIGNAL_TOPIC: {{ .Values.strategy.topics.signalGenerated | quote }}
   STRATEGY_BACKTEST_COMPLETED_TOPIC: {{ .Values.strategy.topics.backtestCompleted | quote }}
   RISK_SCORE_UPDATED_TOPIC: {{ .Values.risk.topics.scoreUpdated | quote }}

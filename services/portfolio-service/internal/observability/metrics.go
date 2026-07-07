@@ -9,26 +9,35 @@ import (
 )
 
 type Metrics struct {
-	Registry               *prometheus.Registry
-	Updates                prometheus.Counter
-	UpdateFailures         prometheus.Counter
-	HoldingsCount          prometheus.Gauge
-	CashBalance            prometheus.Gauge
-	RealizedPnL            prometheus.Gauge
-	UnrealizedPnL          prometheus.Gauge
-	ProcessingDuration     prometheus.Histogram
-	KafkaPublishErrors     prometheus.Counter
-	EventsRetried          prometheus.CounterVec
-	EventsDeadlettered     prometheus.CounterVec
-	ProcessingAttempts     prometheus.CounterVec
-	DuplicateSkipped       prometheus.CounterVec
-	TradeEventsReceived    prometheus.CounterVec
-	TradeEventsProcessed   prometheus.CounterVec
-	TradeEventsFailed      prometheus.CounterVec
-	TradeEventsDuplicate   prometheus.Counter
-	TradePayloadConflicts  prometheus.Counter
-	ExecutionLag           prometheus.Gauge
-	ReconciliationFailures prometheus.CounterVec
+	Registry                        *prometheus.Registry
+	Updates                         prometheus.Counter
+	UpdateFailures                  prometheus.Counter
+	HoldingsCount                   prometheus.Gauge
+	CashBalance                     prometheus.Gauge
+	RealizedPnL                     prometheus.Gauge
+	UnrealizedPnL                   prometheus.Gauge
+	ProcessingDuration              prometheus.Histogram
+	KafkaPublishErrors              prometheus.Counter
+	EventsRetried                   prometheus.CounterVec
+	EventsDeadlettered              prometheus.CounterVec
+	ProcessingAttempts              prometheus.CounterVec
+	DuplicateSkipped                prometheus.CounterVec
+	TradeEventsReceived             prometheus.CounterVec
+	TradeEventsProcessed            prometheus.CounterVec
+	TradeEventsFailed               prometheus.CounterVec
+	TradeEventsDuplicate            prometheus.Counter
+	TradePayloadConflicts           prometheus.Counter
+	ExecutionLag                    prometheus.Gauge
+	ReconciliationFailures          prometheus.CounterVec
+	PortfolioEventsConsumed         *prometheus.CounterVec
+	PortfolioEventsDuplicate        *prometheus.CounterVec
+	PortfolioEventErrors            *prometheus.CounterVec
+	PortfolioEventDuration          *prometheus.HistogramVec
+	PortfolioOutboxEvents           *prometheus.CounterVec
+	PortfolioOutboxPublishAttempts  *prometheus.CounterVec
+	PortfolioOutboxPublishErrors    *prometheus.CounterVec
+	PortfolioOutboxPending          prometheus.Gauge
+	PortfolioOutboxOldestPendingAge prometheus.Gauge
 }
 
 func NewMetrics() *Metrics {
@@ -113,8 +122,45 @@ func NewMetrics() *Metrics {
 			Name: "tradeops_portfolio_reconciliation_failures_total",
 			Help: "Total portfolio reconciliation failures while processing executions.",
 		}, []string{"reason"}),
+		PortfolioEventsConsumed: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_events_consumed_total",
+			Help: "Total source events consumed by Portfolio Service.",
+		}, []string{"event_type", "status"}),
+		PortfolioEventsDuplicate: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_events_duplicate_total",
+			Help: "Total duplicate source events skipped by Portfolio Service.",
+		}, []string{"event_type"}),
+		PortfolioEventErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_event_processing_errors_total",
+			Help: "Total source event processing errors by reason.",
+		}, []string{"event_type", "reason"}),
+		PortfolioEventDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "tradeops_portfolio_event_processing_duration_seconds",
+			Help:    "Portfolio source event processing duration by event type.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2},
+		}, []string{"event_type"}),
+		PortfolioOutboxEvents: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_outbox_events_total",
+			Help: "Portfolio outbox events by terminal or scheduled status.",
+		}, []string{"status"}),
+		PortfolioOutboxPublishAttempts: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_outbox_publish_attempts_total",
+			Help: "Portfolio outbox publish attempts.",
+		}, []string{"event_type", "status"}),
+		PortfolioOutboxPublishErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "tradeops_portfolio_outbox_publish_errors_total",
+			Help: "Portfolio outbox publish errors.",
+		}, []string{"event_type", "reason"}),
+		PortfolioOutboxPending: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_portfolio_outbox_pending_count",
+			Help: "Current pending Portfolio Service outbox rows.",
+		}),
+		PortfolioOutboxOldestPendingAge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "tradeops_portfolio_outbox_oldest_pending_age_seconds",
+			Help: "Age of the oldest pending Portfolio Service outbox row.",
+		}),
 	}
-	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.DuplicateSkipped, &metrics.TradeEventsReceived, &metrics.TradeEventsProcessed, &metrics.TradeEventsFailed, metrics.TradeEventsDuplicate, metrics.TradePayloadConflicts, metrics.ExecutionLag, &metrics.ReconciliationFailures)
+	registry.MustRegister(metrics.Updates, metrics.UpdateFailures, metrics.HoldingsCount, metrics.CashBalance, metrics.RealizedPnL, metrics.UnrealizedPnL, metrics.ProcessingDuration, metrics.KafkaPublishErrors, &metrics.EventsRetried, &metrics.EventsDeadlettered, &metrics.ProcessingAttempts, &metrics.DuplicateSkipped, &metrics.TradeEventsReceived, &metrics.TradeEventsProcessed, &metrics.TradeEventsFailed, metrics.TradeEventsDuplicate, metrics.TradePayloadConflicts, metrics.ExecutionLag, &metrics.ReconciliationFailures, metrics.PortfolioEventsConsumed, metrics.PortfolioEventsDuplicate, metrics.PortfolioEventErrors, metrics.PortfolioEventDuration, metrics.PortfolioOutboxEvents, metrics.PortfolioOutboxPublishAttempts, metrics.PortfolioOutboxPublishErrors, metrics.PortfolioOutboxPending, metrics.PortfolioOutboxOldestPendingAge)
 	return metrics
 }
 

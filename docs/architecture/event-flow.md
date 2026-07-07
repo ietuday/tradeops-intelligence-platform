@@ -26,7 +26,7 @@ v2.5.0 adds repository-local JSON Schemas for core Kafka/Redpanda topics, DLQ pa
 | `order.filled` | `order-service` | `portfolio-service`, `surveillance-service`, `audit-service` | Filled order event. |
 | `order.rejected` | `order-service` | None currently | Rejected order lifecycle event. |
 | `order.cancelled` | `order-service` | `surveillance-service`, `audit-service` | Cancelled order event. |
-| `portfolio.updated` | `portfolio-service` | `surveillance-service`, `audit-service` | Holdings/cash update event. |
+| `portfolio.updated` | `portfolio-service` | `surveillance-service`, `audit-service` | Holdings/cash update event published through the Portfolio Service outbox. |
 | `portfolio.snapshot.created` | `portfolio-service` | None currently | Portfolio snapshot event. |
 | `strategy.signal.generated` | `strategy-service` | `surveillance-service` | Strategy signal event. |
 | `strategy.backtest.completed` | `strategy-service` | None currently | Backtest completion event. |

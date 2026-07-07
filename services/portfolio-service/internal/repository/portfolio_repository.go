@@ -4,13 +4,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/domain"
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/idempotency"
+	"github.com/ietuday/tradeops-intelligence-platform/services/portfolio-service/internal/outbox"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -28,18 +32,19 @@ type PortfolioRepository struct {
 }
 
 type UpdateResult struct {
-	Portfolio domain.Portfolio
-	Seller    domain.Portfolio
-	Holdings  []domain.Holding
-	Snapshot  domain.Snapshot
-	Duplicate bool
+	Portfolio      domain.Portfolio
+	Seller         domain.Portfolio
+	Holdings       []domain.Holding
+	Snapshot       domain.Snapshot
+	PortfolioEvent domain.PortfolioEvent
+	Duplicate      bool
 }
 
 func NewPortfolioRepository(db *pgxpool.Pool) *PortfolioRepository {
 	return &PortfolioRepository{db: db}
 }
 
-func (r *PortfolioRepository) ApplyTradeExecution(ctx context.Context, event domain.TradeExecutedEvent, initialCash float64, payloadHash string) (UpdateResult, error) {
+func (r *PortfolioRepository) ApplyTradeExecution(ctx context.Context, event domain.TradeExecutedEvent, initialCash float64, payloadHash string, portfolioTopic string) (UpdateResult, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return UpdateResult{}, err
@@ -47,12 +52,13 @@ func (r *PortfolioRepository) ApplyTradeExecution(ctx context.Context, event dom
 	defer tx.Rollback(ctx)
 
 	tenantID := defaultTenant(event.TenantID)
+	idempotencyKey := idempotency.BuildIdempotencyKey(event)
 	var existingHash string
 	err = tx.QueryRow(ctx, `
 		SELECT payload_hash
 		FROM portfolio_processed_events
-		WHERE tenant_id = $1 AND execution_id = $2
-	`, tenantID, event.ExecutionID).Scan(&existingHash)
+		WHERE tenant_id = $1 AND idempotency_key = $2
+	`, tenantID, idempotencyKey).Scan(&existingHash)
 	if err == nil {
 		if existingHash != "" && existingHash != payloadHash {
 			return UpdateResult{}, ErrPayloadConflict
@@ -111,9 +117,12 @@ func (r *PortfolioRepository) ApplyTradeExecution(ctx context.Context, event dom
 		return UpdateResult{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO portfolio_processed_events (event_id, execution_id, tenant_id, event_type, correlation_id, payload_hash, consumer_version)
-		VALUES ($1, $2, $3, $4, $5, $6, 'v3.1.2')
-	`, event.EventID, event.ExecutionID, tenantID, event.EventType, event.CorrelationID, payloadHash); err != nil {
+		INSERT INTO portfolio_processed_events (
+		  event_id, execution_id, tenant_id, event_type, event_version, source_service,
+		  aggregate_id, idempotency_key, correlation_id, payload_hash, consumer_version, processed_at
+		)
+		VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, 'v3.3.0', $11)
+	`, event.EventID, event.ExecutionID, tenantID, event.EventType, event.EventVersion, sourceService(event.Source), event.ExecutionID, idempotencyKey, event.CorrelationID, payloadHash, time.Now().UTC()); err != nil {
 		return UpdateResult{}, err
 	}
 
@@ -133,10 +142,73 @@ func (r *PortfolioRepository) ApplyTradeExecution(ctx context.Context, event dom
 	if err != nil {
 		return UpdateResult{}, err
 	}
+	portfolioEvent, err := buildPortfolioUpdatedEvent(event, buyer, holdings, -(event.ExecutionQuantity * event.ExecutionPrice))
+	if err != nil {
+		return UpdateResult{}, err
+	}
+	if err := insertPortfolioOutbox(ctx, tx, portfolioTopic, portfolioEvent); err != nil {
+		return UpdateResult{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return UpdateResult{}, err
 	}
-	return UpdateResult{Portfolio: buyer, Seller: seller, Holdings: holdings, Snapshot: snapshot}, nil
+	return UpdateResult{Portfolio: buyer, Seller: seller, Holdings: holdings, Snapshot: snapshot, PortfolioEvent: portfolioEvent}, nil
+}
+
+func buildPortfolioUpdatedEvent(event domain.TradeExecutedEvent, portfolio domain.Portfolio, holdings []domain.Holding, cashDelta float64) (domain.PortfolioEvent, error) {
+	var positionQuantity, averagePrice string
+	for _, holding := range holdings {
+		if holding.Symbol == event.Symbol {
+			positionQuantity = formatDecimal(holding.Quantity)
+			averagePrice = formatDecimal(holding.AverageBuyPrice)
+			break
+		}
+	}
+	now := time.Now().UTC()
+	return domain.PortfolioEvent{
+		EventID:           uuid.NewString(),
+		EventType:         "portfolio.updated",
+		EventVersion:      "v1",
+		TenantID:          portfolio.TenantID,
+		PortfolioID:       portfolio.ID,
+		UserID:            portfolio.UserID,
+		AccountID:         portfolio.ID,
+		Symbol:            event.Symbol,
+		PositionQuantity:  positionQuantity,
+		AveragePrice:      averagePrice,
+		CashDelta:         formatDecimal(cashDelta),
+		CashBalance:       portfolio.CashBalance,
+		TotalValue:        portfolio.TotalValue,
+		RealizedPnL:       portfolio.RealizedPnL,
+		SourceEventID:     event.EventID,
+		SourceExecutionID: event.ExecutionID,
+		UpdatedAt:         now,
+		OccurredAt:        now,
+		CorrelationID:     event.CorrelationID,
+	}, nil
+}
+
+func insertPortfolioOutbox(ctx context.Context, tx pgx.Tx, topic string, event domain.PortfolioEvent) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	return outbox.Insert(ctx, tx, outbox.Event{
+		EventID:       event.EventID,
+		TenantID:      event.TenantID,
+		AggregateType: "portfolio",
+		AggregateID:   event.PortfolioID,
+		EventType:     event.EventType,
+		EventVersion:  event.EventVersion,
+		Topic:         topic,
+		Payload:       payload,
+		Headers: map[string]string{
+			"eventType":     event.EventType,
+			"eventVersion":  event.EventVersion,
+			"correlationId": event.CorrelationID,
+			"tenantId":      event.TenantID,
+		},
+	})
 }
 
 func (r *PortfolioRepository) ApplyFilledOrder(ctx context.Context, event domain.OrderFilledEvent, initialCash float64) (UpdateResult, error) {
@@ -318,6 +390,18 @@ func PayloadHash(event domain.TradeExecutedEvent) string {
 	}, "|")
 	sum := sha256.Sum256([]byte(normalized))
 	return hex.EncodeToString(sum[:])
+}
+
+func formatDecimal(value float64) string {
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.8f", value), "0"), ".")
+}
+
+func sourceService(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "order-service"
+	}
+	return value
 }
 
 func defaultCurrency(value string) string {

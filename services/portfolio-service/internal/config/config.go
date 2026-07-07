@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -22,6 +23,16 @@ type Config struct {
 	EventProcessingMaxRetries int
 	EventProcessingBackoffMS  int
 	EventProcessingMultiplier float64
+	Outbox                    OutboxConfig
+}
+
+type OutboxConfig struct {
+	Enabled      bool
+	PollInterval time.Duration
+	BatchSize    int
+	MaxAttempts  int
+	BaseBackoff  time.Duration
+	MaxBackoff   time.Duration
 }
 
 func Load() (Config, error) {
@@ -40,6 +51,14 @@ func Load() (Config, error) {
 		EventProcessingMaxRetries: intEnv("EVENT_PROCESSING_MAX_RETRIES", 3),
 		EventProcessingBackoffMS:  intEnv("EVENT_PROCESSING_RETRY_BACKOFF_MS", 500),
 		EventProcessingMultiplier: floatEnv("EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER", 2),
+		Outbox: OutboxConfig{
+			Enabled:      boolEnv("PORTFOLIO_OUTBOX_ENABLED", true),
+			PollInterval: durationEnv("PORTFOLIO_OUTBOX_POLL_INTERVAL", 2*time.Second),
+			BatchSize:    intEnv("PORTFOLIO_OUTBOX_BATCH_SIZE", 100),
+			MaxAttempts:  intEnv("PORTFOLIO_OUTBOX_MAX_ATTEMPTS", 10),
+			BaseBackoff:  durationEnv("PORTFOLIO_OUTBOX_BASE_BACKOFF", time.Second),
+			MaxBackoff:   durationEnv("PORTFOLIO_OUTBOX_MAX_BACKOFF", time.Minute),
+		},
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, errors.New("PORTFOLIO_DATABASE_URL is required")
@@ -53,7 +72,32 @@ func Load() (Config, error) {
 	if cfg.JWTSecret == "" {
 		return cfg, errors.New("PORTFOLIO_JWT_SECRET is required")
 	}
+	if err := validateOutbox(cfg.Outbox); err != nil {
+		return cfg, err
+	}
 	return cfg, nil
+}
+
+func validateOutbox(cfg OutboxConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if cfg.PollInterval <= 0 {
+		return errors.New("PORTFOLIO_OUTBOX_POLL_INTERVAL must be positive")
+	}
+	if cfg.BatchSize <= 0 {
+		return errors.New("PORTFOLIO_OUTBOX_BATCH_SIZE must be greater than zero")
+	}
+	if cfg.MaxAttempts <= 0 {
+		return errors.New("PORTFOLIO_OUTBOX_MAX_ATTEMPTS must be greater than zero")
+	}
+	if cfg.BaseBackoff <= 0 {
+		return errors.New("PORTFOLIO_OUTBOX_BASE_BACKOFF must be positive")
+	}
+	if cfg.MaxBackoff < cfg.BaseBackoff {
+		return errors.New("PORTFOLIO_OUTBOX_MAX_BACKOFF must be greater than or equal to PORTFOLIO_OUTBOX_BASE_BACKOFF")
+	}
+	return nil
 }
 
 func getenv(key, fallback string) string {
@@ -87,4 +131,28 @@ func intEnv(key string, fallback int) int {
 		return fallback
 	}
 	return value
+}
+
+func boolEnv(key string, fallback bool) bool {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func durationEnv(key string, fallback time.Duration) time.Duration {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := time.ParseDuration(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
 }
