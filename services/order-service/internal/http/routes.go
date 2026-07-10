@@ -36,9 +36,9 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 
 	router.Get("/health", health.Health)
 	router.Get("/ready", health.Ready)
-	router.Get("/internal/outbox/status", health.OutboxStatus)
-	router.Get("/internal/order-expiry/status", health.OrderExpiryStatus)
-	router.Get("/internal/stop-trigger/status", health.StopTriggerStatus)
+	router.With(middleware.ServiceAuth).Get("/internal/outbox/status", health.OutboxStatus)
+	router.With(middleware.ServiceAuth).Get("/internal/order-expiry/status", health.OrderExpiryStatus)
+	router.With(middleware.ServiceAuth).Get("/internal/stop-trigger/status", health.StopTriggerStatus)
 	router.Handle("/metrics", deps.Metrics.Handler())
 
 	router.Group(func(r chi.Router) {

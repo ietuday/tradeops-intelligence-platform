@@ -1,6 +1,7 @@
 import { recordProxyUpstreamError, recordProxyUpstreamTimeout } from '../observability/metrics';
 import { traceContextHeaders } from '../observability/tracing';
 import { Request } from 'express';
+import { stripSpoofedIdentityHeaders, trustedIdentityHeaders } from '../auth/identity-context';
 
 const DEFAULT_PROXY_TIMEOUT_MS = 10_000;
 
@@ -55,7 +56,8 @@ export async function fetchUpstream(service: string, url: string, init: RequestI
 
 export function withTraceHeaders(headers: HeadersInit, req?: Request): HeadersInit {
   return {
-    ...(headers as Record<string, string>),
+    ...stripSpoofedIdentityHeaders(headers as Record<string, string>),
+    ...(req ? trustedIdentityHeaders(req) : {}),
     ...incomingTraceHeaders(req),
     ...traceContextHeaders()
   };

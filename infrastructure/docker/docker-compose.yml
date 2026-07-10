@@ -18,6 +18,15 @@ services:
       SURVEILLANCE_SERVICE_URL: ${SURVEILLANCE_SERVICE_URL:-http://surveillance-service:8090}
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:8091}
       AUDIT_SERVICE_URL: ${AUDIT_SERVICE_URL:-http://audit-service:8092}
+      AUTH_ENABLED: ${AUTH_ENABLED:-true}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://identity-service:8080}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-http://identity-service:8080/.well-known/jwks.json}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-tradeops-api}
+      OIDC_ALLOWED_ALGORITHMS: ${OIDC_ALLOWED_ALGORITHMS:-RS256}
+      OIDC_JWKS_CACHE_TTL: ${OIDC_JWKS_CACHE_TTL:-10m}
+      AUTH_CLOCK_SKEW: ${AUTH_CLOCK_SKEW:-60}
+      AUTH_REQUIRE_TENANT: ${AUTH_REQUIRE_TENANT:-true}
+      SERVICE_AUTH_SHARED_SECRET: ${SERVICE_AUTH_SHARED_SECRET:-local-dev-service-secret}
       ADMIN_API_ENABLED: ${ADMIN_API_ENABLED:-true}
       ADMIN_HEALTH_TIMEOUT_MS: ${ADMIN_HEALTH_TIMEOUT_MS:-1500}
       ADMIN_SERVICE_REGISTRY_MODE: ${ADMIN_SERVICE_REGISTRY_MODE:-static}
@@ -81,6 +90,10 @@ services:
       IDENTITY_DATABASE_URL: ${IDENTITY_DATABASE_URL:?IDENTITY_DATABASE_URL is required. Create infrastructure/docker/.env from .env.example}
       IDENTITY_REDIS_ADDR: ${IDENTITY_REDIS_ADDR:-redis:6379}
       IDENTITY_JWT_SECRET: ${IDENTITY_JWT_SECRET:?IDENTITY_JWT_SECRET is required. Create infrastructure/docker/.env from .env.example}
+      IDENTITY_OIDC_ENABLED: ${IDENTITY_OIDC_ENABLED:-true}
+      IDENTITY_ISSUER_URL: ${IDENTITY_ISSUER_URL:-http://identity-service:8080}
+      IDENTITY_OIDC_AUDIENCE: ${IDENTITY_OIDC_AUDIENCE:-tradeops-api}
+      IDENTITY_JWT_KID: ${IDENTITY_JWT_KID:-local-dev-key-1}
       IDENTITY_REFRESH_TOKEN_SECRET: ${IDENTITY_REFRESH_TOKEN_SECRET:?IDENTITY_REFRESH_TOKEN_SECRET is required. Create infrastructure/docker/.env from .env.example}
       IDENTITY_ACCESS_TOKEN_TTL_MINUTES: ${IDENTITY_ACCESS_TOKEN_TTL_MINUTES:-15}
       IDENTITY_REFRESH_TOKEN_TTL_HOURS: ${IDENTITY_REFRESH_TOKEN_TTL_HOURS:-24}
@@ -144,6 +157,8 @@ services:
       ORDER_DATABASE_URL: ${ORDER_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
       ORDER_KAFKA_BROKERS: ${ORDER_KAFKA_BROKERS:-redpanda:29092}
       ORDER_JWT_SECRET: ${ORDER_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+      SERVICE_AUTH_ENABLED: ${SERVICE_AUTH_ENABLED:-true}
+      SERVICE_AUTH_SHARED_SECRET: ${SERVICE_AUTH_SHARED_SECRET:-local-dev-service-secret}
       MATCHING_ENGINE_ENABLED: ${MATCHING_ENGINE_ENABLED:-true}
       PRE_TRADE_RISK_ENABLED: ${PRE_TRADE_RISK_ENABLED:-true}
       PRE_TRADE_RISK_URL: ${PRE_TRADE_RISK_URL:-http://risk-engine-service:8080}
@@ -217,6 +232,8 @@ services:
       PORTFOLIO_UPDATED_TOPIC: ${PORTFOLIO_UPDATED_TOPIC:-portfolio.updated}
       PORTFOLIO_SNAPSHOT_TOPIC: ${PORTFOLIO_SNAPSHOT_TOPIC:-portfolio.snapshot.created}
       PORTFOLIO_JWT_SECRET: ${PORTFOLIO_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+      SERVICE_AUTH_ENABLED: ${SERVICE_AUTH_ENABLED:-true}
+      SERVICE_AUTH_SHARED_SECRET: ${SERVICE_AUTH_SHARED_SECRET:-local-dev-service-secret}
       PORTFOLIO_INITIAL_CASH: ${PORTFOLIO_INITIAL_CASH:-100000}
       EVENT_PROCESSING_MAX_RETRIES: ${EVENT_PROCESSING_MAX_RETRIES:-3}
       EVENT_PROCESSING_RETRY_BACKOFF_MS: ${EVENT_PROCESSING_RETRY_BACKOFF_MS:-500}
@@ -410,6 +427,8 @@ services:
       PORT: ${AUDIT_SERVICE_PORT:-8092}
       DATABASE_URL: ${AUDIT_DATABASE_URL:-postgres://${POSTGRES_USER:-tradeops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tradeops}?sslmode=disable}
       JWT_SECRET: ${AUDIT_JWT_SECRET:-${IDENTITY_JWT_SECRET}}
+      SERVICE_AUTH_ENABLED: ${SERVICE_AUTH_ENABLED:-true}
+      SERVICE_AUTH_SHARED_SECRET: ${SERVICE_AUTH_SHARED_SECRET:-local-dev-service-secret}
       KAFKA_BROKERS: ${AUDIT_KAFKA_BROKERS:-redpanda:29092}
       KAFKA_GROUP_ID: ${AUDIT_KAFKA_GROUP_ID:-audit-service}
       AUDIT_KAFKA_TOPICS: ${AUDIT_KAFKA_TOPICS:-user.registered,user.login,user.logout,order.created,order.cancelled,order.filled,order.expired,portfolio.updated,risk.score.updated,risk.breached,surveillance.alert.created,surveillance.alert.acknowledged,surveillance.alert.resolved,surveillance.alert.dismissed,notification.read,notification.failed,notification.sent,notification.retry_requested}

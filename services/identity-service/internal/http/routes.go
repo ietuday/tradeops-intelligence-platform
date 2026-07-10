@@ -31,10 +31,12 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 	router.Use(deps.Metrics.Middleware)
 
 	health := handlers.NewHealthHandler(deps.DB, deps.Redis)
-	auth := handlers.NewAuthHandler(deps.AuthService)
+	auth := handlers.NewAuthHandler(deps.AuthService, deps.Config.IssuerURL, deps.Config.Audience, deps.TokenManager.JWKS)
 
 	router.Get("/health", health.Health)
 	router.Get("/ready", health.Ready)
+	router.Get("/.well-known/openid-configuration", auth.OpenIDConfiguration)
+	router.Get("/.well-known/jwks.json", auth.JWKS)
 	router.Handle("/metrics", deps.Metrics.Handler())
 
 	router.Route("/auth", func(r chi.Router) {
@@ -42,6 +44,12 @@ func NewRouter(deps Dependencies) nethttp.Handler {
 		r.Post("/login", auth.Login)
 		r.Post("/refresh", auth.Refresh)
 		r.Post("/logout", auth.Logout)
+		r.With(middleware.Auth(deps.TokenManager)).Get("/me", auth.Me)
+	})
+	router.Route("/api/v1/auth", func(r chi.Router) {
+		r.Post("/token", auth.Login)
+		r.Post("/login", auth.Login)
+		r.Post("/refresh", auth.Refresh)
 		r.With(middleware.Auth(deps.TokenManager)).Get("/me", auth.Me)
 	})
 

@@ -54,6 +54,14 @@ func main() {
 	tokenRepo := repository.NewRefreshTokenRepository(pool, redisClient, []byte(cfg.RefreshTokenSecret))
 	auditRepo := repository.NewAuditRepository(pool)
 	tokenManager := security.NewTokenManager([]byte(cfg.JWTSecret), cfg.AccessTokenTTL)
+	if cfg.OIDCEnabled {
+		privateKey, err := security.LoadOrGenerateRSAKey(cfg.JWTPrivateKeyPath, logger)
+		if err != nil {
+			logger.Error("OIDC signing key failed", "error", err)
+			os.Exit(1)
+		}
+		tokenManager = security.NewOIDCTokenManager(privateKey, cfg.JWTKeyID, cfg.IssuerURL, cfg.Audience, cfg.AccessTokenTTL)
+	}
 	authService := service.NewAuthService(userRepo, tokenRepo, auditRepo, tokenManager, cfg.RefreshTokenTTL)
 
 	router := httpapi.NewRouter(httpapi.Dependencies{

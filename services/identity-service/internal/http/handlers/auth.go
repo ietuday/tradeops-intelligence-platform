@@ -13,11 +13,14 @@ import (
 )
 
 type AuthHandler struct {
-	auth *service.AuthService
+	auth      *service.AuthService
+	issuerURL string
+	audience  string
+	jwks      func() map[string]any
 }
 
-func NewAuthHandler(auth *service.AuthService) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *service.AuthService, issuerURL, audience string, jwks func() map[string]any) *AuthHandler {
+	return &AuthHandler{auth: auth, issuerURL: issuerURL, audience: audience, jwks: jwks}
 }
 
 type registerRequest struct {
@@ -122,6 +125,24 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpmiddleware.WriteJSON(w, http.StatusOK, userResponse{ID: user.ID, TenantID: user.TenantID, Email: user.Email, FullName: user.FullName, Roles: user.Roles})
+}
+
+func (h *AuthHandler) OpenIDConfiguration(w http.ResponseWriter, r *http.Request) {
+	base := strings.TrimRight(h.issuerURL, "/")
+	httpmiddleware.WriteJSON(w, http.StatusOK, map[string]any{
+		"issuer":                                base,
+		"jwks_uri":                              base + "/.well-known/jwks.json",
+		"token_endpoint":                        base + "/api/v1/auth/token",
+		"authorization_endpoint":                base + "/api/v1/auth/login",
+		"response_types_supported":              []string{"token"},
+		"subject_types_supported":               []string{"public"},
+		"id_token_signing_alg_values_supported": []string{"RS256"},
+		"audience":                              h.audience,
+	})
+}
+
+func (h *AuthHandler) JWKS(w http.ResponseWriter, r *http.Request) {
+	httpmiddleware.WriteJSON(w, http.StatusOK, h.jwks())
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {

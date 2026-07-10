@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradeops.local/schemas/events/audit/auth.decision.v1.json",
+  "title": "Auth Decision Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventType", "eventVersion", "service", "route", "decision", "reason", "correlationId", "decidedAt"],
+  "properties": {
+    "eventType": { "const": "auth.decision" },
+    "eventVersion": { "const": "v1" },
+    "tenantId": { "type": "string" },
+    "userId": { "type": "string" },
+    "subject": { "type": "string" },
+    "service": { "type": "string" },
+    "route": { "type": "string" },
+    "decision": { "enum": ["allow", "deny"] },
+    "reason": { "type": "string" },
+    "requiredScopes": { "type": "array", "items": { "type": "string" } },
+    "requiredRoles": { "type": "array", "items": { "type": "string" } },
+    "providedScopes": { "type": "array", "items": { "type": "string" } },
+    "providedRoles": { "type": "array", "items": { "type": "string" } },
+    "sourceIpHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "correlationId": { "type": "string" },
+    "decidedAt": { "type": "string", "format": "date-time" }
+  }
+}

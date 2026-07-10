@@ -8,6 +8,7 @@ import pinoHttp from 'pino-http';
 import { correlationIdMiddleware, CORRELATION_ID_HEADER } from './middleware/correlation-id';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { createRateLimitMiddleware } from './middleware/rate-limit';
+import { authMiddleware } from './auth/middleware';
 import { metricsHandler, metricsMiddleware } from './observability/metrics';
 import { shutdownTracing, tracingMiddleware } from './observability/tracing';
 import { authProxyRouter } from './routes/auth-proxy';
@@ -58,6 +59,7 @@ export function createApp() {
     maxRequests: Number.isFinite(rateLimitMaxRequests) && rateLimitMaxRequests > 0 ? rateLimitMaxRequests : 300
   }));
   app.use(express.json({ limit: requestBodyLimit }));
+  app.use(authMiddleware);
 
   app.use(healthRouter);
   app.get('/metrics', metricsHandler);

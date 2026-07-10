@@ -101,6 +101,55 @@ const adminHealthCheckDurationMs = new client.Histogram({
   registers: [register]
 });
 
+const authRequestsTotal = new client.Counter({
+  name: 'tradeops_auth_requests_total',
+  help: 'Total authentication decisions by bounded reason.',
+  labelNames: ['service', 'auth_type', 'decision', 'reason'],
+  registers: [register]
+});
+
+const authTokenValidationTotal = new client.Counter({
+  name: 'tradeops_auth_token_validation_total',
+  help: 'Total JWT validation attempts by status and bounded reason.',
+  labelNames: ['service', 'status', 'reason'],
+  registers: [register]
+});
+
+const authForbiddenTotal = new client.Counter({
+  name: 'tradeops_auth_forbidden_total',
+  help: 'Total authorization failures by route group and bounded reason.',
+  labelNames: ['service', 'route_group', 'reason'],
+  registers: [register]
+});
+
+const authTenantMismatchTotal = new client.Counter({
+  name: 'tradeops_auth_tenant_mismatch_total',
+  help: 'Total tenant mismatch authorization failures by route group.',
+  labelNames: ['service', 'route_group'],
+  registers: [register]
+});
+
+const authJwksRefreshTotal = new client.Counter({
+  name: 'tradeops_auth_jwks_refresh_total',
+  help: 'Total JWKS refresh attempts by status.',
+  labelNames: ['service', 'status'],
+  registers: [register]
+});
+
+const authJwksCacheAgeSeconds = new client.Gauge({
+  name: 'tradeops_auth_jwks_cache_age_seconds',
+  help: 'Current JWKS cache age in seconds.',
+  labelNames: ['service'],
+  registers: [register]
+});
+
+const serviceAuthRequestsTotal = new client.Counter({
+  name: 'tradeops_service_auth_requests_total',
+  help: 'Total service auth decisions by caller and bounded reason.',
+  labelNames: ['service', 'caller', 'decision', 'reason'],
+  registers: [register]
+});
+
 function normalizeRoute(req: Request): string {
   return req.route?.path?.toString() || req.path || 'unknown';
 }
@@ -168,6 +217,38 @@ export function recordAdminRequest(endpoint: string, status: number): void {
 export function recordAdminHealthCheck(service: string, status: string, durationMs: number): void {
   adminHealthChecksTotal.inc({ service, status });
   adminHealthCheckDurationMs.observe({ service }, durationMs);
+}
+
+export function recordAuthRequest(authType: string, decision: string, reason: string): void {
+  authRequestsTotal.inc({ service: 'api-gateway', auth_type: authType, decision, reason: normalizeReason(reason) });
+}
+
+export function recordAuthTokenValidation(status: string, reason: string): void {
+  authTokenValidationTotal.inc({ service: 'api-gateway', status, reason: normalizeReason(reason) });
+}
+
+export function recordForbidden(routeGroup: string, reason: string): void {
+  authForbiddenTotal.inc({ service: 'api-gateway', route_group: routeGroup, reason: normalizeReason(reason) });
+}
+
+export function recordTenantMismatch(routeGroup: string): void {
+  authTenantMismatchTotal.inc({ service: 'api-gateway', route_group: routeGroup });
+}
+
+export function recordJwksRefresh(status: string): void {
+  authJwksRefreshTotal.inc({ service: 'api-gateway', status: normalizeReason(status) });
+}
+
+export function setJwksCacheAge(ageSeconds: number): void {
+  authJwksCacheAgeSeconds.set({ service: 'api-gateway' }, ageSeconds);
+}
+
+export function recordServiceAuth(caller: string, decision: string, reason: string): void {
+  serviceAuthRequestsTotal.inc({ service: 'api-gateway', caller: caller || 'unknown', decision, reason: normalizeReason(reason) });
+}
+
+function normalizeReason(reason: string): string {
+  return /^[a-z_]+$/.test(reason) ? reason : 'other';
 }
 
 export { register };

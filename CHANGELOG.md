@@ -3,6 +3,20 @@
 
 All notable changes to TradeOps Intelligence Platform will be documented in this file.
 
+## [v3.5.0] - Real OAuth2/OIDC Authentication, JWT Validation, and Service Authorization
+
+### Added
+
+- API Gateway JWKS-based RS256 JWT validation, normalized identity headers, route-level role/scope policy, and bounded auth metrics.
+- Identity Service local OIDC discovery, JWKS, and token endpoints with ephemeral dev signing key fallback.
+- Service-auth validation for trusted gateway headers in Order, Portfolio, and Audit services.
+- Auth decision event schema, Docker Compose and Helm auth configuration, docs, and local OIDC/RBAC demo script.
+
+### Known Limitations
+
+- Local service auth uses a shared secret for development; production should use mTLS, workload identity, or a service mesh.
+- Auth decision emission is schema-ready, but high-volume audit publishing is intentionally not enabled by default.
+
 ## [v3.4.0] - Consumer Lag Monitoring, DLQ Visibility, and Autoscaling Signals
 
 ### Added

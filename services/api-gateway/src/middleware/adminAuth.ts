@@ -23,7 +23,11 @@ export function requireAdminMutation(req: Request, res: Response, next: NextFunc
 
 function requireAdminRole(req: Request, res: Response, next: NextFunction, allowedRoles: Set<string>): void {
   const authorization = req.header('authorization') || '';
-  const principal = parsePrincipal(authorization);
+  const principal = req.identity ? {
+    tenantId: req.identity.tenantId,
+    userId: req.identity.userId,
+    roles: req.identity.roles
+  } : parsePrincipal(authorization);
 
   if (!authorization || !principal) {
     res.status(401).json({

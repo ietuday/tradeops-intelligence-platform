@@ -9,6 +9,9 @@ export interface TenantPrincipal {
 export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || 'default-tenant';
 
 export function tenantHeaders(req: Request): Record<string, string> {
+  if (req.identity?.tenantId) {
+    return { 'x-tenant-id': req.identity.tenantId };
+  }
   const principal = parsePrincipal(req.header('authorization'));
   const externalTenant = req.header('x-tenant-id')?.trim();
 

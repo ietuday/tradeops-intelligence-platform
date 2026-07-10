@@ -57,6 +57,7 @@ secrets:
     POSTGRES_PASSWORD: tradeops_dev
     JWT_SECRET: local_dev_jwt_secret_change_me_123456789
     IDENTITY_REFRESH_TOKEN_SECRET: local_dev_refresh_secret_change_me_123456789
+    SERVICE_AUTH_SHARED_SECRET: local_dev_service_auth_secret_change_me
     GRAFANA_ADMIN_PASSWORD: admin
 
 externalSecrets:
@@ -155,6 +156,26 @@ apiGateway:
       - http://localhost:5173
     maxConnections: "100"
     heartbeatIntervalMs: "30000"
+
+auth:
+  enabled: "true"
+  requireTenant: "true"
+  oidc:
+    issuerUrl: "http://identity-service:8080"
+    jwksUrl: "http://identity-service:8080/.well-known/jwks.json"
+    audience: "tradeops-api"
+    allowedAlgorithms:
+      - RS256
+    jwksCacheTtl: "10m"
+    clockSkew: "60"
+  serviceAuth:
+    enabled: "true"
+    existingSecretName: ""
+    sharedSecretKey: "SERVICE_AUTH_SHARED_SECRET"
+  audit:
+    enabled: "true"
+    allowDecisions: "false"
+    denyDecisions: "true"
 
 eventProcessing:
   maxRetries: "3"
@@ -441,6 +462,14 @@ applications:
       SURVEILLANCE_SERVICE_URL: http://surveillance-service:8090
       NOTIFICATION_SERVICE_URL: http://notification-service:8091
       AUDIT_SERVICE_URL: http://audit-service:8092
+      AUTH_ENABLED: "{{ .Values.auth.enabled }}"
+      AUTH_REQUIRE_TENANT: "{{ .Values.auth.requireTenant }}"
+      OIDC_ISSUER_URL: "{{ .Values.auth.oidc.issuerUrl }}"
+      OIDC_JWKS_URL: "{{ .Values.auth.oidc.jwksUrl }}"
+      OIDC_AUDIENCE: "{{ .Values.auth.oidc.audience }}"
+      OIDC_ALLOWED_ALGORITHMS: "{{ join \",\" .Values.auth.oidc.allowedAlgorithms }}"
+      OIDC_JWKS_CACHE_TTL: "{{ .Values.auth.oidc.jwksCacheTtl }}"
+      AUTH_CLOCK_SKEW: "{{ .Values.auth.oidc.clockSkew }}"
       WS_KAFKA_BROKERS: "{{ include \"tradeops.kafkaBrokers\" . }}"
     configMapEnv:
       CORS_ORIGIN: CORS_ORIGIN
@@ -489,7 +518,8 @@ applications:
       OUTBOX_MAX_ATTEMPTS: OUTBOX_MAX_ATTEMPTS
       OUTBOX_ERROR_MAX_LENGTH: OUTBOX_ERROR_MAX_LENGTH
       ORDERBOOK_MAX_DEPTH: ORDERBOOK_MAX_DEPTH
-    secretEnv: {}
+    secretEnv:
+      SERVICE_AUTH_SHARED_SECRET: SERVICE_AUTH_SHARED_SECRET
     probes: &defaultProbes
       enabled: true
       liveness: { path: /health, initialDelaySeconds: 20, periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 5 }
@@ -535,6 +565,10 @@ applications:
       IDENTITY_SERVICE_PORT: "8080"
       IDENTITY_DATABASE_URL: "postgres://tradeops:$(POSTGRES_PASSWORD)@{{ include \"tradeops.postgresqlHost\" . }}:5432/tradeops?sslmode=disable"
       IDENTITY_REDIS_ADDR: "{{ include \"tradeops.redisHost\" . }}:6379"
+      IDENTITY_OIDC_ENABLED: "true"
+      IDENTITY_ISSUER_URL: "{{ .Values.auth.oidc.issuerUrl }}"
+      IDENTITY_OIDC_AUDIENCE: "{{ .Values.auth.oidc.audience }}"
+      IDENTITY_JWT_KID: local-dev-key-1
       IDENTITY_ACCESS_TOKEN_TTL_MINUTES: "15"
       IDENTITY_REFRESH_TOKEN_TTL_HOURS: "24"
     configMapEnv: {}
@@ -592,6 +626,7 @@ applications:
       ORDER_SERVICE_PORT: "8080"
       ORDER_DATABASE_URL: "postgres://tradeops:$(POSTGRES_PASSWORD)@{{ include \"tradeops.postgresqlHost\" . }}:5432/tradeops?sslmode=disable"
       ORDER_KAFKA_BROKERS: "{{ include \"tradeops.kafkaBrokers\" . }}"
+      SERVICE_AUTH_ENABLED: "{{ .Values.auth.serviceAuth.enabled }}"
     configMapEnv:
       OTEL_ENABLED: OTEL_ENABLED
       OTEL_EXPORTER_OTLP_ENDPOINT: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -627,6 +662,7 @@ applications:
       STOP_TRIGGER_CONSUMER_GROUP: STOP_TRIGGER_CONSUMER_GROUP
     secretEnv:
       ORDER_JWT_SECRET: JWT_SECRET
+      SERVICE_AUTH_SHARED_SECRET: SERVICE_AUTH_SHARED_SECRET
     probes: *defaultProbes
     metrics: *defaultMetrics
     resources: *apiResources
@@ -649,6 +685,7 @@ applications:
       PORTFOLIO_SERVICE_PORT: "8080"
       PORTFOLIO_DATABASE_URL: "postgres://tradeops:$(POSTGRES_PASSWORD)@{{ include \"tradeops.postgresqlHost\" . }}:5432/tradeops?sslmode=disable"
       PORTFOLIO_KAFKA_BROKERS: "{{ include \"tradeops.kafkaBrokers\" . }}"
+      SERVICE_AUTH_ENABLED: "{{ .Values.auth.serviceAuth.enabled }}"
     configMapEnv:
       PORTFOLIO_ORDER_FILLED_TOPIC: PORTFOLIO_ORDER_FILLED_TOPIC
       PORTFOLIO_TRADE_TOPIC: PORTFOLIO_TRADE_TOPIC
@@ -678,6 +715,7 @@ applications:
       EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER: EVENT_PROCESSING_RETRY_BACKOFF_MULTIPLIER
     secretEnv:
       PORTFOLIO_JWT_SECRET: JWT_SECRET
+      SERVICE_AUTH_SHARED_SECRET: SERVICE_AUTH_SHARED_SECRET
     probes: *defaultProbes
     metrics: *defaultMetrics
     resources: *apiResources
@@ -843,6 +881,7 @@ applications:
       PORT: "8092"
       DATABASE_URL: "postgres://tradeops:$(POSTGRES_PASSWORD)@{{ include \"tradeops.postgresqlHost\" . }}:5432/tradeops?sslmode=disable"
       KAFKA_BROKERS: "{{ include \"tradeops.kafkaBrokers\" . }}"
+      SERVICE_AUTH_ENABLED: "{{ .Values.auth.serviceAuth.enabled }}"
     configMapEnv:
       KAFKA_GROUP_ID: AUDIT_KAFKA_GROUP_ID
       AUDIT_KAFKA_TOPICS: AUDIT_KAFKA_TOPICS
@@ -854,7 +893,8 @@ applications:
       OTEL_SERVICE_VERSION: OTEL_SERVICE_VERSION
       OTEL_TRACES_SAMPLER: OTEL_TRACES_SAMPLER
       OTEL_TRACES_SAMPLER_ARG: OTEL_TRACES_SAMPLER_ARG
-    secretEnv: {}
+    secretEnv:
+      SERVICE_AUTH_SHARED_SECRET: SERVICE_AUTH_SHARED_SECRET
     probes: *defaultProbes
     metrics: *defaultMetrics
     resources: *apiResources
